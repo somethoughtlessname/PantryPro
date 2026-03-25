@@ -89,6 +89,7 @@ body {
 .data-body {
   flex:1; overflow-y:auto; padding:var(--margin);
   display:flex; flex-direction:column; gap:var(--margin);
+  display:flex; flex-direction:column; gap:var(--margin);
 }
 .data-textarea {
   flex:1; width:100%;
@@ -178,7 +179,7 @@ body {
 /* APP */
 .app { width: 100%; max-width: 540px; display: flex; flex-direction: column; gap: var(--margin); }
 
-.page { display: none; flex-direction: column; gap: var(--margin); width: 100%; }
+.page { display: none; flex-direction: column; gap: 4px; width: 100%; }
 .page.active { display: flex; }
 
 /* ADD PANEL */
@@ -281,9 +282,9 @@ body {
 
 /* EMPTY */
 .empty-state {
-  height:80px; display:flex; align-items:center; justify-content:center;
-  font-size:11px; font-weight:700; letter-spacing:0.07em;
-  text-transform:uppercase; color:var(--muted); opacity:0.6;
+  min-height:80px; display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:500; color:var(--muted); opacity:0.8;
+  text-align:center; padding:24px 20px; line-height:1.7;
 }
 
 /* FOOTER */
@@ -382,6 +383,24 @@ body {
 }
 
 
+#csThinkSlot, #msThinkSlot {
+  display: flex; flex-direction: column;
+  gap: var(--margin);
+}
+#csThinkSlot:empty, #msThinkSlot:empty {
+  display: none;
+}
+.thinking-dots span {
+  animation: thinkDot 1.2s infinite;
+  opacity: 0;
+}
+.thinking-dots span:nth-child(2) { animation-delay: 0.4s; }
+.thinking-dots span:nth-child(3) { animation-delay: 0.8s; }
+@keyframes thinkDot {
+  0%, 100% { opacity: 0; }
+  50%       { opacity: 1; }
+}
+
 .ms-search-wrap {
   display:flex; align-items:stretch;
   height:var(--drop-height);
@@ -390,16 +409,17 @@ body {
 }
 .ms-search {
   flex:1; min-width:0;
-  background:var(--bg-2); border:none;
-  color:var(--color-10);
+  background: #c8cdd4; border:none;
+  color: #1a1a1a;
   font-size:13px; font-weight:600;
   padding:0 10px; outline:none;
 }
+.ms-search::placeholder { color: #6b7280; }
 .ms-search-clear {
   width:32px; min-width:32px;
-  background:var(--bg-3); border:none;
+  background: #8896a8; border:none;
   border-left:var(--border-width) solid var(--border-color);
-  color:var(--muted); font-size:16px; font-weight:700;
+  color:#fff; font-size:16px; font-weight:700;
   cursor:pointer; display:flex; align-items:center; justify-content:center;
 }
 
@@ -602,18 +622,23 @@ body {
 
   <!-- COMP SHOP -->
   <div class="page" id="pageShop">
+    <div class="ms-search-wrap">
+      <input type="text" id="csSearch" class="ms-search" placeholder="Search…" oninput="csSearchInput()">
+      <button class="ms-search-clear" onclick="document.getElementById('csSearch').value='';csThinkPhraseSet=false;csQuickAddState=null;csQuickAddName='';csRender();">×</button>
+    </div>
     <div class="view-toggle">
       <button class="view-btn active" id="csVSimple" onclick="setCsView('simple')">Simple</button>
       <button class="view-btn" id="csVCat" onclick="setCsView('cat')">Category</button>
     </div>
+    <div id="csThinkSlot"></div>
     <div class="list-wrap" id="csList"></div>
   </div>
 
   <!-- MY SHOP -->
   <div class="page" id="pageMyShop">
     <div class="ms-search-wrap">
-      <input type="text" id="msSearch" class="ms-search" placeholder="Search…" oninput="msRender()">
-      <button class="ms-search-clear" onclick="document.getElementById('msSearch').value='';msRender();">×</button>
+      <input type="text" id="msSearch" class="ms-search" placeholder="Search…" oninput="msSearchInput()">
+      <button class="ms-search-clear" onclick="document.getElementById('msSearch').value='';msThinkPhraseSet=false;msQuickAddState=null;msQuickAddName='';msRender();">×</button>
     </div>
     <div class="add-panel" id="msAddPanel">
       <input type="text" id="msInput" placeholder="item name…" maxlength="80">
@@ -625,6 +650,7 @@ body {
         <button class="btn-add" onclick="msAdd()">+ Add</button>
       </div>
     </div>
+    <div id="msThinkSlot"></div>
     <div class="list-wrap" id="msList"></div>
   </div>
 
@@ -762,6 +788,11 @@ function setPage(p){
   document.querySelectorAll('.header-tab-btn').forEach(el=>el.classList.remove('active'));
   document.getElementById('page'+p).classList.add('active');
   document.getElementById('h'+p).classList.add('active');
+  // clear search bars and quick-add state
+  const ms=document.getElementById('msSearch'); if(ms) ms.value='';
+  const cs=document.getElementById('csSearch'); if(cs) cs.value='';
+  msQuickAddState=null; msQuickAddName=''; msThinkPhraseSet=false; msThinkCardEl=null;
+  csQuickAddState=null; csQuickAddName=''; csThinkPhraseSet=false; csThinkCardEl=null;
   if(p==='Grocery') glRender();
   if(p==='Shop') csRender();
   if(p==='MyShop') msRender();
@@ -783,6 +814,9 @@ function openModal(ctx){
 }
 function closeModal(){
   document.getElementById('modalOverlay').classList.remove('open');
+  if(modalCtx==='ms-quickadd'){ window._msQuickAddName=null; msQuickAddState='confirm'; msRender(); }
+  if(modalCtx==='cs-quickadd-cat'){ csQuickAddState='confirm'; csRender(); }
+  if(modalCtx==='cs-quickadd-unit'){ csQuickAddState='pick-unit'; csRender(); }
   modalCtx=null; modalSelPend=null; editingColorCatId=null;
 }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
@@ -801,15 +835,15 @@ function buildModalGrid(){
   const grid=document.getElementById('modalGrid');
   grid.innerHTML='';
   grid.style.gridTemplateColumns='1fr 1fr';
-  const isUnit = modalCtx==='unit' || modalCtx==='ms-unit';
-  const isMsItem = modalCtx==='ms-unit' || modalCtx==='ms-cat';
+  const isUnit = modalCtx==='unit' || modalCtx==='ms-unit' || modalCtx==='cs-quickadd-unit';
   const list=isUnit?getUnits():getCats();
 
-  // current selection for highlight
   let curSel;
   if(modalCtx==='unit') curSel=csSelectedUnit;
   else if(modalCtx==='ms-unit'){ const it=ls('ms_items',[]).find(i=>i.id===msEditItemId); curSel=it?.unit||'unit'; }
   else if(modalCtx==='ms-cat'){ const it=ls('ms_items',[]).find(i=>i.id===msEditItemId); curSel=it?.category||'other'; }
+  else if(modalCtx==='cs-quickadd-unit') curSel=csQuickAddUnit||'unit';
+  else if(modalCtx==='cs-quickadd-cat') curSel=csQuickAddCat||'other';
   else curSel=modalCtx==='gl'?glSelectedCat:msSelectedCat;
 
   list.forEach(item=>{
@@ -835,6 +869,7 @@ function buildModalGrid(){
         if(modalSelPend===item.id){
           modalSelPend=null;
           if(modalCtx==='ms-unit'){ msSetUnit(msEditItemId,item.id); closeModal(); }
+          else if(modalCtx==='cs-quickadd-unit'){ csQuickAddUnit=item.id; closeModal(); csQuickAddState='done'; csQuickAddFinalise(); }
           else { csSelectedUnit=item.id; updateUnitBtn(); closeModal(); }
         } else {
           modalSelPend=item.id; buildModalGrid();
@@ -843,7 +878,17 @@ function buildModalGrid(){
       } else {
         if(modalSelPend===item.id){
           modalSelPend=null;
-          if(modalCtx==='ms-cat'){ msSetCat(msEditItemId,item.id); closeModal(); }
+          if(modalCtx==='ms-quickadd'){
+            const name=window._msQuickAddName||'';
+            if(name){
+              const newItem={id:'ms_'+Date.now()+Math.random(),name,category:item.id,unit:'unit'};
+              const ms=ls('ms_items',[]); ms.push(newItem); lsSet('ms_items',ms);
+              window._msQuickAddName=null; msQuickAddState='success'; msQuickAddName='';
+              closeModal(); msRender();
+            }
+          } else if(modalCtx==='cs-quickadd-cat'){
+            csQuickAddCat=item.id; closeModal(); csQuickAddState='pick-unit'; csRender();
+          } else if(modalCtx==='ms-cat'){ msSetCat(msEditItemId,item.id); closeModal(); }
           else if(modalCtx==='gl'){ glSelectedCat=item.id; updateGlBtn(); closeModal(); }
           else { msSelectedCat=item.id; updateMsBtn(); closeModal(); }
         } else {
@@ -1073,10 +1118,39 @@ function glFooterAction(){
   }
 }
 
+const GL_EMPTY_MSGS = [
+  'Nothing here. Either you\'re incredibly prepared or dangerously optimistic about what\'s in the fridge.',
+  'The list is empty. The fridge, however, tells a different story. A sad, sad story.',
+  'Wow, a completely empty grocery list. You\'re either a minimalist genius or about to have cereal for dinner again.',
+  'Nothing to buy! Unless you count the seventeen things you\'ll remember the moment you leave the store.',
+  'List empty. This is either peak organization or you\'ve fully committed to eating whatever is left in the back of the pantry.',
+  'Zero items. Absolute legend. Or you just forgot to add anything. Hard to tell.',
+  'The void is empty and so is your fridge probably. Just a hunch.',
+  'Clean list! Fresh start! This energy will last approximately until you open the fridge.',
+  'Nothing here yet. The groceries are out there. Waiting. Judging you for not adding them sooner.',
+  'You\'ve achieved an empty list. Your future self, standing in the cereal aisle at 9pm, is less impressed.',
+  'Totally empty. Either you shopped already (hero) or you live on vibes and leftover takeout (also valid).',
+  'Not a single item. Bold strategy. Let\'s see how the week plays out.',
+  'This list is emptier than your promises to meal prep every Sunday.',
+  'Nothing to buy, apparently. The mystery of what you\'ll eat tonight deepens.',
+  'Empty! Like the fridge, probably. And the wallet after you wing it at the store without a list.',
+  'A fresh, empty list. Full of hope. Full of potential. Completely devoid of actual groceries.',
+  'No items added. Scientists are baffled. Nutritionists are concerned.',
+  'The list is blank. Somewhere, a grocery store is having a slow day and it\'s entirely your fault.',
+  'Nothing here. Just you, the app, and the quiet existential hum of an empty pantry.',
+  'List cleared! You are either very organized or about to order delivery. No judgment. Mostly judgment.',
+];
+
+function glEmptyMsg(){
+  return GL_EMPTY_MSGS[Math.floor(Math.random()*GL_EMPTY_MSGS.length)];
+}
+
 function updateGlFooterBtn(){
   const items = ls('gl_items', []);
-  const allUnchecked = items.length > 0 && items.every(i => !i.checked);
   const btn = document.getElementById('glFooterBtn');
+  if(items.length===0){ btn.style.display='none'; return; }
+  btn.style.display='';
+  const allUnchecked = items.every(i => !i.checked);
   if(allUnchecked && glClearAllPending){
     btn.textContent = 'Confirm Clear All';
     btn.style.color = 'var(--color-1)';
@@ -1142,7 +1216,7 @@ function glRender(){
   if(ap) ap.style.display=glShowAddPanel?'':'none';
   const container=document.getElementById('glList'); container.innerHTML='';
   const items=ls('gl_items',[]);
-  if(items.length===0){ showEmpty(container,'Nothing here.'); return; }
+  if(items.length===0){ showEmpty(container, glEmptyMsg()); return; }
 
   if(glViewMode==='simple'){
     const activeCats = getCats().filter(c=>items.some(i=>i.category===c.id));
@@ -1280,8 +1354,8 @@ const csSaleAddOpen = new Set(); // entry IDs where sale add form is showing
 
 function isSaleActive(entry){
   if(!entry.sale) return false;
-  const end = new Date(entry.sale.ends);
-  end.setHours(23,59,59,999);
+  const parts = entry.sale.ends.split('-');
+  const end = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]), 23, 59, 59, 999);
   return new Date() <= end;
 }
 
@@ -1322,6 +1396,82 @@ function csAddSale(entryId, salePrice, endsStr){
 
 
 
+/* ── COMP SHOP SEARCH + QUICK ADD ── */
+let csQuickAddState = null;
+let csQuickAddName = '';
+let csQuickAddCat = null;
+let csQuickAddUnit = null;
+let csSearchIdleTimer = null;
+let csThinkTimer = null;
+let csThinkPhraseSet = false;
+let csCurrentThinkPhrase = null; // set after MS_THINK_PHRASES is declared
+let csThinkCardEl = null;
+
+function csPickNextThinkPhrase(){
+  const available = MS_THINK_PHRASES.filter(p=>p!==csCurrentThinkPhrase);
+  csCurrentThinkPhrase = available[Math.floor(Math.random()*available.length)];
+  csThinkCardEl = null;
+}
+
+function csGetOrCreateThinkCard(){
+  if(csThinkCardEl) return csThinkCardEl;
+  const card=document.createElement('div');
+  card.style.cssText=`height:var(--drop-height);display:flex;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;`;
+  const txt=document.createElement('div');
+  txt.style.cssText='flex:1;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--muted);font-style:italic;';
+  const phraseText=csCurrentThinkPhrase.replace(/[.…]+$/,'');
+  txt.innerHTML=phraseText+'<span class="thinking-dots" style="font-style:normal;margin-left:1px;"><span>.</span><span>.</span><span>.</span></span>';
+  card.appendChild(txt);
+  csThinkCardEl=card;
+  return card;
+}
+
+function csSearchInput(){
+  clearTimeout(csSearchIdleTimer);
+  clearInterval(csThinkTimer);
+  const q=(document.getElementById('csSearch')?.value||'').trim();
+  if(!q){ csThinkPhraseSet=false; csQuickAddState=null; csQuickAddName=''; csThinkCardEl=null; csRender(); return; }
+  // if user types again after idle fired, reset back to thinking
+  if(csQuickAddState && csQuickAddState!=='pick-cat' && csQuickAddState!=='pick-unit'){
+    csQuickAddState=null; csThinkCardEl=null; csPickNextThinkPhrase();
+  }
+  if(!csThinkPhraseSet){ csPickNextThinkPhrase(); csThinkPhraseSet=true; }
+  csRender();
+  csSearchIdleTimer=setTimeout(()=>{
+    clearInterval(csThinkTimer);
+    const allItems=ls('ms_items',[]);
+    const qWords=q.toLowerCase().split(/\s+/);
+    const exists=allItems.some(i=>{ const nw=i.name.toLowerCase().split(/\s+/); return qWords.every(qw=>nw.includes(qw)); });
+    csQuickAddState=exists?'found':'confirm';
+    csQuickAddName=q;
+    csRender();
+  },2000);
+}
+
+function csOpenUnitModalForQuickAdd(){
+  modalCtx='cs-quickadd-unit'; modalSelPend=null; modalDelPend.clear();
+  document.getElementById('modalTitle').textContent='Unit';
+  buildModalGrid();
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function csOpenCatModalForQuickAdd(){
+  modalCtx='cs-quickadd-cat'; modalSelPend=null; modalDelPend.clear();
+  editingColorCatId=null; selectedRootIdx=0; newCatColor=ROOT_COLORS[0].shades[2];
+  document.getElementById('modalTitle').textContent='Category';
+  buildModalGrid();
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function csQuickAddFinalise(){
+  if(!csQuickAddName || !csQuickAddCat || !csQuickAddUnit) return;
+  const newItem={id:'ms_'+Date.now()+Math.random(), name:csQuickAddName, category:csQuickAddCat, unit:csQuickAddUnit};
+  const ms=ls('ms_items',[]); ms.push(newItem); lsSet('ms_items',ms);
+  csQuickAddState='success'; csQuickAddName=''; csQuickAddCat=null; csQuickAddUnit=null;
+  csThinkPhraseSet=false; csThinkCardEl=null;
+  csRender(); msRender();
+}
+
 function csRender(){
   csPurgeSales();
   const container=document.getElementById('csList'); container.innerHTML='';
@@ -1329,10 +1479,89 @@ function csRender(){
   if(items.length===0){ showEmpty(container,'Add items in My Store first.'); return; }
 
   const csVS=document.getElementById('csVSimple'), csVC=document.getElementById('csVCat');
+  const viewToggle=document.querySelector('#pageShop .view-toggle');
+  const csQuery=(document.getElementById('csSearch')?.value||'').trim().toLowerCase();
+
+  // hide view tabs while searching
+  if(viewToggle) viewToggle.style.display=csQuery?'none':'';
   if(csVS) csVS.classList.toggle('active',csViewMode==='simple');
   if(csVC) csVC.classList.toggle('active',csViewMode==='cat');
 
-  const cats=getCats().filter(c=>items.some(i=>i.category===c.id));
+  const csThinkSlot=document.getElementById('csThinkSlot');
+
+  // manage think slot — both think card and qa card go here
+  if(csThinkSlot){
+    if(csQuery && !csQuickAddState){
+      const card=csGetOrCreateThinkCard();
+      if(!csThinkSlot.contains(card)){ csThinkSlot.innerHTML=''; csThinkSlot.appendChild(card); }
+    } else if(csQuery && csQuickAddState && csQuickAddState!=='done'){
+      csThinkSlot.innerHTML='';
+      const displayName=document.getElementById('csSearch')?.value.trim()||csQuery;
+      const queryWords=csQuery.split(/\s+/);
+      const exactExists=items.some(i=>{ const nw=i.name.toLowerCase().split(/\s+/); return queryWords.every(qw=>nw.includes(qw)); });
+
+      const qaCard=document.createElement('div');
+      qaCard.style.cssText=`height:var(--drop-height);display:flex;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;`;
+
+      if(csQuickAddState==='success'){
+        const ph=MS_SUCCESS_PHRASES[Math.floor(Math.random()*MS_SUCCESS_PHRASES.length)];
+        const txt=document.createElement('div');
+        txt.style.cssText='flex:1;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--color-4);';
+        txt.textContent=ph; qaCard.appendChild(txt);
+      } else if(exactExists || csQuickAddState==='found'){
+        const ph=MS_FOUND_PHRASES[Math.floor(Math.random()*MS_FOUND_PHRASES.length)];
+        const txt=document.createElement('div');
+        txt.style.cssText='flex:1;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--color-4);';
+        txt.textContent=ph; qaCard.appendChild(txt);
+      } else if(csQuickAddState==='confirm'){
+        const txt=document.createElement('div');
+        txt.style.cssText='flex:1;min-width:0;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+        txt.innerHTML=`Add <strong style="color:var(--color-10);margin:0 4px;">"${displayName}"</strong> to Comp Shop?`;
+        const yesBtn=document.createElement('div');
+        yesBtn.style.cssText='width:48px;min-width:48px;background:#347ab8;border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#fff;cursor:pointer;flex-shrink:0;';
+        yesBtn.textContent='YES!';
+        yesBtn.onclick=e=>{ e.stopPropagation(); csQuickAddName=displayName; csQuickAddState='pick-cat'; csRender(); };
+        qaCard.append(txt,yesBtn);
+      } else if(csQuickAddState==='pick-cat'){
+        const txt=document.createElement('div');
+        txt.style.cssText='flex:1;min-width:0;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--muted);';
+        txt.textContent='Pick your category';
+        const okBtn=document.createElement('div');
+        okBtn.style.cssText='width:48px;min-width:48px;background:var(--color-4);border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#000;cursor:pointer;flex-shrink:0;';
+        okBtn.textContent='OK!';
+        okBtn.onclick=e=>{ e.stopPropagation(); csOpenCatModalForQuickAdd(); };
+        qaCard.append(txt,okBtn);
+      } else if(csQuickAddState==='pick-unit'){
+        const txt=document.createElement('div');
+        txt.style.cssText='flex:1;min-width:0;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--muted);';
+        txt.textContent='Choose your unit of measurement';
+        const ofBtn=document.createElement('div');
+        ofBtn.style.cssText='width:64px;min-width:64px;background:#7c58a8;border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;color:#fff;cursor:pointer;flex-shrink:0;text-align:center;padding:0 4px;';
+        ofBtn.textContent='OF COURSE!';
+        ofBtn.onclick=e=>{ e.stopPropagation(); csOpenUnitModalForQuickAdd(); };
+        qaCard.append(txt,ofBtn);
+      }
+      csThinkSlot.appendChild(qaCard);
+    } else {
+      csThinkSlot.innerHTML='';
+    }
+  }
+
+  // filter items by search
+  let displayItems=items;
+  if(csQuery){
+    displayItems=items.filter(i=>{ const ws=i.name.toLowerCase().split(/\s+/); return ws.some(w=>w.startsWith(csQuery)); });
+    // show as simple flat list, no category dividers
+    const cats=getCats().filter(c=>displayItems.some(i=>i.category===c.id));
+    cats.forEach(cat=>{
+      const catItems=displayItems.filter(i=>i.category===cat.id);
+      catItems.forEach(item=>container.appendChild(buildCsItem(item)));
+    });
+    return;
+  }
+
+  if(displayItems.length===0){ showEmpty(container,'Add items in My Store first.'); return; }
+  const cats=getCats().filter(c=>displayItems.some(i=>i.category===c.id));
 
   // shared: build a full cs item section (header + body)
   function buildCsItem(item){
@@ -1363,7 +1592,23 @@ function csRender(){
         const isTied=isTiedPrice(up); const col=RANK_COLORS[Math.min(displayRank,2)]; const color=isTied?col.tied:col.solo;
         const sub=document.createElement('div');
         sub.style.cssText=`font-size:9px;font-weight:700;color:${color};letter-spacing:0.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
-        sub.textContent=e.store+' · $'+up.toFixed(2)+'/'+unit.label; main.appendChild(sub);
+        let saleText = '';
+        if(isSaleActive(e)){
+          const endD=new Date(e.sale.ends+'T00:00:00');
+          const now=new Date(); now.setHours(0,0,0,0);
+          const diff=Math.round((endD-now)/(1000*60*60*24));
+          if(diff<=0) saleText='Ends Today';
+          else if(diff===1) saleText='Ends Tomorrow';
+          else saleText='Ends '+(endD.getMonth()+1)+'/'+endD.getDate()+'/'+String(endD.getFullYear()).slice(2);
+        }
+        sub.textContent=e.store+' · $'+up.toFixed(2)+'/'+unit.label;
+        if(saleText){
+          const saleSuffix=document.createElement('span');
+          saleSuffix.style.cssText='color:#d97f30;font-weight:800;';
+          saleSuffix.textContent=' (SALE! '+saleText+')';
+          sub.appendChild(saleSuffix);
+        }
+        main.appendChild(sub);
       }
     } else if(stage>0){
       const badge=document.createElement('div'); badge.className='cs-unit-badge';
@@ -1372,12 +1617,7 @@ function csRender(){
 
     const right=document.createElement('div'); right.className='cs-header-right';
     const arr=document.createElement('div'); arr.className='cs-arrow'; arr.textContent=stage===0?'▼':'▲'; right.appendChild(arr);
-    const delSq=document.createElement('div'); delSq.className='cs-del-sq'+(csItemDelPend.has(item.id)?' pending':''); delSq.textContent='×';
-    delSq.onclick=e=>{ e.stopPropagation();
-      if(csItemDelPend.has(item.id)){ csDeleteItem(item.id); }
-      else { csItemDelPend.add(item.id); delSq.className='cs-del-sq pending'; setTimeout(()=>{ csItemDelPend.delete(item.id); csRender(); },2000); }
-    };
-    hdr.append(main,right,delSq); section.appendChild(hdr);
+    hdr.append(main,right); section.appendChild(hdr);
 
     if(stage>0){
       const body=document.createElement('div'); body.className='cs-body';
@@ -1397,18 +1637,20 @@ function csRender(){
       const qI=document.createElement('input'); qI.className='cs-input cs-input-qty'; qI.placeholder='Quantity'; qI.type='number'; qI.min='0'; qI.step='any'; qI.dataset.qtyId=item.id;
       const pI=document.createElement('input'); pI.className='cs-input cs-input-price'; pI.placeholder='Price'; pI.type='number'; pI.min='0'; pI.step='any'; pI.dataset.priceId=item.id;
       const aBtn=document.createElement('button'); aBtn.className='cs-add-btn'; aBtn.textContent='+';
-      const doAdd=()=>csAddEntry(item.id,sI.value.trim(),qI.value,pI.value,spI.value,edI.value.trim());
-      aBtn.onclick=doAdd; [sI,qI,pI].forEach(i=>i.addEventListener('keydown',e=>{ if(e.key==='Enter') doAdd(); }));
       addRow.append(sI,qI,pI,aBtn); body.appendChild(addRow);
       // sale add row
       const saleAddRow=document.createElement('div'); saleAddRow.className='cs-sale-add-row';
       const slbl=document.createElement('div'); slbl.className='cs-sale-label'; slbl.textContent='SALE';
       const spI=document.createElement('input'); spI.className='cs-input'; spI.placeholder='Sale Price'; spI.type='number'; spI.min='0'; spI.step='any'; spI.style.cssText='flex:1;min-width:0;'; spI.dataset.salePriceId=item.id;
-      const today=new Date().toISOString().split('T')[0];
-      const edI=document.createElement('input'); edI.className='cs-input'; edI.type='date'; edI.min=today; edI.style.cssText='flex:2;min-width:0;color-scheme:dark;'; edI.dataset.saleEndId=item.id;
+      const todayLocal=new Date(); const pad=n=>String(n).padStart(2,'0');
+      const todayStr=todayLocal.getFullYear()+'-'+pad(todayLocal.getMonth()+1)+'-'+pad(todayLocal.getDate());
+      const edI=document.createElement('input'); edI.className='cs-input'; edI.type='date'; edI.min=todayStr; edI.style.cssText='flex:2;min-width:0;color-scheme:dark;'; edI.dataset.saleEndId=item.id;
       const clrBtn=document.createElement('button'); clrBtn.className='cs-entry-del'; clrBtn.textContent='×';
       clrBtn.onclick=()=>{ spI.value=''; edI.value=''; const ents=ls('cs_entries',[]); ents.forEach(e=>{ if(e.itemId===item.id&&e.sale) delete e.sale; }); lsSet('cs_entries',ents); csRender(); };
       saleAddRow.append(slbl,spI,edI,clrBtn); body.appendChild(saleAddRow);
+      // doAdd defined after spI/edI so closure captures them correctly
+      const doAdd=()=>csAddEntry(item.id,sI.value.trim(),qI.value,pI.value,spI.value,edI.value.trim());
+      aBtn.onclick=doAdd; [sI,qI,pI].forEach(i=>i.addEventListener('keydown',e=>{ if(e.key==='Enter') doAdd(); }));
 
       if(sorted.length>0){
         const divEl=document.createElement('div'); divEl.className='cs-divider'; body.appendChild(divEl);
@@ -1455,7 +1697,7 @@ function csRender(){
   // SIMPLE — flat item cards under category dividers
   if(csViewMode==='simple'){
     cats.forEach(cat=>{
-      const catItems=items.filter(i=>i.category===cat.id);
+      const catItems=displayItems.filter(i=>i.category===cat.id);
       const div=document.createElement('div'); div.className='simple-cat-divider';
       const l1=document.createElement('div'); l1.className='simple-cat-divider-line';
       const lbl=document.createElement('span'); lbl.className='simple-cat-divider-label'; lbl.textContent=cat.label; lbl.style.color=cat.color;
@@ -1468,7 +1710,7 @@ function csRender(){
 
   // CATEGORY — items nested inside category dropdown cards
   cats.forEach(cat=>{
-    const catItems=items.filter(i=>i.category===cat.id);
+    const catItems=displayItems.filter(i=>i.category===cat.id);
     const cStage=getCsStage('cat_'+cat.id);
     const catSection=buildCatSection(cat,catItems,cStage,()=>{
       const cur=getCsStage('cat_'+cat.id);
@@ -1684,6 +1926,101 @@ function msBuildRow(item){
   return row;
 }
 
+const MS_THINK_PHRASES = [
+  'Hmm, let me think about that…',
+  'Searching the depths of the pantry…',
+  'Rifling through the shelves…',
+  'One moment, consulting the grocery gods…',
+  'Checking every aisle…',
+  'Scanning the stockroom…',
+  'Cross-referencing with the pantry oracle…',
+  'Squinting at the inventory…',
+  'Flipping through the catalogue…',
+  'On the hunt…',
+];
+
+const MS_FOUND_PHRASES = [
+  'Found it! That\'s a solid pick.',
+  'There it is. Good taste.',
+  'Already on the list! You\'re on top of it.',
+  'Yep, that\'s in there. Nice.',
+  'Found! Your pantry is well stocked.',
+  'Oh that one\'s already here. Well done.',
+  'Already accounted for. You\'re ahead of the game.',
+  'In the store already. Impressive organization.',
+  'That\'s a match. You\'ve got this.',
+  'Found and filed. Nothing gets past you.',
+];
+
+const MS_SUCCESS_PHRASES = [
+  'Added! Your pantry grows stronger.',
+  'Done! One more thing you\'ll never forget to buy.',
+  'Boom. Added to your store.',
+  'In it goes. Good call.',
+  'Added! You\'re basically a professional shopper now.',
+  'Nice. That\'s now officially in your store.',
+  'Done and dusted. It\'s in there.',
+  'Added with extreme efficiency.',
+  'Locked in. Your future self thanks you.',
+  'Noted! Your pantry is leveling up.',
+];
+
+let msQuickAddState = null;
+let msQuickAddName = '';
+let msSearchIdleTimer = null;
+let msThinkTimer = null;
+let msCurrentThinkPhrase = MS_THINK_PHRASES[0];
+csCurrentThinkPhrase = MS_THINK_PHRASES[0]; // now safe to initialize
+
+let msThinkCardEl = null;
+
+function msGetOrCreateThinkCard(){
+  if(msThinkCardEl) return msThinkCardEl;
+  const qaCard=document.createElement('div');
+  qaCard.style.cssText=`height:var(--drop-height);display:flex;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;`;
+  const txt=document.createElement('div');
+  txt.style.cssText='flex:1;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--muted);font-style:italic;';
+  const phraseText = msCurrentThinkPhrase.replace(/[.…]+$/, '');
+  txt.innerHTML = phraseText + '<span class="thinking-dots" style="font-style:normal;margin-left:1px;"><span>.</span><span>.</span><span>.</span></span>';
+  qaCard.appendChild(txt);
+  msThinkCardEl = qaCard;
+  return qaCard;
+}
+
+function msPickNextThinkPhrase(){
+  const available = MS_THINK_PHRASES.filter(p=>p!==msCurrentThinkPhrase);
+  msCurrentThinkPhrase = available[Math.floor(Math.random()*available.length)];
+  msThinkCardEl = null;
+}
+
+let msThinkPhraseSet = false;
+
+function msSearchInput(){
+  clearTimeout(msSearchIdleTimer);
+  clearInterval(msThinkTimer);
+  const q = (document.getElementById('msSearch')?.value||'').trim();
+  if(!q){ msThinkPhraseSet=false; msQuickAddState=null; msQuickAddName=''; msThinkCardEl=null; msRender(); return; }
+  // if user types again after idle fired, reset back to thinking
+  if(msQuickAddState && msQuickAddState!=='pick-cat'){
+    msQuickAddState=null; msThinkCardEl=null; msPickNextThinkPhrase();
+  }
+  if(!msThinkPhraseSet){ msPickNextThinkPhrase(); msThinkPhraseSet=true; }
+  msRender();
+  msSearchIdleTimer = setTimeout(()=>{
+    clearInterval(msThinkTimer);
+    const allItems = ls('ms_items',[]);
+    const qWords = q.toLowerCase().split(/\s+/);
+    const exists = allItems.some(i=>{
+      const nWords = i.name.toLowerCase().split(/\s+/);
+      return qWords.every(qw=>nWords.includes(qw));
+    });
+    msQuickAddState = exists ? 'found' : 'confirm';
+    msQuickAddName = q;
+    msRender();
+  }, 2000);
+}
+
+
 function msRender(){
   const ap=document.getElementById('msAddPanel');
   if(ap) ap.style.display=msShowAddPanel?'':'none';
@@ -1691,15 +2028,82 @@ function msRender(){
   const items=ls('ms_items',[]);
   const query=(document.getElementById('msSearch')?.value||'').trim().toLowerCase();
 
+  const thinkSlot = document.getElementById('msThinkSlot');
+  if(thinkSlot && !query) thinkSlot.innerHTML = '';
   if(query){
     const results=items.filter(i=>{
-    const words=i.name.toLowerCase().split(/\s+/);
-    return words.some(w=>w.startsWith(query));
-  }).sort((a,b)=>a.name.localeCompare(b.name));
-    if(!results.length){ showEmpty(container,'No results.'); return; }
-    results.forEach(item=>container.appendChild(msBuildRow(item)));
+      const words=i.name.toLowerCase().split(/\s+/);
+      return words.some(w=>w.startsWith(query));
+    }).sort((a,b)=>a.name.localeCompare(b.name));
+
+    // reset quick-add if query changed
+    if(msQuickAddName.toLowerCase() !== query){ msQuickAddState=null; msQuickAddName=query; }
+
+    // exact match — all words in query must exactly match words in item name
+    const queryWords=query.toLowerCase().split(/\s+/);
+    const exactExists=items.some(i=>{
+      const nameWords=i.name.toLowerCase().split(/\s+/);
+      return queryWords.every(qw=>nameWords.includes(qw));
+    });
+    const displayName=document.getElementById('msSearch')?.value.trim()||query;
+
+    // show card always while query active
+    const qaCard=document.createElement('div');
+    qaCard.style.cssText=`height:var(--drop-height);display:flex;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;`;
+
+    if(!msQuickAddState){
+      // put think card in slot outside list so innerHTML='' never destroys it
+      const slot = document.getElementById('msThinkSlot');
+      const card = msGetOrCreateThinkCard();
+      if(slot && !slot.contains(card)) slot.appendChild(card);
+    } else {
+      // clear think slot
+      const slot = document.getElementById('msThinkSlot');
+      if(slot) slot.innerHTML = '';
+      if(msQuickAddState==='success'){
+        const ph=MS_SUCCESS_PHRASES[Math.floor(Math.random()*MS_SUCCESS_PHRASES.length)];
+        const txt=document.createElement('div');
+        txt.style.cssText='flex:1;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--color-4);';
+        txt.textContent=ph; qaCard.appendChild(txt);
+      } else if(exactExists || msQuickAddState==='found'){
+        const ph=MS_FOUND_PHRASES[Math.floor(Math.random()*MS_FOUND_PHRASES.length)];
+        const txt=document.createElement('div');
+        txt.style.cssText='flex:1;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--color-4);';
+        txt.textContent=ph;
+        qaCard.appendChild(txt);
+      } else if(msQuickAddState==='confirm'){
+        const txt=document.createElement('div');
+        txt.style.cssText='flex:1;min-width:0;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+        txt.innerHTML=`Add <strong style="color:var(--color-10);margin:0 4px;">"${displayName}"</strong> to your store?`;
+        const yesBtn=document.createElement('div');
+        yesBtn.style.cssText='width:48px;min-width:48px;background:#347ab8;border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#fff;cursor:pointer;flex-shrink:0;';
+        yesBtn.textContent='YES!';
+        yesBtn.onclick=e=>{ e.stopPropagation(); msQuickAddName=displayName; msQuickAddState='pick-cat'; msRender(); };
+        qaCard.append(txt,yesBtn);
+      } else if(msQuickAddState==='pick-cat'){
+        const txt=document.createElement('div');
+        txt.style.cssText='flex:1;min-width:0;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--muted);';
+        txt.textContent='Pick your category';
+        const okBtn=document.createElement('div');
+        okBtn.style.cssText='width:48px;min-width:48px;background:var(--color-4);border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#000;cursor:pointer;flex-shrink:0;';
+        okBtn.textContent='OK!';
+        okBtn.onclick=e=>{
+          e.stopPropagation();
+          window._msQuickAddName=msQuickAddName;
+          modalCtx='ms-quickadd'; modalSelPend=null; modalDelPend.clear();
+          editingColorCatId=null; selectedRootIdx=0; newCatColor=ROOT_COLORS[0].shades[2];
+          document.getElementById('modalTitle').textContent='Category';
+          buildModalGrid();
+          document.getElementById('modalOverlay').classList.add('open');
+        };
+        qaCard.append(txt,okBtn);
+      }
+      container.appendChild(qaCard);
+    }
+    if(results.length) results.forEach(item=>container.appendChild(msBuildRow(item)));
     return;
   }
+  msQuickAddState=null; msQuickAddName='';
 
   // all cats alphabetically, including empty ones
   const allCats=[...getCats()].sort((a,b)=>a.label.localeCompare(b.label));
