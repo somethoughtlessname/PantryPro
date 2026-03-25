@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Pantry Pro</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#243342">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pantry Pro">
+<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --margin: 4px;
+  --card-height: 45px;
+  --drop-height: 32px;
+  --border-width: 3px;
+  --border-color: #000;
+  --radius: 8px;
+  --bg-1: #243342;
+  --bg-2: #374151;
+  --bg-3: #0f1520;
+  --bg-4: #636B76;
+  --color-1: #C85A5A;
+  --color-4: #48a971;
+  --color-4-2: #3a875a;
+  --color-10: #ffffff;
+  --muted: #9ca3af;
+}
+
+html, body {
+  width: 100%; min-height: 100vh;
+  background: var(--bg-1); color: var(--color-10);
+  font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px;
+}
+body {
+  display: flex; flex-direction: column; align-items: center;
+  padding: calc(var(--card-height) + var(--margin)) var(--margin) 60px;
+}
+
+/* DATA WINDOW */
+.data-window {
+  display: none;
+  position: fixed; top:0; left:0; right:0; bottom:0;
+  background: var(--bg-1);
+  z-index: 200;
+  flex-direction: column;
+}
+.data-window.open { display: flex; }
+.data-window-header {
+  height: var(--card-height);
+  display: flex; align-items: stretch;
+  background: var(--bg-3);
+  border-bottom: var(--border-width) solid var(--border-color);
+  flex-shrink: 0;
+}
+.data-window-title {
+  flex:1; display:flex; align-items:center; padding:0 12px;
+  font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase;
+}
+.data-window-close {
+  width:45px; min-width:45px;
+  background: var(--bg-3); border:none;
+  border-left: var(--border-width) solid var(--border-color);
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; font-weight:700; color:var(--muted); cursor:pointer;
+}
+.data-tabs {
+  height: var(--card-height); display:flex; flex-shrink:0;
+  border-bottom: var(--border-width) solid var(--border-color);
+}
+.data-tab {
+  flex:1; background:var(--bg-3); border:none;
+  border-right: var(--border-width) solid var(--border-color);
+  color:var(--muted); font-size:11px; font-weight:800;
+  letter-spacing:0.08em; text-transform:uppercase; cursor:pointer;
+}
+.data-tab:last-child { border-right:none; }
+.data-tab.active { background:var(--bg-2); color:var(--color-10); }
+.data-body {
+  flex:1; overflow-y:auto; padding:var(--margin);
+  display:flex; flex-direction:column; gap:var(--margin);
+}
+.data-textarea {
+  flex:1; width:100%;
+  background:var(--bg-3); border:var(--border-width) solid var(--border-color);
+  border-radius:var(--radius); color:var(--color-10);
+  font-size:10px; font-family:monospace; padding:8px;
+  outline:none; resize:none; min-height:200px;
+}
+.data-btn {
+  height:var(--drop-height); background:var(--bg-2);
+  border:var(--border-width) solid var(--border-color); border-radius:var(--radius);
+  color:var(--color-10); font-size:11px; font-weight:800;
+  letter-spacing:0.08em; text-transform:uppercase; cursor:pointer;
+}
+.data-btn.green { background:var(--color-4); color:#000; }
+.data-status {
+  font-size:10px; font-weight:700; letter-spacing:0.06em;
+  text-transform:uppercase; color:var(--color-4); text-align:center;
+  min-height:16px;
+}
+
+
+.settings-overlay {
+  display: none;
+  position: fixed; top:0; left:0; right:0; bottom:0;
+  background: rgba(0,0,0,0.6);
+  z-index: 150;
+}
+.settings-overlay.open { display: block; }
+
+.settings-drawer {
+  position: fixed; top:0; left:0; bottom:0;
+  width: 50%;
+  background: var(--bg-2);
+  border-right: var(--border-width) solid var(--border-color);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  transform: translateX(-100%);
+  transition: transform 0.25s ease;
+  z-index: 151;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.settings-drawer.open { transform: translateX(0); }
+
+.settings-header {
+  height: var(--card-height);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 12px;
+  background: var(--bg-3);
+  border-bottom: var(--border-width) solid var(--border-color);
+  flex-shrink: 0;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.settings-close {
+  width: 45px; min-width: 45px; height: 100%;
+  background: var(--bg-3);
+  border: none;
+  border-left: var(--border-width) solid var(--border-color);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; color: var(--muted);
+  cursor: pointer;
+}
+.settings-body {
+  flex: 1; overflow-y: auto;
+  padding: var(--margin);
+  display: flex; flex-direction: column; justify-content: space-between;
+  gap: var(--margin);
+}
+
+
+.header-tab {
+  position: fixed; top:0; left:0; right:0;
+  height: var(--card-height);
+  display: flex;
+  border-bottom: var(--border-width) solid var(--border-color);
+  z-index: 100;
+}
+.header-tab-btn {
+  flex: 1; background: var(--bg-3); border: none;
+  border-right: var(--border-width) solid var(--border-color);
+  color: var(--muted); font-size: 10px; font-weight: 800;
+  letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+}
+.header-tab-btn:last-child { border-right: none; }
+.header-tab-btn.active { background: var(--bg-2); color: var(--color-10); }
+
+/* APP */
+.app { width: 100%; max-width: 540px; display: flex; flex-direction: column; gap: var(--margin); }
+
+.page { display: none; flex-direction: column; gap: var(--margin); width: 100%; }
+.page.active { display: flex; }
+
+/* ADD PANEL */
+.add-panel {
+  background: var(--bg-2); border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius); padding: var(--margin);
+  display: flex; flex-direction: column; gap: var(--margin);
+}
+.add-panel input {
+  width: 100%; height: var(--drop-height);
+  background: var(--bg-3); border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius); color: var(--color-10);
+  font-size: 12px; font-weight: 600; padding: 0 10px; outline: none;
+}
+.add-row { display: flex; gap: var(--margin); }
+.picker-btn {
+  flex: 1; min-width: 0; height: var(--drop-height);
+  background: var(--bg-3); border: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius); color: var(--color-10);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 0 10px; cursor: pointer;
+  display: flex; align-items: center; gap: 7px; overflow: hidden;
+}
+.picker-dot { width:9px; height:9px; border-radius:50%; border:2px solid #000; flex-shrink:0; }
+.picker-label { flex:1; text-align:left; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.picker-arrow { font-size:9px; font-weight:900; color:var(--muted); flex-shrink:0; }
+.btn-add {
+  height: var(--drop-height); background: var(--color-4); color: #000;
+  border: var(--border-width) solid var(--border-color); border-radius: var(--radius);
+  font-size: 11px; font-weight: 800; letter-spacing: 0.09em;
+  padding: 0 16px; cursor: pointer; text-transform: uppercase; flex-shrink: 0;
+}
+
+/* VIEW TOGGLE */
+.view-toggle {
+  height: var(--drop-height); display: flex;
+  border: var(--border-width) solid var(--border-color); border-radius: var(--radius); overflow: hidden;
+}
+.view-btn {
+  flex:1; background:var(--bg-2); border:none;
+  border-right:var(--border-width) solid var(--border-color);
+  color:var(--muted); font-size:11px; font-weight:800;
+  letter-spacing:0.08em; text-transform:uppercase; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:7px;
+}
+.view-btn:last-child { border-right:none; }
+.view-btn.active { background:var(--bg-4); color:var(--color-10); }
+
+/* LIST WRAP */
+.list-wrap { display:flex; flex-direction:column; gap:var(--margin); width:100%; }
+
+/* CAT SECTION */
+.cat-section { border:var(--border-width) solid var(--border-color); border-radius:var(--radius); overflow:hidden; }
+.cat-header {
+  height:var(--card-height); display:flex; align-items:center; gap:9px; padding:0 10px;
+  background:var(--bg-2); border-bottom:var(--border-width) solid var(--border-color);
+  cursor:pointer; user-select:none; flex-shrink:0;
+}
+.cat-section.closed .cat-header { border-bottom:none; }
+.cat-section.closed .cat-body  { display:none; }
+.cat-dot { width:9px; height:9px; border-radius:50%; border:2px solid #000; flex-shrink:0; }
+.cat-label { flex:1; font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; }
+.cat-count { font-size:10px; font-weight:700; color:var(--muted); flex-shrink:0; }
+.cat-arrow { font-size:8px; color:var(--muted); font-weight:900; transition:transform 0.15s; }
+.cat-body { display:flex; flex-direction:column; gap:var(--margin); padding:var(--margin); background:var(--bg-1); }
+
+/* ITEM ROW */
+.item-row {
+  height:var(--drop-height); display:flex; align-items:stretch;
+  border:var(--border-width) solid var(--border-color); border-radius:5px; overflow:hidden; flex-shrink:0;
+}
+.item-check {
+  width:32px; min-width:32px; background:#fff;
+  border-right:var(--border-width) solid var(--border-color);
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:700; cursor:pointer; flex-shrink:0;
+}
+.item-name {
+  flex:1; min-width:0; background:var(--bg-4);
+  display:flex; align-items:center; padding:0 8px;
+  font-size:10px; font-weight:600;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;
+}
+.item-del {
+  width:32px; min-width:32px; background:var(--bg-3); border:none;
+  border-left:var(--border-width) solid var(--border-color);
+  color:var(--muted); font-size:14px; font-weight:700;
+  cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+}
+.item-del.pending { background:var(--color-10); color:var(--color-1); }
+
+/* EMPTY */
+.empty-state {
+  height:80px; display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:700; letter-spacing:0.07em;
+  text-transform:uppercase; color:var(--muted); opacity:0.6;
+}
+
+/* FOOTER */
+.footer { width:100%; }
+.btn-ghost {
+  width:100%; height:var(--card-height); background:var(--bg-2); color:var(--muted);
+  border:var(--border-width) solid var(--border-color); border-radius:var(--radius);
+  font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer;
+}
+
+/* MODAL */
+.modal-overlay {
+  display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+  background:rgba(0,0,0,0.85); z-index:200;
+}
+.modal-overlay.open { display:block; }
+.modal {
+  position:absolute; top:var(--margin); left:var(--margin); right:var(--margin); bottom:var(--margin);
+  background:var(--bg-2); border:var(--border-width) solid var(--border-color);
+  border-radius:var(--radius); display:flex; flex-direction:column; overflow:hidden;
+}
+.modal-header {
+  height:var(--card-height); display:flex; align-items:stretch;
+  background:var(--bg-3);
+  border-bottom:var(--border-width) solid var(--border-color); flex-shrink:0;
+  overflow:hidden;
+}
+.modal-title {
+  flex:1; display:flex; align-items:center; padding:0 12px;
+  font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase;
+}
+.modal-close {
+  width:45px; min-width:45px;
+  background:var(--bg-3);
+  border-left:var(--border-width) solid var(--border-color);
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; font-weight:700; color:var(--muted);
+  cursor:pointer; flex-shrink:0;
+}
+.modal-close:hover { background:var(--bg-2); color:var(--color-1); }
+.modal-grid {
+  display:grid; grid-template-columns:1fr 1fr; gap:var(--margin);
+  padding:var(--margin); overflow-y:auto; flex:1; background:var(--bg-1); align-content:start;
+}
+.modal-cat-btn {
+  height:var(--drop-height); background:var(--bg-2);
+  border:var(--border-width) solid var(--border-color); border-radius:var(--radius);
+  font-size:10px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase;
+  padding:0; cursor:pointer; display:flex; align-items:stretch; overflow:hidden; color:var(--color-10);
+}
+.modal-cat-btn.sel-active { border-color:var(--cat-color,#5A8DB8); background:var(--bg-3); }
+.modal-cat-btn.sel-pending { border-color:var(--cat-color,#5A8DB8); background:var(--bg-4); }
+.modal-cat-label {
+  flex:1; display:flex; align-items:center; justify-content:center;
+  padding:0 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.modal-del-sq {
+  width:32px; min-width:32px; background:var(--bg-3);
+  border-left:var(--border-width) solid var(--border-color);
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:700; color:var(--muted); cursor:pointer; flex-shrink:0;
+}
+.modal-del-sq.pending { background:var(--color-10); color:var(--color-1); }
+.add-cat-panel {
+  grid-column:1/-1; background:var(--bg-2);
+  border:var(--border-width) solid var(--border-color); border-radius:var(--radius);
+  padding:var(--margin); display:flex; flex-direction:column; gap:var(--margin);
+}
+.add-cat-input {
+  height:var(--drop-height); background:var(--bg-3);
+  border:var(--border-width) solid var(--border-color); border-radius:var(--radius);
+  color:var(--color-10); font-size:10px; font-weight:700; letter-spacing:0.06em;
+  padding:0 8px; outline:none; width:100%; text-transform:uppercase;
+}
+.swatches { display:flex; flex-wrap:wrap; gap:var(--margin); }
+.swatch { width:24px; height:24px; border-radius:50%; border:3px solid #000; cursor:pointer; }
+.swatch.active { border-color:#fff; }
+.add-cat-btn {
+  height:var(--drop-height); background:var(--bg-3);
+  border:var(--border-width) solid var(--border-color); border-radius:var(--radius);
+  color:var(--color-10); font-size:10px; font-weight:800; letter-spacing:0.08em;
+  text-transform:uppercase; cursor:pointer;
+}
+
+.simple-cat-divider {
+  display:flex; align-items:center; gap:8px;
+  padding:6px 4px 2px;
+  flex-shrink:0;
+}
+.simple-cat-divider-line {
+  flex:1; height:var(--border-width); background:var(--border-color);
+}
+.simple-cat-divider-label {
+  font-size:9px; font-weight:800; letter-spacing:0.12em; text-transform:uppercase;
+  flex-shrink:0;
+}
+
+
+.ms-search-wrap {
+  display:flex; align-items:stretch;
+  height:var(--drop-height);
+  border:var(--border-width) solid var(--border-color);
+  border-radius:var(--radius); overflow:hidden;
+}
+.ms-search {
+  flex:1; min-width:0;
+  background:var(--bg-2); border:none;
+  color:var(--color-10);
+  font-size:13px; font-weight:600;
+  padding:0 10px; outline:none;
+}
+.ms-search-clear {
+  width:32px; min-width:32px;
+  background:var(--bg-3); border:none;
+  border-left:var(--border-width) solid var(--border-color);
+  color:var(--muted); font-size:16px; font-weight:700;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+}
+
+
+.cs-section { border:var(--border-width) solid var(--border-color); border-radius:var(--radius); overflow:hidden; }
+.cs-header {
+  min-height:var(--card-height); display:flex; align-items:stretch;
+  background:var(--bg-2); border-bottom:var(--border-width) solid var(--border-color);
+  cursor:pointer; user-select:none;
+}
+.cs-section.closed .cs-header { border-bottom:none; }
+.cs-section.closed .cs-body { display:none; }
+.cs-header-main {
+  flex:1; min-width:0; display:flex; flex-direction:column;
+  justify-content:center; padding:0 10px; gap:1px;
+}
+.cs-item-name { font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cs-item-sub  { font-size:9px; font-weight:700; color:var(--color-4); letter-spacing:0.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cs-unit-badge { font-size:9px; font-weight:700; color:var(--muted); }
+.cs-header-right { display:flex; align-items:center; gap:8px; padding-right:10px; flex-shrink:0; }
+.cs-arrow { font-size:8px; color:var(--muted); font-weight:900; }
+.cs-del-sq {
+  width:32px; min-width:32px; background:var(--bg-3);
+  border-left:var(--border-width) solid var(--border-color);
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:700; color:var(--muted); cursor:pointer; flex-shrink:0;
+}
+.cs-del-sq.pending { background:var(--color-10); color:var(--color-1); }
+.cs-body { display:flex; flex-direction:column; gap:var(--margin); padding:var(--margin); background:var(--bg-1); }
+.cs-entry {
+  display:flex; flex-direction:column;
+  border:var(--border-width) solid var(--border-color);
+  border-radius:5px; overflow:hidden; flex-shrink:0;
+}
+.cs-entry-top {
+  height:var(--drop-height); display:flex; align-items:stretch;
+}
+.cs-entry-sale {
+  height:var(--drop-height); display:flex; align-items:stretch;
+  border-top:var(--border-width) solid var(--border-color);
+}
+.cs-sale-saving {
+  flex: 1 1 0; min-width:0; background:var(--bg-3);
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:700; color:var(--color-4);
+  border-right:var(--border-width) solid var(--border-color);
+}
+.cs-sale-price {
+  flex: 1 1 0; min-width:0; background:var(--bg-2);
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:700; color:var(--color-4);
+  border-right:var(--border-width) solid var(--border-color);
+}
+.cs-sale-enddate {
+  flex: 1 1 0; min-width:0; background:var(--bg-3);
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:700; color:var(--muted);
+}
+.cs-store {
+  flex: 1 1 0; min-width:0; background:var(--bg-4);
+  display:flex; align-items:center; padding:0 8px;
+  font-size:10px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  border-right:var(--border-width) solid var(--border-color);
+}
+.cs-up {
+  flex: 1 1 0; min-width:0; background:var(--bg-2);
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:700;
+  border-right:var(--border-width) solid var(--border-color);
+}
+.cs-up.best { background:var(--color-4); color:#000; }
+.cs-up.tied { background:var(--color-4-2); color:var(--color-10); }
+.cs-date {
+  flex: 1 1 0; min-width:0; background:var(--bg-3);
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:700; color:var(--muted);
+  border-right:var(--border-width) solid var(--border-color);
+}
+.cs-entry-del {
+  width:32px; min-width:32px; background:var(--bg-3); border:none;
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:700; color:var(--muted); cursor:pointer; flex-shrink:0;
+}
+.cs-entry-del.pending { background:var(--color-10); color:var(--color-1); }
+.cs-divider {
+  height:0; border-bottom:var(--border-width) solid var(--border-color);
+  margin:0 calc(-1 * var(--margin)); width:calc(100% + 2 * var(--margin));
+}
+.cs-add-row {
+  height:var(--drop-height); display:flex;
+  border:var(--border-width) solid var(--border-color); border-radius:5px; overflow:hidden; flex-shrink:0;
+}
+.cs-input {
+  background:var(--bg-3); border:none;
+  border-right:var(--border-width) solid var(--border-color);
+  color:var(--color-10); font-size:10px; font-weight:600;
+  padding:0 6px; outline:none; height:100%;
+}
+.cs-input-store { flex:2; min-width:0; }
+.cs-input-qty   { flex:1; min-width:0; text-align:center; }
+.cs-input-price { flex:1; min-width:0; text-align:center; }
+.cs-add-btn {
+  width:32px; min-width:32px; background:var(--color-4); border:none;
+  color:#000; font-size:16px; font-weight:900; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.cs-sale-trigger {
+  width:44px; min-width:44px; background:var(--bg-3);
+  border-left:var(--border-width) solid var(--border-color);
+  display:flex; align-items:center; justify-content:center;
+  font-size:8px; font-weight:900; letter-spacing:0.08em;
+  color:var(--color-4); cursor:pointer; flex-shrink:0;
+}
+.cs-sale-trigger:hover { background:var(--bg-2); }
+.cs-sale-card {
+  height:var(--drop-height); display:flex; align-items:stretch;
+  border:var(--border-width) solid var(--border-color);
+  border-radius:5px; overflow:hidden; flex-shrink:0;
+}
+.cs-sale-label {
+  width:48px; min-width:48px; background:var(--bg-3);
+  display:flex; align-items:center; justify-content:center;
+  font-size:8px; font-weight:900; letter-spacing:0.1em;
+  color:var(--color-4); border-right:var(--border-width) solid var(--border-color);
+  flex-shrink:0;
+}
+.cs-sale-up {
+  flex:1; background:var(--bg-2);
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:800; color:var(--color-4);
+  border-right:var(--border-width) solid var(--border-color);
+}
+.cs-sale-ends {
+  width:72px; min-width:72px; background:var(--bg-3);
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; font-weight:600; color:var(--muted);
+  border-right:var(--border-width) solid var(--border-color); flex-shrink:0;
+}
+.cs-sale-del {
+  width:32px; min-width:32px; background:var(--bg-3); border:none;
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:700; color:var(--muted); cursor:pointer; flex-shrink:0;
+}
+.cs-sale-del.pending { background:var(--color-10); color:var(--color-1); }
+.cs-sale-add-row {
+  height:var(--drop-height); display:flex;
+  border:var(--border-width) solid var(--border-color);
+  border-radius:5px; overflow:hidden; flex-shrink:0;
+}
+.cs-entry-edit {
+  width:32px; min-width:32px; background:var(--bg-3);
+  border-right:var(--border-width) solid var(--border-color);
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:900; color:var(--muted);
+  cursor:pointer; flex-shrink:0; letter-spacing:-1px;
+}
+.cs-entry-edit.pending { background:var(--bg-4); color:var(--color-10); }
+
+.unit-picker-btn {
+  flex:1; min-width:0; height:var(--drop-height);
+  background:var(--bg-3); border:var(--border-width) solid var(--border-color);
+  border-radius:var(--radius); color:var(--color-10);
+  font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+  padding:0 10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px;
+}
+</style>
+</head>
+<body>
+
+<div class="header-tab">
+  <button class="header-tab-btn active" id="hGrocery" onclick="setPage('Grocery')">Grocery List</button>
+  <button class="header-tab-btn" id="hShop" onclick="setPage('Shop')">Comp Shop</button>
+  <button class="header-tab-btn" id="hMyShop" onclick="setPage('MyShop')">My Store</button>
+</div>
+
+<div class="app">
+
+  <!-- GROCERY LIST -->
+  <div class="page active" id="pageGrocery">
+    <div class="add-panel">
+      <input type="text" id="glInput" placeholder="item name…" maxlength="80">
+      <div class="add-row">
+        <button class="picker-btn" id="glCatBtn" onclick="openModal('gl')">
+          <span class="picker-label" id="glCatLabel"></span>
+          <span class="picker-arrow">▼</span>
+        </button>
+        <button class="btn-add" onclick="glAdd()">+ Add</button>
+      </div>
+    </div>
+    <div class="view-toggle">
+      <button class="view-btn active" id="vCat" onclick="setView('cat')">Category</button>
+      <button class="view-btn" id="vSimple" onclick="setView('simple')">Simple</button>
+    </div>
+    <div class="list-wrap" id="glList"></div>
+    <div class="footer">
+      <button class="btn-ghost" id="glFooterBtn" onclick="glFooterAction()">Uncheck All</button>
+    </div>
+  </div>
+
+  <!-- COMP SHOP -->
+  <div class="page" id="pageShop">
+    <div class="add-panel">
+      <input type="text" id="csInput" placeholder="item name…" maxlength="60">
+      <div class="add-row">
+        <button class="unit-picker-btn" id="csUnitBtn" onclick="openModal('unit')">
+          <span id="csUnitLabel">Unit</span>
+          <span class="picker-arrow">▼</span>
+        </button>
+        <button class="btn-add" onclick="csAdd()">+ Add</button>
+      </div>
+    </div>
+    <div class="list-wrap" id="csList"></div>
+  </div>
+
+  <!-- MY SHOP -->
+  <div class="page" id="pageMyShop">
+    <div class="ms-search-wrap">
+      <input type="text" id="msSearch" class="ms-search" placeholder="Search…" oninput="msRender()">
+      <button class="ms-search-clear" onclick="document.getElementById('msSearch').value='';msRender();">×</button>
+    </div>
+    <div class="add-panel">
+      <input type="text" id="msInput" placeholder="item name…" maxlength="80">
+      <div class="add-row">
+        <button class="picker-btn" id="msCatBtn" onclick="openModal('ms')">
+          <span class="picker-label" id="msCatLabel"></span>
+          <span class="picker-arrow">▼</span>
+        </button>
+        <button class="btn-add" onclick="msAdd()">+ Add</button>
+      </div>
+    </div>
+    <div class="list-wrap" id="msList"></div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Category</div>
+      <div class="modal-close" onclick="closeModal()">×</div>
+    </div>
+    <div class="modal-grid" id="modalGrid"></div>
+  </div>
+</div>
+
+<!-- SETTINGS DRAWER -->
+<div class="settings-overlay" id="settingsOverlay" onclick="closeSettings()"></div>
+<div class="settings-drawer" id="settingsDrawer">
+  <div class="settings-header">
+    <span>Settings</span>
+    <button class="settings-close" onclick="closeSettings()">×</button>
+  </div>
+  <div class="settings-body" id="settingsBody"></div>
+</div>
+
+<!-- DATA WINDOW -->
+<div class="data-window" id="dataWindow">
+  <div class="data-window-header">
+    <div class="data-window-title" id="dataWindowTitle">Data</div>
+    <button class="data-window-close" onclick="closeDataWindow()">×</button>
+  </div>
+  <div class="data-tabs">
+    <button class="data-tab active" id="dtExport" onclick="setDataTab('export')">Export</button>
+    <button class="data-tab" id="dtImport" onclick="setDataTab('import')">Import</button>
+  </div>
+  <div class="data-body" id="dataBody"></div>
+</div>
+
+<!-- CLEAR CONFIRM MODAL -->
+<div class="modal-overlay" id="clearConfirmOverlay" onclick="if(event.target===this)document.getElementById('clearConfirmOverlay').classList.remove('open')">
+  <div class="modal" style="bottom:auto;max-height:220px;">
+    <div class="modal-header">
+      <div class="modal-title">Clear All Data</div>
+      <div class="modal-close" onclick="document.getElementById('clearConfirmOverlay').classList.remove('open')">×</div>
+    </div>
+    <div style="padding:12px;display:flex;flex-direction:column;gap:var(--margin);">
+      <div style="font-size:11px;font-weight:600;letter-spacing:0.04em;color:var(--muted);line-height:1.5;">
+        This will permanently delete all grocery list items, My Store items, Comp Shop data, and all custom categories and settings. This cannot be undone.
+      </div>
+      <div style="display:flex;gap:var(--margin);">
+        <button class="data-btn" style="flex:1;" onclick="document.getElementById('clearConfirmOverlay').classList.remove('open')">Cancel</button>
+        <button class="data-btn" style="flex:1;background:var(--color-1);color:#fff;" onclick="clearAllData()">Clear Everything</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ── STORAGE ── */
+function ls(k,def){ try{ const v=localStorage.getItem(k); return v!==null?JSON.parse(v):def; }catch(e){ return def; } }
+function lsSet(k,v){ localStorage.setItem(k,JSON.stringify(v)); }
+
+/* ── CATEGORIES ── */
+const DEFAULT_CATS = [
+  {id:'other',      label:'Other',      color:'#7c94a4'},
+  {id:'produce',    label:'Produce',    color:'#30a85a'},
+  {id:'dairy',      label:'Dairy',      color:'#347ab8'},
+  {id:'meat',       label:'Meat',       color:'#d94f4f'},
+  {id:'seafood',    label:'Seafood',    color:'#18a898'},
+  {id:'deli',       label:'Deli',       color:'#d97f30'},
+  {id:'bakery',     label:'Bakery',     color:'#bf6015'},
+  {id:'pasta',      label:'Pasta',      color:'#d4c030'},
+  {id:'grains',     label:'Grains',     color:'#b8a018'},
+  {id:'pantry',     label:'Pantry',     color:'#9f4a08'},
+  {id:'canned',     label:'Canned',     color:'#a8b8c4'},
+  {id:'condiments', label:'Condiments', color:'#e8a055'},
+  {id:'spices',     label:'Spices',     color:'#c03535'},
+  {id:'frozen',     label:'Frozen',     color:'#0a8878'},
+  {id:'snacks',     label:'Snacks',     color:'#e8d54a'},
+  {id:'cereal',     label:'Cereal',     color:'#7c58a8'},
+  {id:'drinks',     label:'Drinks',     color:'#1c5c9a'},
+  {id:'alcohol',    label:'Alcohol',    color:'#5e3888'},
+  {id:'health',     label:'Health',     color:'#1a8a3e'},
+  {id:'baby',       label:'Baby',       color:'#e07aa8'},
+  {id:'pets',       label:'Pets',       color:'#5c9ed4'},
+  {id:'cleaning',   label:'Cleaning',   color:'#5c9ed4'},
+  {id:'personal',   label:'Personal',   color:'#b0306a'},
+];
+const ROOT_COLORS = [
+  { name:'Red',    shades:['#f4a0a0','#e87070','#d94f4f','#c03535','#a02020','#7a1010'] },
+  { name:'Coral',  shades:['#f4b8a0','#e89070','#d96840','#c04820','#9a3010','#721c06'] },
+  { name:'Orange', shades:['#f4c08a','#e8a055','#d97f30','#bf6015','#9f4a08','#7a3400'] },
+  { name:'Brown',  shades:['#d4b896','#b89060','#96683a','#7a4c22','#5e3410','#3e2008'] },
+  { name:'Olive',  shades:['#d4d090','#bcb85a','#a0a030','#848418','#686808','#4c4c04'] },
+  { name:'Yellow', shades:['#f5e87a','#e8d54a','#d4c030','#b8a018','#927c08','#6e5c00'] },
+  { name:'Green',  shades:['#90e0b0','#58c880','#30a85a','#1a8a3e','#0e6c28','#074e18'] },
+  { name:'Teal',   shades:['#80ddd5','#44c4b8','#18a898','#0a8878','#056860','#024844'] },
+  { name:'Blue',   shades:['#90c4e8','#5c9ed4','#347ab8','#1c5c9a','#0e4278','#062c55'] },
+  { name:'Purple', shades:['#c0aadc','#a080c4','#7c58a8','#5e3888','#44206c','#2c1050'] },
+  { name:'Pink',   shades:['#f0a8c8','#e07aa8','#cc5088','#b0306a','#8c1850','#640a38'] },
+  { name:'Grey',   shades:['#d0d8e0','#a8b8c4','#7c94a4','#587488','#385468','#1e384a'] },
+];
+const DEFAULT_UNITS=[
+  {id:'unit',label:'Unit'},{id:'lb',label:'Pound'},{id:'oz',label:'Ounce'},
+  {id:'g',label:'Gram'},{id:'kg',label:'Kilogram'},{id:'ml',label:'Milliliter'},
+  {id:'l',label:'Liter'},{id:'floz',label:'Fluid Ounce'},{id:'each',label:'Each'},{id:'dozen',label:'Dozen'},
+];
+
+function getCats(){
+  const del=ls('cat_deleted',[]), custom=ls('cat_custom',[]);
+  const ov=ls('cat_color_overrides',{});
+  const base=[DEFAULT_CATS[0],...DEFAULT_CATS.slice(1).filter(c=>!del.includes(c.id)),...custom];
+  return base.map(c=>ov[c.id]?{...c,color:ov[c.id]}:c);
+}
+function getCat(id){
+  const ov=ls('cat_color_overrides',{});
+  const cat=getCats().find(c=>c.id===id)||DEFAULT_CATS[0];
+  return ov[cat.id]?{...cat,color:ov[cat.id]}:cat;
+}
+function getCatColor(id, fallback){
+  const ov=ls('cat_color_overrides',{});
+  return ov[id]||fallback||'#9ca3af';
+}
+function getUnits(){
+  const del=ls('unit_deleted',[]), custom=ls('unit_custom',[]);
+  return [DEFAULT_UNITS[0],...DEFAULT_UNITS.slice(1).filter(u=>!del.includes(u.id)),...custom];
+}
+function getUnit(id){ return getUnits().find(u=>u.id===id)||DEFAULT_UNITS[0]; }
+
+/* ── PAGE SWITCHING ── */
+function setPage(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.header-tab-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page'+p).classList.add('active');
+  document.getElementById('h'+p).classList.add('active');
+  if(p==='Grocery') glRender();
+  if(p==='Shop') csRender();
+  if(p==='MyShop') msRender();
+}
+
+/* ── MODAL ── */
+let modalCtx=null, modalSelPend=null;
+const modalDelPend=new Set();
+let selectedRootIdx=0;
+let newCatColor=ROOT_COLORS[0].shades[2];
+let editingColorCatId=null;
+
+function openModal(ctx){
+  modalCtx=ctx; modalSelPend=null; modalDelPend.clear();
+  editingColorCatId=null; selectedRootIdx=0; newCatColor=ROOT_COLORS[0].shades[2];
+  document.getElementById('modalTitle').textContent=ctx==='unit'?'Unit':'Category';
+  buildModalGrid();
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal(){
+  document.getElementById('modalOverlay').classList.remove('open');
+  modalCtx=null; modalSelPend=null; editingColorCatId=null;
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+
+function getUsedColors(){ return getCats().map(c=>c.color.toLowerCase()); }
+
+function updateCatColor(catId, color){
+  const custom=ls('cat_custom',[]);
+  const ci=custom.findIndex(c=>c.id===catId);
+  if(ci>-1){ custom[ci].color=color; lsSet('cat_custom',custom); }
+  else { const ov=ls('cat_color_overrides',{}); ov[catId]=color; lsSet('cat_color_overrides',ov); }
+  glRender(); msRender();
+}
+
+function buildModalGrid(){
+  const grid=document.getElementById('modalGrid');
+  grid.innerHTML='';
+  grid.style.gridTemplateColumns='1fr 1fr';
+  const isUnit=modalCtx==='unit';
+  const list=isUnit?getUnits():getCats();
+  const curSel=isUnit?csSelectedUnit:(modalCtx==='gl'?glSelectedCat:msSelectedCat);
+
+  list.forEach(item=>{
+    const isSel=item.id===curSel, isPend=modalSelPend===item.id;
+    const isDelPend=modalDelPend.has(item.id);
+    const isDeletable=item.id!=='other'&&item.id!=='unit';
+
+    const btn=document.createElement('button');
+    btn.className='modal-cat-btn'+(isSel?' sel-active':'')+(isPend?' sel-pending':'');
+    const catColor = getCatColor(item.id, item.color);
+    if(!isUnit) btn.style.setProperty('--cat-color',catColor);
+    if(item.id==='other'||item.id==='unit') btn.style.gridColumn='1/-1';
+
+    const lbl=document.createElement('span');
+    lbl.className='modal-cat-label';
+    if(!isUnit) lbl.style.color=catColor;
+    lbl.textContent=item.label;
+    btn.appendChild(lbl);
+
+      btn.onclick=e=>{
+        if(e.target.closest('.modal-del-sq')) return;
+        if(isUnit){
+          if(modalSelPend===item.id){
+            modalSelPend=null; csSelectedUnit=item.id; updateUnitBtn(); closeModal();
+          } else {
+            modalSelPend=item.id; buildModalGrid();
+            setTimeout(()=>{ if(modalSelPend===item.id){ modalSelPend=null; buildModalGrid(); } },2000);
+          }
+        } else {
+          if(modalSelPend===item.id){
+            // second tap — select category
+            modalSelPend=null;
+            if(modalCtx==='gl'){ glSelectedCat=item.id; updateGlBtn(); }
+            else { msSelectedCat=item.id; updateMsBtn(); }
+            closeModal();
+          } else {
+            // first tap — open color picker for this cat in the panel
+            modalSelPend=item.id;
+            editingColorCatId=item.id;
+            selectedRootIdx=0;
+            buildModalGrid();
+            setTimeout(()=>{ if(modalSelPend===item.id){ modalSelPend=null; editingColorCatId=null; buildModalGrid(); } },4000);
+          }
+        }
+      };
+
+    if(isDeletable){
+      const d=document.createElement('div');
+      d.className='modal-del-sq'+(isDelPend?' pending':'');
+      d.textContent='×';
+      d.onclick=e=>{
+        e.stopPropagation();
+        if(modalDelPend.has(item.id)){
+          modalDelPend.delete(item.id);
+          if(isUnit) deleteUnit(item.id); else deleteCat(item.id);
+        } else {
+          modalDelPend.add(item.id); buildModalGrid();
+          setTimeout(()=>{ modalDelPend.delete(item.id); buildModalGrid(); },2000);
+        }
+      };
+      btn.appendChild(d);
+    }
+    grid.appendChild(btn);
+  });
+
+  // Add panel
+  const panel=document.createElement('div');
+  panel.className='add-cat-panel';
+  const inp=document.createElement('input');
+  inp.className='add-cat-input';
+  inp.placeholder=isUnit?'New unit label…':'New category name…';
+  inp.maxLength=30;
+  panel.appendChild(inp);
+
+  if(!isUnit){
+    // panel title
+    if(editingColorCatId){
+      const editLbl=document.createElement('div');
+      const editCat=getCat(editingColorCatId);
+      editLbl.style.cssText='font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:'+editCat.color+';';
+      editLbl.textContent='Editing: '+editCat.label;
+      panel.appendChild(editLbl);
+    }
+    // root color dots row
+    const rootRow=document.createElement('div'); rootRow.className='swatches'; rootRow.style.justifyContent='space-between';
+    ROOT_COLORS.forEach((root,ri)=>{
+      const s=document.createElement('div');
+      s.className='swatch'+(selectedRootIdx===ri?' active':'');
+      s.style.background=root.shades[2];
+      s.style.border='3px solid '+(selectedRootIdx===ri?'#fff':'#000');
+      s.onclick=()=>{ selectedRootIdx=ri; buildModalGrid(); };
+      rootRow.appendChild(s);
+    });
+    panel.appendChild(rootRow);
+
+    // divider
+    const div=document.createElement('div');
+    div.style.cssText='height:0;border-bottom:var(--border-width) solid var(--border-color);margin:2px 0;';
+    panel.appendChild(div);
+
+    // shade dots for selected root
+    const used=getUsedColors();
+    const shadeRow=document.createElement('div'); shadeRow.className='swatches'; shadeRow.style.justifyContent='space-between';
+    ROOT_COLORS[selectedRootIdx].shades.forEach(shade=>{
+      const isUsed=used.includes(shade.toLowerCase()) && shade.toLowerCase()!==newCatColor.toLowerCase();
+      const s=document.createElement('div');
+      s.style.cssText=`width:24px;height:24px;border-radius:50%;background:${shade};border:3px solid ${shade===newCatColor.toLowerCase()||shade.toLowerCase()===newCatColor.toLowerCase()?'#fff':'#000'};cursor:${isUsed?'default':'pointer'};position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0;`;
+      if(isUsed){
+        const x=document.createElement('span'); x.textContent='×';
+        x.style.cssText='color:#fff;font-size:16px;font-weight:900;line-height:1;';
+        s.appendChild(x);
+      } else {
+        s.onclick=()=>{
+          newCatColor=shade;
+          if(editingColorCatId){
+            updateCatColor(editingColorCatId,shade);
+            editingColorCatId=null; modalSelPend=null;
+          }
+          buildModalGrid();
+        };
+      }
+      shadeRow.appendChild(s);
+    });
+    panel.appendChild(shadeRow);
+  }
+
+  const addBtn=document.createElement('button');
+  addBtn.className='add-cat-btn';
+  addBtn.textContent=isUnit?'+ Add Unit':'+ Add Category';
+  addBtn.onclick=()=>{
+    const name=inp.value.trim(); if(!name) return;
+    if(isUnit){ const c=ls('unit_custom',[]); c.push({id:'cu_'+Date.now(),label:name}); lsSet('unit_custom',c); }
+    else { const c=ls('cat_custom',[]); c.push({id:'cc_'+Date.now(),label:name,color:newCatColor}); lsSet('cat_custom',c); }
+    inp.value=''; buildModalGrid();
+  };
+  panel.appendChild(addBtn);
+  grid.appendChild(panel);
+}
+
+function deleteCat(id){
+  const gl=ls('gl_items',[]); gl.forEach(i=>{ if(i.category===id) i.category='other'; }); lsSet('gl_items',gl);
+  const ms=ls('ms_items',[]); ms.forEach(i=>{ if(i.category===id) i.category='other'; }); lsSet('ms_items',ms);
+  const custom=ls('cat_custom',[]);
+  if(custom.find(c=>c.id===id)){ lsSet('cat_custom',custom.filter(c=>c.id!==id)); }
+  else { const d=ls('cat_deleted',[]); if(!d.includes(id)){d.push(id);lsSet('cat_deleted',d);} }
+  if(glSelectedCat===id){ glSelectedCat='other'; updateGlBtn(); }
+  if(msSelectedCat===id){ msSelectedCat='other'; updateMsBtn(); }
+  buildModalGrid(); glRender(); msRender();
+}
+
+function deleteUnit(id){
+  const cs=ls('cs_items',[]); cs.forEach(i=>{ if(i.unit===id) i.unit='unit'; }); lsSet('cs_items',cs);
+  const custom=ls('unit_custom',[]);
+  if(custom.find(u=>u.id===id)){ lsSet('unit_custom',custom.filter(u=>u.id!==id)); }
+  else { const d=ls('unit_deleted',[]); if(!d.includes(id)){d.push(id);lsSet('unit_deleted',d);} }
+  if(csSelectedUnit===id){ csSelectedUnit='unit'; updateUnitBtn(); }
+  buildModalGrid(); csRender();
+}
+
+/* ── SHARED CAT SECTION BUILDER ── */
+function buildCatSection(cat,items,stage,onHeader,buildBody){
+  const section=document.createElement('div');
+  section.className='cat-section'+(stage===0?' closed':'');
+
+  const header=document.createElement('div');
+  header.className='cat-header';
+  header.onclick=onHeader;
+
+  const lbl=document.createElement('div'); lbl.className='cat-label'; lbl.style.color=cat.color; lbl.textContent=cat.label;
+  const cnt=document.createElement('div'); cnt.className='cat-count'; cnt.textContent=items.length;
+  const arr=document.createElement('div'); arr.className='cat-arrow'; arr.textContent='▼';
+  if(stage===0) arr.style.transform='rotate(-90deg)';
+  header.append(lbl,cnt,arr);
+  section.appendChild(header);
+
+  if(stage>0){
+    const body=document.createElement('div'); body.className='cat-body';
+    buildBody(body);
+    section.appendChild(body);
+  }
+  return section;
+}
+
+function showEmpty(container,msg){
+  const s=document.createElement('div'); s.className='cat-section';
+  const e=document.createElement('div'); e.className='empty-state'; e.textContent=msg;
+  s.appendChild(e); container.appendChild(s);
+}
+
+/* ── GROCERY LIST ── */
+let glSelectedCat='produce';
+let glViewMode=ls('gl_view','cat');
+let glOpenState={};
+const glDelPend=new Set();
+
+function updateGlBtn(){
+  document.getElementById('glCatLabel').textContent=getCat(glSelectedCat).label;
+}
+
+function setView(v){
+  glViewMode=v; lsSet('gl_view',v);
+  document.getElementById('vCat').classList.toggle('active',v==='cat');
+  document.getElementById('vSimple').classList.toggle('active',v==='simple');
+  glRender();
+}
+
+function glAdd(){
+  const inp=document.getElementById('glInput'), name=inp.value.trim(); if(!name) return;
+  const items=ls('gl_items',[]); items.push({id:'gl_'+Date.now()+Math.random(),name,category:glSelectedCat,checked:false});
+  lsSet('gl_items',items);
+  msPopulate(name,glSelectedCat);
+  inp.value=''; inp.focus();
+  glRender(); msRender();
+}
+
+function glToggle(id){
+  const items=ls('gl_items',[]); const it=items.find(i=>i.id===id); if(it) it.checked=!it.checked;
+  lsSet('gl_items',items); glRender();
+}
+
+function glDelete(id){
+  glDelPend.delete(id);
+  lsSet('gl_items',ls('gl_items',[]).filter(i=>i.id!==id));
+  glRender();
+}
+
+let glClearAllPending = false;
+let glClearAllTimeout = null;
+
+function glFooterAction(){
+  const items = ls('gl_items', []);
+  const allUnchecked = items.length > 0 && items.every(i => !i.checked);
+
+  if(allUnchecked){
+    // two-tap delete all
+    if(glClearAllPending){
+      clearTimeout(glClearAllTimeout);
+      glClearAllPending = false;
+      lsSet('gl_items', []);
+      glOpenState = {};
+      glRender();
+      updateGlFooterBtn();
+    } else {
+      glClearAllPending = true;
+      updateGlFooterBtn();
+      glClearAllTimeout = setTimeout(()=>{
+        glClearAllPending = false;
+        updateGlFooterBtn();
+      }, 2000);
+    }
+  } else {
+    // uncheck all
+    items.forEach(i => i.checked = false);
+    lsSet('gl_items', items);
+    glOpenState = {};
+    glRender();
+    updateGlFooterBtn();
+  }
+}
+
+function updateGlFooterBtn(){
+  const items = ls('gl_items', []);
+  const allUnchecked = items.length > 0 && items.every(i => !i.checked);
+  const btn = document.getElementById('glFooterBtn');
+  if(allUnchecked && glClearAllPending){
+    btn.textContent = 'Confirm Clear All';
+    btn.style.color = 'var(--color-1)';
+    btn.style.borderColor = 'var(--color-1)';
+  } else if(allUnchecked){
+    btn.textContent = 'Clear All';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+  } else {
+    btn.textContent = 'Uncheck All';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+  }
+}
+
+function glGetStage(catId,uc,ch){
+  if(glOpenState[catId]!==undefined) return glOpenState[catId];
+  return uc>0?1:0;
+}
+
+function glToggleCat(catId,uc,ch){
+  const cur=glGetStage(catId,uc,ch);
+  let next;
+  if(ch===0) next=cur===0?1:0;
+  else if(uc===0) next=cur===0?2:0;
+  else next=cur===0?1:cur===1?2:0;
+  glOpenState[catId]=next; glRender();
+}
+
+function makeGlRow(item, catColor, showDot){
+  const row=document.createElement('div'); row.className='item-row';
+  const chk=document.createElement('div'); chk.className='item-check';
+  if(item.checked){
+    chk.style.background='var(--color-4)'; chk.style.color='#fff'; chk.textContent='✓';
+  } else if(showDot){
+    chk.style.background='#fff';
+    const dot=document.createElement('div');
+    dot.style.cssText='width:12px;height:12px;border-radius:50%;background:var(--color-4);flex-shrink:0;';
+    chk.appendChild(dot);
+  } else {
+    chk.style.background='#fff';
+  }
+
+  const nm=document.createElement('div'); nm.className='item-name'; nm.textContent=item.name;
+  if(item.checked){ nm.style.textDecoration='line-through'; nm.style.opacity='0.5'; }
+
+  const del=document.createElement('button');
+  del.className='item-del'+(glDelPend.has(item.id)?' pending':'');
+  del.textContent='×';
+  del.onclick=e=>{
+    e.stopPropagation();
+    if(glDelPend.has(item.id)){ glDelete(item.id); }
+    else { glDelPend.add(item.id); del.className='item-del pending'; setTimeout(()=>{ glDelPend.delete(item.id); glRender(); },2000); }
+  };
+
+  row.onclick=e=>{ if(!e.target.classList.contains('item-del')) glToggle(item.id); };
+  row.append(chk,nm,del);
+  return row;
+}
+
+function glRender(){
+  const container=document.getElementById('glList'); container.innerHTML='';
+  const items=ls('gl_items',[]);
+  if(items.length===0){ showEmpty(container,'Nothing here.'); return; }
+
+  if(glViewMode==='simple'){
+    const activeCats = getCats().filter(c=>items.some(i=>i.category===c.id));
+    activeCats.forEach(cat=>{
+      const catItems = items.filter(i=>i.category===cat.id)
+        .sort((a,b)=>a.name.localeCompare(b.name));
+
+      // category divider — line with label
+      const div=document.createElement('div'); div.className='simple-cat-divider';
+      const line1=document.createElement('div'); line1.className='simple-cat-divider-line';
+      const lbl=document.createElement('span'); lbl.className='simple-cat-divider-label'; lbl.textContent=cat.label; lbl.style.color=cat.color;
+      const line2=document.createElement('div'); line2.className='simple-cat-divider-line';
+      div.append(line1,lbl,line2);
+      container.appendChild(div);
+
+      // flat rows — no wrapper card
+      catItems.forEach(item=>{
+        container.appendChild(makeGlRow(item, cat.color, false));
+      });
+    });
+    return;
+  }
+
+  getCats().filter(c=>items.some(i=>i.category===c.id)).forEach(cat=>{
+    const catItems=items.filter(i=>i.category===cat.id);
+    const uc=catItems.filter(i=>!i.checked).sort((a,b)=>a.name.localeCompare(b.name));
+    const ch=catItems.filter(i=>i.checked).sort((a,b)=>a.name.localeCompare(b.name));
+    const rawStage=glGetStage(cat.id,uc.length,ch.length);
+    // if we're in "unchecked only" mode but none are left, collapse
+    const stage = (rawStage===1 && uc.length===0) ? 0 : rawStage;
+    if(stage===0 && rawStage===1) glOpenState[cat.id]=0;
+    const toShow=stage===1?uc:[...uc,...ch];
+    const section=buildCatSection(cat,catItems,stage,()=>glToggleCat(cat.id,uc.length,ch.length),body=>{
+      toShow.forEach(item=>body.appendChild(makeGlRow(item, cat.color, false)));
+    });
+    container.appendChild(section);
+  });
+  updateGlFooterBtn();
+}
+
+document.getElementById('glInput').addEventListener('keydown',e=>{ if(e.key==='Enter') glAdd(); });
+
+/* ── COMP SHOP ── */
+let csSelectedUnit='unit';
+let csOpenState={};
+const csItemDelPend=new Set(), csEntDelPend=new Set();
+
+function updateUnitBtn(){
+  document.getElementById('csUnitLabel').textContent=getUnit(csSelectedUnit).label;
+}
+
+function csAdd(){
+  const inp=document.getElementById('csInput'), name=inp.value.trim(); if(!name) return;
+  const items=ls('cs_items',[]); items.push({id:'cs_'+Date.now(),name,unit:csSelectedUnit});
+  lsSet('cs_items',items); inp.value=''; inp.focus(); csRender();
+}
+
+function csDeleteItem(id){
+  csItemDelPend.delete(id);
+  lsSet('cs_items',ls('cs_items',[]).filter(i=>i.id!==id));
+  lsSet('cs_entries',ls('cs_entries',[]).filter(e=>e.itemId!==id));
+  csRender();
+}
+
+function csAddEntry(itemId,store,qty,price,salePrice,saleEnds){
+  if(!store||!qty||!price) return;
+  const entries=ls('cs_entries',[]);
+  if(csEditingId){
+    const idx=entries.findIndex(e=>e.id===csEditingId);
+    if(idx>-1){
+      entries[idx].store=store; entries[idx].qty=parseFloat(qty);
+      entries[idx].price=parseFloat(price); entries[idx].updated=Date.now();
+      if(salePrice&&saleEnds) entries[idx].sale={price:parseFloat(salePrice),ends:saleEnds};
+      lsSet('cs_entries',entries); csEditingId=null; csRender(); return;
+    }
+    csEditingId=null;
+  }
+  const entry={id:'cse_'+Date.now(),itemId,store,qty:parseFloat(qty),price:parseFloat(price),updated:Date.now()};
+  if(salePrice&&saleEnds) entry.sale={price:parseFloat(salePrice),ends:saleEnds};
+  entries.push(entry); lsSet('cs_entries',entries); csRender();
+}
+
+function csDeleteEntry(id){
+  csEntDelPend.delete(id);
+  lsSet('cs_entries',ls('cs_entries',[]).filter(e=>e.id!==id));
+  csRender();
+}
+
+const csEditPend = new Set();
+let csEditingId = null;
+
+function csEditEntry(entryId, itemId){
+  const entries = ls('cs_entries',[]);
+  const entry = entries.find(e=>e.id===entryId);
+  if(!entry) return;
+  csEditingId = entryId;
+
+  requestAnimationFrame(()=>{
+    const storeInp = document.querySelector('input[data-item-id="'+itemId+'"]');
+    const qtyInp   = document.querySelector('input[data-qty-id="'+itemId+'"]');
+    const priceInp = document.querySelector('input[data-price-id="'+itemId+'"]');
+    const spInp    = document.querySelector('input[data-sale-price-id="'+itemId+'"]');
+    const edInp    = document.querySelector('input[data-sale-end-id="'+itemId+'"]');
+    if(storeInp) storeInp.value = entry.store;
+    if(qtyInp)   qtyInp.value   = entry.qty;
+    if(priceInp) priceInp.value = entry.price;
+    if(spInp&&entry.sale)  spInp.value = entry.sale.price;
+    if(edInp&&entry.sale)  edInp.value = entry.sale.ends;
+  });
+}
+
+
+
+function getCsStage(id){ return csOpenState[id]!==undefined?csOpenState[id]:0; }
+
+function csToggle(id){
+  const cur=getCsStage(id);
+  if(cur===0){ Object.keys(csOpenState).forEach(k=>csOpenState[k]=0); csOpenState[id]=1; }
+  else csOpenState[id]=0;
+  csRender();
+}
+
+const csSaleDelPend = new Set();
+const csSaleAddOpen = new Set(); // entry IDs where sale add form is showing
+
+function isSaleActive(entry){
+  if(!entry.sale) return false;
+  const end = new Date(entry.sale.ends);
+  end.setHours(23,59,59,999);
+  return new Date() <= end;
+}
+
+function csGetEffectiveUp(entry){
+  if(isSaleActive(entry)) return entry.sale.price / entry.qty;
+  return entry.qty > 0 ? entry.price / entry.qty : null;
+}
+
+function csPurgeSales(){
+  const entries = ls('cs_entries',[]);
+  let changed = false;
+  entries.forEach(e=>{
+    if(e.sale && !isSaleActive(e)){ delete e.sale; changed=true; }
+  });
+  if(changed) lsSet('cs_entries', entries);
+}
+
+function csDeleteSale(entryId){
+  csSaleDelPend.delete(entryId);
+  const entries = ls('cs_entries',[]);
+  const e = entries.find(e=>e.id===entryId);
+  if(e){ delete e.sale; lsSet('cs_entries', entries); }
+  csRender();
+}
+
+function csAddSale(entryId, salePrice, endsStr){
+  if(!salePrice || !endsStr) return;
+  const entries = ls('cs_entries',[]);
+  const e = entries.find(e=>e.id===entryId);
+  if(e){
+    e.sale = { price: parseFloat(salePrice), ends: endsStr };
+    lsSet('cs_entries', entries);
+  }
+  csSaleAddOpen.delete(entryId);
+  csRender();
+}
+
+
+
+
+function csRender(){
+  csPurgeSales();
+  const container=document.getElementById('csList'); container.innerHTML='';
+  const items=ls('cs_items',[]), entries=ls('cs_entries',[]);
+  if(items.length===0){ showEmpty(container,'No items yet.'); return; }
+
+  items.forEach(item=>{
+    const unit=getUnit(item.unit);
+    const itemEntries=entries.filter(e=>e.itemId===item.id);
+    const stage=getCsStage(item.id);
+
+    const sorted=[...itemEntries].sort((a,b)=>{
+      const ua=csGetEffectiveUp(a)??Infinity, ub=csGetEffectiveUp(b)??Infinity; return ua-ub;
+    });
+    const validUPs=sorted.map(e=>csGetEffectiveUp(e)).filter(u=>u!==null);
+    const minUp=validUPs.length?Math.min(...validUPs):null;
+    const tieCount=minUp!==null?validUPs.filter(u=>Math.abs(u-minUp)<0.00001).length:0;
+
+    const section=document.createElement('div'); section.className='cs-section'+(stage===0?' closed':'');
+
+    const hdr=document.createElement('div'); hdr.className='cs-header'; hdr.onclick=()=>csToggle(item.id);
+    const main=document.createElement('div'); main.className='cs-header-main';
+    const nameEl=document.createElement('div'); nameEl.className='cs-item-name'; nameEl.textContent=item.name;
+    main.appendChild(nameEl);
+
+    if(stage===0&&minUp!==null){
+      const best=sorted.find(e=>csGetEffectiveUp(e)!==null&&Math.abs((csGetEffectiveUp(e))-minUp)<0.00001);
+      if(best){ const sub=document.createElement('div'); sub.className='cs-item-sub'; sub.textContent=best.store+(isSaleActive(best)?' · SALE ':' · ')+'$'+minUp.toFixed(2)+'/'+unit.label; main.appendChild(sub); }
+    } else {
+      const badge=document.createElement('div'); badge.className='cs-unit-badge';
+      badge.textContent=unit.label+(itemEntries.length?' · '+itemEntries.length:''); main.appendChild(badge);
+    }
+
+    const right=document.createElement('div'); right.className='cs-header-right';
+    const arr=document.createElement('div'); arr.className='cs-arrow'; arr.textContent=stage===0?'▼':'▲'; right.appendChild(arr);
+    const delSq=document.createElement('div'); delSq.className='cs-del-sq'+(csItemDelPend.has(item.id)?' pending':''); delSq.textContent='×';
+    delSq.onclick=e=>{
+      e.stopPropagation();
+      if(csItemDelPend.has(item.id)){ csDeleteItem(item.id); }
+      else { csItemDelPend.add(item.id); delSq.className='cs-del-sq pending'; setTimeout(()=>{ csItemDelPend.delete(item.id); csRender(); },2000); }
+    };
+    hdr.append(main,right,delSq); section.appendChild(hdr);
+
+    if(stage>0){
+      const body=document.createElement('div'); body.className='cs-body';
+
+      // add entry row
+      const addRow=document.createElement('div'); addRow.className='cs-add-row';
+      const sI=document.createElement('input'); sI.className='cs-input cs-input-store'; sI.placeholder='Store'; sI.maxLength=30; sI.dataset.itemId=item.id;
+      const qI=document.createElement('input'); qI.className='cs-input cs-input-qty'; qI.placeholder='Quantity'; qI.type='number'; qI.min='0'; qI.step='any'; qI.dataset.qtyId=item.id;
+      const pI=document.createElement('input'); pI.className='cs-input cs-input-price'; pI.placeholder='Price'; pI.type='number'; pI.min='0'; pI.step='any'; pI.dataset.priceId=item.id;
+      const aBtn=document.createElement('button'); aBtn.className='cs-add-btn'; aBtn.textContent='+';
+      const doAdd=()=>csAddEntry(item.id,sI.value.trim(),qI.value,pI.value,spI.value,edI.value.trim());
+      aBtn.onclick=doAdd; [sI,qI,pI].forEach(i=>i.addEventListener('keydown',e=>{ if(e.key==='Enter') doAdd(); }));
+      addRow.append(sI,qI,pI,aBtn); body.appendChild(addRow);
+
+      // sale add row (always visible below entry form)
+      const saleAddRow=document.createElement('div'); saleAddRow.className='cs-sale-add-row';
+      const slbl=document.createElement('div'); slbl.className='cs-sale-label'; slbl.textContent='SALE';
+      const spI=document.createElement('input'); spI.className='cs-input'; spI.placeholder='Sale Price'; spI.type='number'; spI.min='0'; spI.step='any'; spI.style.cssText='flex:1;min-width:0;'; spI.dataset.salePriceId=item.id;
+      const today = new Date().toISOString().split('T')[0];
+      const edI=document.createElement('input'); edI.className='cs-input'; edI.type='date'; edI.min=today; edI.style.cssText='flex:2;min-width:0;color-scheme:dark;'; edI.dataset.saleEndId=item.id;
+      const clrBtn=document.createElement('button'); clrBtn.className='cs-entry-del'; clrBtn.textContent='×';
+      clrBtn.onclick=()=>{
+        spI.value=''; edI.value='';
+        // clear all active sales on this item's entries
+        const entries=ls('cs_entries',[]);
+        entries.forEach(e=>{ if(e.itemId===item.id && e.sale) delete e.sale; });
+        lsSet('cs_entries',entries); csRender();
+      };
+      saleAddRow.append(slbl,spI,edI,clrBtn); body.appendChild(saleAddRow);
+
+      if(sorted.length>0){
+        const div=document.createElement('div'); div.className='cs-divider'; body.appendChild(div);
+
+        sorted.forEach(entry=>{
+          const up=csGetEffectiveUp(entry);
+          const hasSale=isSaleActive(entry);
+          const isBest=up!==null&&minUp!==null&&Math.abs(up-minUp)<0.00001;
+          const isTied=isBest&&tieCount>1;
+
+          // entry row
+          const row=document.createElement('div'); row.className='cs-entry';
+
+          // top row — always shown
+          const top=document.createElement('div'); top.className='cs-entry-top';
+
+          // left edit handle — double tap
+          const editSq=document.createElement('div');
+          editSq.className='cs-entry-edit'+(csEditPend.has(entry.id)?' pending':'');
+          editSq.textContent='≡';
+          editSq.dataset.id=entry.id;
+          editSq.onclick=e=>{
+            e.stopPropagation();
+            const id=e.currentTarget.dataset.id;
+            if(csEditPend.has(id)){
+              csEditPend.delete(id);
+              csEditEntry(id, item.id);
+            } else {
+              csEditPend.add(id);
+              editSq.className='cs-entry-edit pending';
+              setTimeout(()=>{
+                csEditPend.delete(id);
+                editSq.className='cs-entry-edit';
+              }, 2000);
+            }
+          };
+
+          const st=document.createElement('div'); st.className='cs-store'; st.textContent=entry.store;
+          const regularUp=entry.qty>0?entry.price/entry.qty:null;
+          const upEl=document.createElement('div'); upEl.className='cs-up'+(isTied?' tied':isBest?' best':'');
+          upEl.textContent=regularUp!==null?'$'+regularUp.toFixed(2)+'/'+unit.label:'—';
+          const dt=document.createElement('div'); dt.className='cs-date';
+          if(entry.updated){ const d=new Date(entry.updated); dt.textContent=(d.getMonth()+1)+'/'+d.getDate()+'/'+String(d.getFullYear()).slice(2); } else dt.textContent='—';
+          const dBtn=document.createElement('button'); dBtn.className='cs-entry-del'+(csEntDelPend.has(entry.id)?' pending':''); dBtn.textContent='×';
+          dBtn.onclick=()=>{
+            if(csEntDelPend.has(entry.id)){ csDeleteEntry(entry.id); }
+            else { csEntDelPend.add(entry.id); dBtn.className='cs-entry-del pending'; setTimeout(()=>{ csEntDelPend.delete(entry.id); csRender(); },2000); }
+          };
+          top.append(editSq,st,upEl,dt,dBtn);
+          row.appendChild(top);
+
+          // sale bottom row — only when active
+          if(hasSale){
+            const saleUp=entry.sale.price/entry.qty;
+            const saving=regularUp!==null?(regularUp-saleUp):null;
+            const saleRow=document.createElement('div'); saleRow.className='cs-entry-sale';
+            const sv=document.createElement('div'); sv.className='cs-sale-saving';
+            sv.textContent=saving!==null?'SAVE $'+saving.toFixed(2)+'/'+unit.label:'—';
+            const sp=document.createElement('div'); sp.className='cs-sale-price'; sp.textContent='$'+saleUp.toFixed(2)+'/'+unit.label;
+            const ed=document.createElement('div'); ed.className='cs-sale-enddate';
+            const endD=new Date(entry.sale.ends+'T00:00:00');
+            ed.textContent='ENDS '+(endD.getMonth()+1)+'/'+endD.getDate()+'/'+String(endD.getFullYear()).slice(2);
+            saleRow.append(sv,sp,ed);
+            row.appendChild(saleRow);
+          }
+
+          body.appendChild(row);
+        });
+      }
+      section.appendChild(body);
+    }
+    container.appendChild(section);
+  });
+}
+
+document.getElementById('csInput').addEventListener('keydown',e=>{ if(e.key==='Enter') csAdd(); });
+
+/* ── MY SHOP ── */
+let msSelectedCat='produce';
+let msOpenState={};
+const msDelPend=new Set();
+const msAddedSet=new Set();
+
+function updateMsBtn(){
+  document.getElementById('msCatLabel').textContent=getCat(msSelectedCat).label;
+}
+
+function msPopulate(name,category){
+  const items=ls('ms_items',[]);
+  if(items.some(i=>i.name.toLowerCase()===name.toLowerCase())) return;
+  items.push({id:'ms_'+Date.now()+Math.random(),name,category});
+  lsSet('ms_items',items);
+}
+
+function msAdd(){
+  const inp=document.getElementById('msInput'), name=inp.value.trim(); if(!name) return;
+  msPopulate(name,msSelectedCat); inp.value=''; inp.focus(); msRender();
+}
+
+function msDelete(id){
+  msDelPend.delete(id);
+  lsSet('ms_items',ls('ms_items',[]).filter(i=>i.id!==id));
+  msRender();
+}
+
+function msAddToGrocery(id){
+  const item=ls('ms_items',[]).find(i=>i.id===id); if(!item) return;
+  const gl=ls('gl_items',[]);
+  if(!gl.some(i=>i.name.toLowerCase()===item.name.toLowerCase()&&!i.checked)){
+    gl.push({id:'gl_'+Date.now()+Math.random(),name:item.name,category:item.category,checked:false});
+    lsSet('gl_items',gl); glRender();
+  }
+  msAddedSet.add(id); msRender();
+  setTimeout(()=>{ msAddedSet.delete(id); msRender(); },1500);
+}
+
+function getMsStage(catId){ return msOpenState[catId]!==undefined?msOpenState[catId]:0; }
+
+function msToggleCat(catId){
+  const cur=getMsStage(catId);
+  if(cur===0){ Object.keys(msOpenState).forEach(k=>msOpenState[k]=0); msOpenState[catId]=1; }
+  else msOpenState[catId]=0;
+  msRender();
+}
+
+function msBuildRow(item){
+  const isAdded=msAddedSet.has(item.id), isPend=msDelPend.has(item.id);
+  const onList=ls('gl_items',[]).some(i=>i.name.toLowerCase()===item.name.toLowerCase()&&!i.checked);
+
+  const row=document.createElement('div'); row.className='item-row';
+
+  const addSq=document.createElement('div'); addSq.className='item-check';
+  if(isAdded){
+    addSq.style.background='var(--color-4)'; addSq.style.color='#fff'; addSq.textContent='✓';
+  } else if(onList){
+    addSq.style.background='#fff';
+    const dot=document.createElement('div');
+    dot.style.cssText='width:12px;height:12px;border-radius:50%;background:var(--color-4);flex-shrink:0;';
+    addSq.appendChild(dot);
+  } else {
+    addSq.style.background='#fff'; addSq.style.color='var(--color-4)';
+    addSq.style.fontSize='16px'; addSq.style.fontWeight='700'; addSq.textContent='+';
+  }
+  addSq.style.cursor='pointer';
+  addSq.dataset.id=item.id;
+  addSq.onclick=e=>{ e.stopPropagation(); msAddToGrocery(e.currentTarget.dataset.id); };
+
+  const nm=document.createElement('div'); nm.className='item-name';
+  nm.textContent=isAdded?item.name+'  — Added':item.name;
+  if(isAdded) nm.style.color='var(--color-4)';
+
+  const del=document.createElement('button'); del.className='item-del'+(isPend?' pending':''); del.textContent='×';
+  del.dataset.id=item.id;
+  del.onclick=e=>{
+    e.stopPropagation();
+    const id=e.currentTarget.dataset.id;
+    if(msDelPend.has(id)){ msDelete(id); }
+    else { msDelPend.add(id); del.className='item-del pending'; setTimeout(()=>{ msDelPend.delete(id); msRender(); },2000); }
+  };
+
+  row.append(addSq,nm,del);
+  return row;
+}
+
+function msRender(){
+  const container=document.getElementById('msList'); container.innerHTML='';
+  const items=ls('ms_items',[]);
+  const query=(document.getElementById('msSearch')?.value||'').trim().toLowerCase();
+
+  if(items.length===0){ showEmpty(container,'Nothing saved yet.'); return; }
+
+  if(query){
+    const results=items.filter(i=>i.name.toLowerCase().includes(query)).sort((a,b)=>a.name.localeCompare(b.name));
+    if(!results.length){ showEmpty(container,'No results.'); return; }
+    results.forEach(item=>container.appendChild(msBuildRow(item)));
+    return;
+  }
+
+  getCats().filter(c=>items.some(i=>i.category===c.id)).forEach(cat=>{
+    const catItems=items.filter(i=>i.category===cat.id).sort((a,b)=>a.name.localeCompare(b.name));
+    const stage=getMsStage(cat.id);
+    const section=buildCatSection(cat,catItems,stage,()=>msToggleCat(cat.id),body=>{
+      catItems.forEach(item=>body.appendChild(msBuildRow(item)));
+    });
+    container.appendChild(section);
+  });
+}
+
+document.getElementById('msInput').addEventListener('keydown',e=>{ if(e.key==='Enter') msAdd(); });
+
+/* ── SETTINGS CONTENT ── */
+function renderSettingsBody(){
+  const body = document.getElementById('settingsBody');
+  body.innerHTML = '';
+
+  const dataCard = document.createElement('div');
+  dataCard.className = 'item-row';
+  dataCard.style.cssText = 'cursor:pointer;border-radius:var(--radius);';
+  const nm = document.createElement('div');
+  nm.className = 'item-name';
+  nm.style.background = 'var(--bg-2)';
+  nm.textContent = 'Data';
+  dataCard.appendChild(nm);
+  dataCard.onclick = openDataWindow;
+  body.appendChild(dataCard);
+
+  const clearCard = document.createElement('div');
+  clearCard.className = 'item-row';
+  clearCard.style.cssText = 'cursor:pointer;border-radius:var(--radius);';
+  const clearNm = document.createElement('div');
+  clearNm.className = 'item-name';
+  clearNm.style.cssText = 'background:var(--bg-2);color:var(--color-1);font-weight:800;';
+  clearNm.textContent = 'Clear All Data';
+  clearCard.appendChild(clearNm);
+  clearCard.onclick = ()=>{ document.getElementById('clearConfirmOverlay').classList.add('open'); };
+  body.appendChild(clearCard);
+}
+
+/* ── DATA WINDOW ── */
+let dataTab = 'export';
+
+const DATA_KEYS = [
+  'gl_items', 'gl_view',
+  'ms_items',
+  'cat_custom', 'cat_deleted', 'cat_color_overrides',
+  'unit_custom', 'unit_deleted',
+  'cs_items', 'cs_entries',
+];
+
+function exportData(){
+  const obj = {};
+  DATA_KEYS.forEach(k=>{ const v=localStorage.getItem(k); if(v!==null) obj[k]=JSON.parse(v); });
+  return JSON.stringify(obj, null, 2);
+}
+
+function importData(json){
+  try {
+    const obj = JSON.parse(json);
+    DATA_KEYS.forEach(k=>{ if(obj[k]!==undefined) localStorage.setItem(k, JSON.stringify(obj[k])); });
+    return true;
+  } catch(e){ return false; }
+}
+
+function openDataWindow(){
+  closeSettings();
+  dataTab='export';
+  document.getElementById('dataWindow').classList.add('open');
+  renderDataBody();
+}
+
+function closeDataWindow(){
+  document.getElementById('dataWindow').classList.remove('open');
+}
+
+function setDataTab(t){
+  dataTab=t;
+  document.getElementById('dtExport').classList.toggle('active', t==='export');
+  document.getElementById('dtImport').classList.toggle('active', t==='import');
+  renderDataBody();
+}
+
+function renderDataBody(){
+  const body = document.getElementById('dataBody');
+  body.innerHTML='';
+
+  const status = document.createElement('div'); status.className='data-status'; status.id='dataStatus';
+  body.appendChild(status);
+
+  if(dataTab==='export'){
+    const ta = document.createElement('textarea'); ta.className='data-textarea'; ta.readOnly=true;
+    ta.value = exportData();
+    body.appendChild(ta);
+
+    const btn = document.createElement('button'); btn.className='data-btn green'; btn.textContent='Copy to Clipboard';
+    btn.onclick=()=>{
+      navigator.clipboard.writeText(ta.value).then(()=>{
+        status.textContent='Copied!';
+        setTimeout(()=>status.textContent='', 2000);
+      }).catch(()=>{
+        ta.select(); document.execCommand('copy');
+        status.textContent='Copied!';
+        setTimeout(()=>status.textContent='', 2000);
+      });
+    };
+    body.appendChild(btn);
+  } else {
+    const ta = document.createElement('textarea'); ta.className='data-textarea';
+    ta.placeholder='Paste exported JSON here…';
+    body.appendChild(ta);
+
+    const btn = document.createElement('button'); btn.className='data-btn green'; btn.textContent='Import Data';
+    btn.onclick=()=>{
+      const ok = importData(ta.value.trim());
+      if(ok){
+        status.textContent='Imported successfully — reload to apply';
+        status.style.color='var(--color-4)';
+      } else {
+        status.textContent='Invalid data — check your JSON';
+        status.style.color='var(--color-1)';
+      }
+    };
+    body.appendChild(btn);
+  }
+}
+
+function clearAllData(){
+  DATA_KEYS.forEach(k=>localStorage.removeItem(k));
+  document.getElementById('clearConfirmOverlay').classList.remove('open');
+  closeSettings();
+  glOpenState={}; msOpenState={}; csOpenState={};
+  glRender(); csRender(); msRender();
+  updateGlFooterBtn();
+}
+
+/* ── SETTINGS ── */
+function openSettings(){
+  renderSettingsBody();
+  document.getElementById('settingsDrawer').classList.add('open');
+  document.getElementById('settingsOverlay').classList.add('open');
+}
+function closeSettings(){
+  document.getElementById('settingsDrawer').classList.remove('open');
+  document.getElementById('settingsOverlay').classList.remove('open');
+}
+(function(){
+  let startX=0, startY=0;
+  document.addEventListener('touchstart',e=>{
+    startX=e.touches[0].clientX; startY=e.touches[0].clientY;
+  },{passive:true});
+  document.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-startX;
+    const dy=Math.abs(e.changedTouches[0].clientY-startY);
+    if(dy>80) return; // too vertical
+    const isOpen=document.getElementById('settingsDrawer').classList.contains('open');
+    if(!isOpen && startX<24 && dx>60) openSettings();
+    if(isOpen && dx<-60) closeSettings();
+  },{passive:true});
+})();
+
+/* ── INIT ── */
+ls('gl_items',[]).forEach(i=>msPopulate(i.name,i.category));
+updateGlBtn(); updateUnitBtn(); updateMsBtn();
+document.getElementById('vCat').classList.toggle('active',glViewMode==='cat');
+document.getElementById('vSimple').classList.toggle('active',glViewMode==='simple');
+glRender(); csRender(); msRender();
+
+// Register service worker
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js')
+      .then(r=>console.log('[PantryPro] SW registered', r.scope))
+      .catch(e=>console.log('[PantryPro] SW failed', e));
+  });
+}
+</script>
+</body>
+</html>
