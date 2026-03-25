@@ -154,7 +154,7 @@ body {
 .settings-body {
   flex: 1; overflow-y: auto;
   padding: var(--margin);
-  display: flex; flex-direction: column; justify-content: space-between;
+  display: flex; flex-direction: column;
   gap: var(--margin);
 }
 
@@ -397,15 +397,16 @@ body {
 
 .cs-section { border:var(--border-width) solid var(--border-color); border-radius:var(--radius); overflow:hidden; }
 .cs-header {
-  min-height:var(--card-height); display:flex; align-items:stretch;
+  height:var(--card-height); display:flex; align-items:stretch;
   background:var(--bg-2); border-bottom:var(--border-width) solid var(--border-color);
-  cursor:pointer; user-select:none;
+  cursor:pointer; user-select:none; overflow:hidden;
 }
 .cs-section.closed .cs-header { border-bottom:none; }
 .cs-section.closed .cs-body { display:none; }
 .cs-header-main {
   flex:1; min-width:0; display:flex; flex-direction:column;
-  justify-content:center; padding:0 10px; gap:1px;
+  justify-content:center; padding:0 10px; gap:0;
+  overflow:hidden;
 }
 .cs-item-name { font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cs-item-sub  { font-size:9px; font-weight:700; color:var(--color-4); letter-spacing:0.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -1313,7 +1314,7 @@ function csRender(){
     });
     const validUPs=sorted.map(e=>csGetEffectiveUp(e)).filter(u=>u!==null);
     const minUp=validUPs.length?Math.min(...validUPs):null;
-    const tieCount=minUp!==null?validUPs.filter(u=>Math.abs(u-minUp)<0.00001).length:0;
+    const tieCount=minUp!==null?validUPs.filter(u=>parseFloat(u.toFixed(2))===parseFloat(minUp.toFixed(2))).length:0;
 
     const section=document.createElement('div'); section.className='cs-section'+(stage===0?' closed':'');
 
@@ -1323,8 +1324,32 @@ function csRender(){
     main.appendChild(nameEl);
 
     if(stage===0&&minUp!==null){
-      const best=sorted.find(e=>csGetEffectiveUp(e)!==null&&Math.abs((csGetEffectiveUp(e))-minUp)<0.00001);
-      if(best){ const sub=document.createElement('div'); sub.className='cs-item-sub'; sub.textContent=best.store+(isSaleActive(best)?' · SALE ':' · ')+'$'+minUp.toFixed(2)+'/'+unit.label; main.appendChild(sub); }
+      const RANK_COLORS = [
+        {solo:'#30a85a', tied:'#90e0b0'},
+        {solo:'#347ab8', tied:'#90c4e8'},
+        {solo:'#7c58a8', tied:'#c0aadc'},
+      ];
+
+      const count = Math.min(csPreviewCount, sorted.length);
+      function fmtUp(up){ return up!==null ? parseFloat(up.toFixed(2)) : null; }
+      function isTiedPrice(up){ const f=fmtUp(up); return sorted.filter(x=>fmtUp(csGetEffectiveUp(x))===f).length>1; }
+
+      let displayRank=0, lastFmt=null;
+      for(let i=0;i<count;i++){
+        const e=sorted[i];
+        const up=csGetEffectiveUp(e);
+        if(up===null) continue;
+        const fmt=fmtUp(up);
+        if(lastFmt!==null && fmt!==lastFmt) displayRank++;
+        lastFmt=fmt;
+        const isTied=isTiedPrice(up);
+        const col=RANK_COLORS[Math.min(displayRank,2)];
+        const color=isTied?col.tied:col.solo;
+        const sub=document.createElement('div');
+        sub.style.cssText=`font-size:9px;font-weight:700;color:${color};letter-spacing:0.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
+        sub.textContent=e.store+' · $'+up.toFixed(2)+'/'+unit.label;
+        main.appendChild(sub);
+      }
     } else {
       const badge=document.createElement('div'); badge.className='cs-unit-badge';
       badge.textContent=unit.label+(itemEntries.length?' · '+itemEntries.length:''); main.appendChild(badge);
@@ -1375,7 +1400,7 @@ function csRender(){
         sorted.forEach(entry=>{
           const up=csGetEffectiveUp(entry);
           const hasSale=isSaleActive(entry);
-          const isBest=up!==null&&minUp!==null&&Math.abs(up-minUp)<0.00001;
+          const isBest=up!==null&&minUp!==null&&parseFloat(up.toFixed(2))===parseFloat(minUp.toFixed(2));
           const isTied=isBest&&tieCount>1;
 
           // entry row
@@ -1558,28 +1583,61 @@ function msRender(){
 
 document.getElementById('msInput').addEventListener('keydown',e=>{ if(e.key==='Enter') msAdd(); });
 
-/* ── SETTINGS CONTENT ── */
+let csPreviewCount = parseInt(ls('setting_cs_preview', 1));
 function renderSettingsBody(){
   const body = document.getElementById('settingsBody');
   body.innerHTML = '';
 
+  // Data card
   const dataCard = document.createElement('div');
   dataCard.className = 'item-row';
   dataCard.style.cssText = 'cursor:pointer;border-radius:var(--radius);';
-  const nm = document.createElement('div');
-  nm.className = 'item-name';
-  nm.style.background = 'var(--bg-2)';
-  nm.textContent = 'Data';
-  dataCard.appendChild(nm);
+  const dataNm = document.createElement('div');
+  dataNm.className = 'item-name';
+  dataNm.style.cssText = 'background:var(--bg-2);justify-content:center;font-weight:700;';
+  dataNm.textContent = 'Data';
+  dataCard.appendChild(dataNm);
   dataCard.onclick = openDataWindow;
   body.appendChild(dataCard);
 
+  // Section divider — COMP SHOP
+  const secDiv = document.createElement('div');
+  secDiv.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 2px 2px;flex-shrink:0;';
+  const l1 = document.createElement('div'); l1.style.cssText = 'flex:1;height:var(--border-width);background:var(--border-color);';
+  const sl = document.createElement('span'); sl.style.cssText = 'font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);flex-shrink:0;';
+  sl.textContent = 'Comp Shop';
+  const l2 = document.createElement('div'); l2.style.cssText = 'flex:1;height:var(--border-width);background:var(--border-color);';
+  secDiv.append(l1, sl, l2);
+  body.appendChild(secDiv);
+
+  // Comp Shop preview — label top, 1/2/3 bottom, both drop-height
+  const pw = document.createElement('div');
+  pw.style.cssText = 'border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;';
+
+  const pl = document.createElement('div');
+  pl.style.cssText = 'min-height:var(--drop-height);padding:4px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg-2);border-bottom:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);line-height:1.4;text-align:center;';
+  pl.innerHTML = 'Price Previews<br>on Closed Cards';
+  pw.appendChild(pl);
+
+  const tr = document.createElement('div');
+  tr.style.cssText = 'height:calc(var(--drop-height) / 2);display:flex;';
+  [1,2,3].forEach(n=>{
+    const btn = document.createElement('button');
+    btn.style.cssText = `flex:1;border:none;border-right:${n<3?'var(--border-width) solid var(--border-color)':'none'};font-size:11px;font-weight:800;cursor:pointer;background:${csPreviewCount===n?'var(--bg-4)':'var(--bg-3)'};color:${csPreviewCount===n?'var(--color-10)':'var(--muted)'};`;
+    btn.textContent = String(n);
+    btn.onclick = ()=>{ csPreviewCount=n; lsSet('setting_cs_preview',n); csRender(); renderSettingsBody(); };
+    tr.appendChild(btn);
+  });
+  pw.appendChild(tr);
+  body.appendChild(pw);
+
+  // Clear All Data
   const clearCard = document.createElement('div');
   clearCard.className = 'item-row';
-  clearCard.style.cssText = 'cursor:pointer;border-radius:var(--radius);';
+  clearCard.style.cssText = 'cursor:pointer;border-radius:var(--radius);margin-top:auto;';
   const clearNm = document.createElement('div');
   clearNm.className = 'item-name';
-  clearNm.style.cssText = 'background:var(--bg-2);color:var(--color-1);font-weight:800;';
+  clearNm.style.cssText = 'background:var(--bg-2);color:var(--color-1);font-weight:800;justify-content:center;';
   clearNm.textContent = 'Clear All Data';
   clearCard.appendChild(clearNm);
   clearCard.onclick = ()=>{ document.getElementById('clearConfirmOverlay').classList.add('open'); };
@@ -1595,6 +1653,7 @@ const DATA_KEYS = [
   'cat_custom', 'cat_deleted', 'cat_color_overrides',
   'unit_custom', 'unit_deleted',
   'cs_items', 'cs_entries',
+  'setting_cs_preview',
 ];
 
 function exportData(){
