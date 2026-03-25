@@ -69,10 +69,10 @@ body {
 }
 .data-window-close {
   width:45px; min-width:45px;
-  background: var(--bg-3); border:none;
+  background: #502424; border:none;
   border-left: var(--border-width) solid var(--border-color);
   display:flex; align-items:center; justify-content:center;
-  font-size:18px; font-weight:700; color:var(--muted); cursor:pointer;
+  font-size:22px; font-weight:900; color:#fff; cursor:pointer;
 }
 .data-tabs {
   height: var(--card-height); display:flex; flex-shrink:0;
@@ -318,13 +318,13 @@ body {
 }
 .modal-close {
   width:45px; min-width:45px;
-  background:var(--bg-3);
+  background:#502424;
   border-left:var(--border-width) solid var(--border-color);
   display:flex; align-items:center; justify-content:center;
-  font-size:18px; font-weight:700; color:var(--muted);
+  font-size:22px; font-weight:900; color:#fff;
   cursor:pointer; flex-shrink:0;
 }
-.modal-close:hover { background:var(--bg-2); color:var(--color-1); }
+.modal-close:hover { background:#6b2f2f; }
 .modal-grid {
   display:grid; grid-template-columns:1fr 1fr; gap:var(--margin);
   padding:var(--margin); overflow-y:auto; flex:1; background:var(--bg-1); align-content:start;
@@ -383,11 +383,11 @@ body {
 }
 
 
-#csThinkSlot, #msThinkSlot {
+#csThinkSlot, #msThinkSlot, #glThinkSlot {
   display: flex; flex-direction: column;
   gap: var(--margin);
 }
-#csThinkSlot:empty, #msThinkSlot:empty {
+#csThinkSlot:empty, #msThinkSlot:empty, #glThinkSlot:empty {
   display: none;
 }
 .thinking-dots span {
@@ -600,6 +600,11 @@ body {
 
   <!-- GROCERY LIST -->
   <div class="page active" id="pageGrocery">
+    <div class="ms-search-wrap">
+      <input type="text" id="glSearch" class="ms-search" placeholder="Search... type to find or add a new list item" oninput="glSearchInput()">
+      <button class="ms-search-clear" onclick="document.getElementById('glSearch').value='';glThinkPhraseSet=false;glQuickAddState=null;glQuickAddName='';glThinkCardEl=null;glRender();">×</button>
+    </div>
+    <div id="glThinkSlot"></div>
     <div class="add-panel" id="glAddPanel">
       <input type="text" id="glInput" placeholder="item name…" maxlength="80">
       <div class="add-row">
@@ -623,7 +628,7 @@ body {
   <!-- COMP SHOP -->
   <div class="page" id="pageShop">
     <div class="ms-search-wrap">
-      <input type="text" id="csSearch" class="ms-search" placeholder="Search…" oninput="csSearchInput()">
+      <input type="text" id="csSearch" class="ms-search" placeholder="Search... type to find or add a new list item" oninput="csSearchInput()">
       <button class="ms-search-clear" onclick="document.getElementById('csSearch').value='';csThinkPhraseSet=false;csQuickAddState=null;csQuickAddName='';csRender();">×</button>
     </div>
     <div class="view-toggle">
@@ -637,7 +642,7 @@ body {
   <!-- MY SHOP -->
   <div class="page" id="pageMyShop">
     <div class="ms-search-wrap">
-      <input type="text" id="msSearch" class="ms-search" placeholder="Search…" oninput="msSearchInput()">
+      <input type="text" id="msSearch" class="ms-search" placeholder="Search... type to find or add a new list item" oninput="msSearchInput()">
       <button class="ms-search-clear" onclick="document.getElementById('msSearch').value='';msThinkPhraseSet=false;msQuickAddState=null;msQuickAddName='';msRender();">×</button>
     </div>
     <div class="add-panel" id="msAddPanel">
@@ -706,6 +711,15 @@ body {
       </div>
     </div>
   </div>
+</div>
+
+<!-- SALES WINDOW -->
+<div class="data-window" id="salesWindow">
+  <div class="data-window-header">
+    <div class="data-window-title">My Sales</div>
+    <button class="data-window-close" onclick="closeSalesWindow()">×</button>
+  </div>
+  <div class="data-body" id="salesBody"></div>
 </div>
 
 <script>
@@ -789,7 +803,8 @@ function setPage(p){
   document.getElementById('page'+p).classList.add('active');
   document.getElementById('h'+p).classList.add('active');
   // clear search bars and quick-add state
-  const ms=document.getElementById('msSearch'); if(ms) ms.value='';
+  const gl=document.getElementById('glSearch'); if(gl) gl.value='';
+  glQuickAddState=null; glQuickAddName=''; glThinkPhraseSet=false; glThinkCardEl=null;
   const cs=document.getElementById('csSearch'); if(cs) cs.value='';
   msQuickAddState=null; msQuickAddName=''; msThinkPhraseSet=false; msThinkCardEl=null;
   csQuickAddState=null; csQuickAddName=''; csThinkPhraseSet=false; csThinkCardEl=null;
@@ -815,6 +830,7 @@ function openModal(ctx){
 function closeModal(){
   document.getElementById('modalOverlay').classList.remove('open');
   if(modalCtx==='ms-quickadd'){ window._msQuickAddName=null; msQuickAddState='confirm'; msRender(); }
+  if(modalCtx==='gl-quickadd'){ window._glQuickAddName=null; glQuickAddState='confirm'; glRender(); }
   if(modalCtx==='cs-quickadd-cat'){ csQuickAddState='confirm'; csRender(); }
   if(modalCtx==='cs-quickadd-unit'){ csQuickAddState='pick-unit'; csRender(); }
   modalCtx=null; modalSelPend=null; editingColorCatId=null;
@@ -878,8 +894,16 @@ function buildModalGrid(){
       } else {
         if(modalSelPend===item.id){
           modalSelPend=null;
-          if(modalCtx==='ms-quickadd'){
-            const name=window._msQuickAddName||'';
+          if(modalCtx==='gl-quickadd'){
+            const name=window._glQuickAddName||'';
+            if(name){
+              const newItem={id:'gl_'+Date.now()+Math.random(),name,category:item.id,checked:false};
+              const gl=ls('gl_items',[]); gl.push(newItem); lsSet('gl_items',gl);
+              msPopulate(name,item.id);
+              window._glQuickAddName=null; glQuickAddState='success'; glQuickAddName='';
+              closeModal(); glRender();
+            }
+          } else if(modalCtx==='ms-quickadd'){            const name=window._msQuickAddName||'';
             if(name){
               const newItem={id:'ms_'+Date.now()+Math.random(),name,category:item.id,unit:'unit'};
               const ms=ls('ms_items',[]); ms.push(newItem); lsSet('ms_items',ms);
@@ -1121,24 +1145,54 @@ function glFooterAction(){
 const GL_EMPTY_MSGS = [
   'Nothing here. Either you\'re incredibly prepared or dangerously optimistic about what\'s in the fridge.',
   'The list is empty. The fridge, however, tells a different story. A sad, sad story.',
-  'Wow, a completely empty grocery list. You\'re either a minimalist genius or about to have cereal for dinner again.',
+  'Wow, completely empty. You\'re either a minimalist genius or about to have cereal for dinner again.',
   'Nothing to buy! Unless you count the seventeen things you\'ll remember the moment you leave the store.',
-  'List empty. This is either peak organization or you\'ve fully committed to eating whatever is left in the back of the pantry.',
   'Zero items. Absolute legend. Or you just forgot to add anything. Hard to tell.',
   'The void is empty and so is your fridge probably. Just a hunch.',
-  'Clean list! Fresh start! This energy will last approximately until you open the fridge.',
-  'Nothing here yet. The groceries are out there. Waiting. Judging you for not adding them sooner.',
-  'You\'ve achieved an empty list. Your future self, standing in the cereal aisle at 9pm, is less impressed.',
-  'Totally empty. Either you shopped already (hero) or you live on vibes and leftover takeout (also valid).',
+  'Clean list! This energy will last approximately until you open the fridge.',
+  'Nothing here yet. The groceries are out there. Waiting. Judging you.',
   'Not a single item. Bold strategy. Let\'s see how the week plays out.',
   'This list is emptier than your promises to meal prep every Sunday.',
   'Nothing to buy, apparently. The mystery of what you\'ll eat tonight deepens.',
-  'Empty! Like the fridge, probably. And the wallet after you wing it at the store without a list.',
-  'A fresh, empty list. Full of hope. Full of potential. Completely devoid of actual groceries.',
   'No items added. Scientists are baffled. Nutritionists are concerned.',
-  'The list is blank. Somewhere, a grocery store is having a slow day and it\'s entirely your fault.',
+  'The list is blank. Somewhere, a grocery store is having a slow day.',
   'Nothing here. Just you, the app, and the quiet existential hum of an empty pantry.',
-  'List cleared! You are either very organized or about to order delivery. No judgment. Mostly judgment.',
+  'List cleared! You are either very organized or about to order delivery.',
+  'A fresh, empty list. Full of hope. Completely devoid of actual groceries.',
+  'Empty! Like the fridge, probably.',
+  'Spooky. Nothing. Absolutely nothing.',
+  'I checked twice. Still nothing. This is on you.',
+  'Oh wow you really said no groceries today huh.',
+  'The cupboards are whispering. They sound hungry.',
+  'SELECT * FROM grocery_list — 0 rows returned.',
+  'NULL. The whole thing is NULL.',
+  'Array is empty. Consider pushing some items.',
+  'No entries found. Have you tried turning the fridge on?',
+  'HTTP 404: Groceries Not Found.',
+  'All clear! Unfortunately \'all clear\' also means \'nothing to eat.\'',
+  'The list is gone and so, soon, will be your snacks.',
+  'I have searched every corner of this list. Nothing.',
+  'You know what\'s great on an empty list? Items. Just saying.',
+  'The shelves in here are very empty and also very disappointed.',
+  'It\'s quiet. Too quiet.',
+  'Wow look at all this nothing.',
+  'Technically the list exists. Spiritually, it does not.',
+  'Empty like my heart when there\'s no snacks.',
+  'Have you considered... groceries?',
+  'I can\'t work with nothing here. I\'m an app, not a magician.',
+  'The ghost of a grocery list haunts these halls.',
+  'Nothing to see here. Move along. Or... add something.',
+  'Blank. Pure. Clean. Probably about to get very chaotic at dinner.',
+  'I asked the universe and it said you need milk.',
+  'No items. The ancient prophecy remains unfulfilled.',
+  'The great grocery void stares back at you.',
+  'Crickets. Literal crickets. On an empty list.',
+  'This list has achieved a kind of minimalist enlightenment.',
+  'Empty. Which is philosophically interesting but nutritionally concerning.',
+  'Did you know the average person needs to eat? Something to think about.',
+  'Zero. Zilch. Nada. The three horsemen of an empty fridge.',
+  'The list has left the building. Please add items.',
+  'Nothing here! Your future self is already annoyed.',
 ];
 
 function glEmptyMsg(){
@@ -1194,8 +1248,18 @@ function makeGlRow(item, catColor, showDot){
     chk.style.background='#fff';
   }
 
-  const nm=document.createElement('div'); nm.className='item-name'; nm.textContent=item.name;
+  const nm=document.createElement('div'); nm.className='item-name';
   if(item.checked){ nm.style.textDecoration='line-through'; nm.style.opacity='0.5'; }
+  // check if this item has an active sale in cs_entries
+  const glMsItem = ls('ms_items',[]).find(i=>i.name.toLowerCase()===item.name.toLowerCase());
+  const glEntries = ls('cs_entries',[]);
+  const hasSale = glMsItem && glEntries.some(e=>e.itemId===glMsItem.id && isSaleActive(e));
+  const glSaleEntry = hasSale ? glEntries.find(e=>e.itemId===glMsItem.id && isSaleActive(e)) : null;
+  if(hasSale){
+    nm.innerHTML = item.name + ' &nbsp;<strong style="color:#ff8c00;font-size:9px;letter-spacing:0.08em;">SALE!</strong>' + (glSaleEntry ? ' &nbsp;<span style="color:#fff;font-size:9px;font-weight:600;">('+glSaleEntry.store+')</span>' : '');
+  } else {
+    nm.textContent = item.name;
+  }
 
   const del=document.createElement('button');
   del.className='item-del'+(glDelPend.has(item.id)?' pending':'');
@@ -1211,11 +1275,174 @@ function makeGlRow(item, catColor, showDot){
   return row;
 }
 
+/* ── GROCERY LIST SEARCH + QUICK ADD ── */
+let glQuickAddState = null;
+let glQuickAddName = '';
+let glSearchIdleTimer = null;
+let glThinkPhraseSet = false;
+let glCurrentThinkPhrase = null;
+let glThinkCardEl = null;
+
+function glPickNextThinkPhrase(){
+  const available = MS_THINK_PHRASES.filter(p=>p!==glCurrentThinkPhrase);
+  glCurrentThinkPhrase = available[Math.floor(Math.random()*available.length)];
+  glThinkCardEl = null;
+}
+
+function glGetOrCreateThinkCard(){
+  if(glThinkCardEl) return glThinkCardEl;
+  const card=document.createElement('div');
+  card.style.cssText=`height:var(--drop-height);display:flex;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;`;
+  const txt=document.createElement('div');
+  txt.style.cssText='flex:1;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--muted);font-style:italic;';
+  const phraseText=(glCurrentThinkPhrase||MS_THINK_PHRASES[0]).replace(/[.…]+$/,'');
+  txt.innerHTML=phraseText+'<span class="thinking-dots" style="font-style:normal;margin-left:1px;"><span>.</span><span>.</span><span>.</span></span>';
+  card.appendChild(txt);
+  glThinkCardEl=card;
+  return card;
+}
+
+function glSearchInput(){
+  clearTimeout(glSearchIdleTimer);
+  const q=(document.getElementById('glSearch')?.value||'').trim();
+  if(!q){ glThinkPhraseSet=false; glQuickAddState=null; glQuickAddName=''; glThinkCardEl=null; glRender(); return; }
+  if(glQuickAddState && glQuickAddState!=='pick-cat'){
+    glQuickAddState=null; glThinkCardEl=null; glPickNextThinkPhrase();
+  }
+  if(!glThinkPhraseSet){ glPickNextThinkPhrase(); glThinkPhraseSet=true; }
+  glRender();
+  glSearchIdleTimer=setTimeout(()=>{
+    const allMsItems=ls('ms_items',[]);
+    const qWords=q.toLowerCase().split(/\s+/);
+    const exists=allMsItems.some(i=>{ const nw=i.name.toLowerCase().split(/\s+/); return qWords.every(qw=>nw.includes(qw)); });
+    glQuickAddState=exists?'found':'confirm';
+    glQuickAddName=q;
+    glRender();
+  },2000);
+}
+
 function glRender(){
   const ap=document.getElementById('glAddPanel');
   if(ap) ap.style.display=glShowAddPanel?'':'none';
   const container=document.getElementById('glList'); container.innerHTML='';
   const items=ls('gl_items',[]);
+
+  const glQuery=(document.getElementById('glSearch')?.value||'').trim().toLowerCase();
+  const viewToggle=document.querySelector('#pageGrocery .view-toggle');
+  const footer=document.querySelector('#pageGrocery .footer');
+  const glThinkSlot=document.getElementById('glThinkSlot');
+
+  // hide view toggle and footer while searching
+  if(viewToggle) viewToggle.style.display=glQuery?'none':'';
+  if(footer) footer.style.display=glQuery?'none':'';
+
+  // manage think slot
+  if(glQuery && !glQuickAddState){
+    const card=glGetOrCreateThinkCard();
+    if(glThinkSlot && !glThinkSlot.contains(card)){ glThinkSlot.innerHTML=''; glThinkSlot.appendChild(card); }
+  } else if(glQuery && glQuickAddState){
+    if(glThinkSlot) glThinkSlot.innerHTML='';
+    const displayName=document.getElementById('glSearch')?.value.trim()||glQuery;
+    const queryWords=glQuery.split(/\s+/);
+    const exactExists=items.some(i=>{ const nw=i.name.toLowerCase().split(/\s+/); return queryWords.every(qw=>nw.includes(qw)); });
+
+    const qaCard=document.createElement('div');
+    qaCard.style.cssText=`height:var(--drop-height);display:flex;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;`;
+
+    if(glQuickAddState==='success'){
+      const ph=MS_SUCCESS_PHRASES[Math.floor(Math.random()*MS_SUCCESS_PHRASES.length)];
+      const txt=document.createElement('div');
+      txt.style.cssText='flex:1;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--color-4);';
+      txt.textContent=ph; qaCard.appendChild(txt);
+    } else if(exactExists||glQuickAddState==='found'){
+      const ph=MS_FOUND_PHRASES[Math.floor(Math.random()*MS_FOUND_PHRASES.length)];
+      const txt=document.createElement('div');
+      txt.style.cssText='flex:1;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--color-4);';
+      txt.textContent=ph; qaCard.appendChild(txt);
+    } else if(glQuickAddState==='confirm'){
+      const txt=document.createElement('div');
+      txt.style.cssText='flex:1;min-width:0;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+      txt.innerHTML=`Add <strong style="color:var(--color-10);margin:0 4px;">"${displayName}"</strong> to your list?`;
+      const yesBtn=document.createElement('div');
+      yesBtn.style.cssText='width:48px;min-width:48px;background:#347ab8;border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#fff;cursor:pointer;flex-shrink:0;';
+      yesBtn.textContent='YES!';
+      yesBtn.onclick=e=>{ e.stopPropagation(); glQuickAddName=displayName; glQuickAddState='pick-cat'; glRender(); };
+      qaCard.append(txt,yesBtn);
+    } else if(glQuickAddState==='pick-cat'){
+      const txt=document.createElement('div');
+      txt.style.cssText='flex:1;min-width:0;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--muted);';
+      txt.textContent='Pick your category';
+      const okBtn=document.createElement('div');
+      okBtn.style.cssText='width:48px;min-width:48px;background:var(--color-4);border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#000;cursor:pointer;flex-shrink:0;';
+      okBtn.textContent='OK!';
+      okBtn.onclick=e=>{
+        e.stopPropagation();
+        window._glQuickAddName=glQuickAddName;
+        modalCtx='gl-quickadd'; modalSelPend=null; modalDelPend.clear();
+        editingColorCatId=null; selectedRootIdx=0; newCatColor=ROOT_COLORS[0].shades[2];
+        document.getElementById('modalTitle').textContent='Category';
+        buildModalGrid();
+        document.getElementById('modalOverlay').classList.add('open');
+      };
+      qaCard.append(txt,okBtn);
+    }
+    container.appendChild(qaCard);
+  } else {
+    if(glThinkSlot) glThinkSlot.innerHTML='';
+  }
+
+  if(glQuery){
+    const msItems=ls('ms_items',[]);
+    const glItems2=ls('gl_items',[]);
+    const results=msItems.filter(i=>{ const ws=i.name.toLowerCase().split(/\s+/); return ws.some(w=>w.startsWith(glQuery)); }).sort((a,b)=>a.name.localeCompare(b.name));
+
+    // also check exact match against ms_items for idle timer
+    const exactExistsInMs=msItems.some(i=>{ const nw=i.name.toLowerCase().split(/\s+/); return glQuery.split(/\s+/).every(qw=>nw.includes(qw)); });
+
+    results.forEach(msItem=>{
+      const onList=glItems2.some(g=>g.name.toLowerCase()===msItem.name.toLowerCase());
+      const cat=getCats().find(c=>c.id===msItem.category);
+
+      // build a gl-style row
+      const row=document.createElement('div'); row.className='item-row';
+      row.style.cursor=onList?'default':'pointer';
+
+      const addSq=document.createElement('div'); addSq.className='item-check';
+      addSq.style.cssText=`width:var(--check-size,32px);min-width:var(--check-size,32px);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;cursor:${onList?'default':'pointer'};background:${onList?'var(--color-4)':'var(--bg-3)'};border-right:var(--border-width) solid var(--border-color);color:${onList?'#fff':'var(--muted)'};flex-shrink:0;`;
+      addSq.textContent=onList?'✓':'+';
+
+      const nm=document.createElement('div'); nm.className='item-name';
+      nm.style.background=onList?'var(--bg-3)':'var(--bg-2)';
+      nm.style.color=onList?'var(--muted)':'var(--color-10)';
+      // check sale
+      const glSaleEntry2=ls('cs_entries',[]).find(e=>e.itemId===msItem.id&&isSaleActive(e));
+      if(glSaleEntry2){
+        nm.innerHTML=msItem.name+' &nbsp;<strong style="color:#ff8c00;font-size:9px;letter-spacing:0.08em;">SALE!</strong> &nbsp;<span style="color:#fff;font-size:9px;font-weight:600;">('+glSaleEntry2.store+')</span>';
+      } else {
+        nm.textContent=msItem.name;
+      }
+
+      const catBadge=document.createElement('div');
+      catBadge.style.cssText=`width:25%;min-width:0;background:var(--bg-3);border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:${cat?.color||'var(--muted)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;flex-shrink:0;`;
+      catBadge.textContent=cat?.label||'';
+
+      row.append(addSq,nm,catBadge);
+
+      if(!onList){
+        row.onclick=()=>{
+          const gl=ls('gl_items',[]);
+          if(!gl.some(g=>g.name.toLowerCase()===msItem.name.toLowerCase())){
+            gl.push({id:'gl_'+Date.now()+Math.random(),name:msItem.name,category:msItem.category,checked:false});
+            lsSet('gl_items',gl);
+          }
+          glRender();
+        };
+      }
+      container.appendChild(row);
+    });
+    return;
+  }
+
   if(items.length===0){ showEmpty(container, glEmptyMsg()); return; }
 
   if(glViewMode==='simple'){
@@ -1927,16 +2154,56 @@ function msBuildRow(item){
 }
 
 const MS_THINK_PHRASES = [
-  'Hmm, let me think about that…',
-  'Searching the depths of the pantry…',
-  'Rifling through the shelves…',
-  'One moment, consulting the grocery gods…',
-  'Checking every aisle…',
-  'Scanning the stockroom…',
-  'Cross-referencing with the pantry oracle…',
-  'Squinting at the inventory…',
-  'Flipping through the catalogue…',
-  'On the hunt…',
+  'Hmm, let me think about that',
+  'Searching the depths of the pantry',
+  'Rifling through the shelves',
+  'One moment, consulting the grocery gods',
+  'Checking every aisle',
+  'Scanning the stockroom',
+  'Cross-referencing with the pantry oracle',
+  'Squinting at the inventory',
+  'Flipping through the catalogue',
+  'On the hunt',
+  'Hang on, I\'m thinking',
+  'Give me a second here',
+  'Ugh, where did I put that',
+  'Oh come ON, it has to be here somewhere',
+  'I swear I saw this five minutes ago',
+  'Are you kidding me right now',
+  'WHY is this so hard',
+  'Fine. FINE. Looking.',
+  'I don\'t even work here',
+  'SELECT * FROM pantry WHERE patience > 0',
+  'Running query against the snack database',
+  'Indexing the fridge',
+  'Compiling results, please stand by',
+  'Packet sent, awaiting response',
+  'Scanning barcode... beep... beep...',
+  'Initiating grocery search protocol',
+  'Memory address not found, retrying',
+  'Cache miss. Going to disk.',
+  'I\'m not drunk, YOU\'re drunk',
+  'Hold on the shelf is spinning',
+  'The items are all friends here',
+  'Every product has a soul you know',
+  'What if the grocery list... listed US',
+  'I once knew a can of beans. Good times.',
+  'Shhh the tomatoes are sleeping',
+  'The flour told me to take my time',
+  'Time is a flat circle and so is this cracker',
+  'Looking for it in the fourth dimension',
+  'Communing with the ancient spirits of aisle 7',
+  'Asking the universe for guidance',
+  'Checking between the couch cushions',
+  'Did you try turning the pantry off and on',
+  'Have you considered just eating air',
+  'Searching... searching... still searching',
+  'One moment, adjusting my monocle',
+  'Fascinating query, I shall investigate',
+  'Dispatching search gnomes immediately',
+  'My psychic says it\'s in the back',
+  'Consulting the ancient scrolls',
+  'Rummaging with great purpose',
 ];
 
 const MS_FOUND_PHRASES = [
@@ -1970,7 +2237,8 @@ let msQuickAddName = '';
 let msSearchIdleTimer = null;
 let msThinkTimer = null;
 let msCurrentThinkPhrase = MS_THINK_PHRASES[0];
-csCurrentThinkPhrase = MS_THINK_PHRASES[0]; // now safe to initialize
+csCurrentThinkPhrase = MS_THINK_PHRASES[0];
+glCurrentThinkPhrase = MS_THINK_PHRASES[0];
 
 let msThinkCardEl = null;
 
@@ -2149,7 +2417,7 @@ function renderSettingsBody(){
   const MS_COLOR  = '#373243'; // GT50 color-6-4 charcoal purple
   const DATA_COLOR= '#1d4040'; // teal, GT50 palette style
 
-  function makeSimpleCard(label, bgColor, textColor, onclick){
+  function makeSimpleCard(label, bgColor, textColor, handler){
     const card=document.createElement('div');
     card.className='item-row';
     card.style.cssText='cursor:pointer;border-radius:var(--radius);';
@@ -2158,7 +2426,7 @@ function renderSettingsBody(){
     nm.style.cssText=`background:${bgColor};color:${textColor};justify-content:center;font-weight:800;letter-spacing:0.06em;`;
     nm.textContent=label;
     card.appendChild(nm);
-    card.onclick=onclick;
+    card.onclick=handler;
     return card;
   }
 
@@ -2174,11 +2442,11 @@ function renderSettingsBody(){
 
   function makeOnOffCard(labelHtml, value, onToggle, headerBg){
     const wrap=document.createElement('div');
-    wrap.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;';
+    wrap.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;height:var(--drop-height);box-sizing:border-box;display:flex;flex-direction:column;';
     const lbl=document.createElement('div');
-    lbl.style.cssText=`min-height:var(--drop-height);padding:4px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:${headerBg||'var(--bg-2)'};border-bottom:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#fff;line-height:1.4;text-align:center;`;
+    lbl.style.cssText=`flex:1;padding:0 8px;display:flex;align-items:center;justify-content:center;background:${headerBg||'var(--bg-2)'};border-bottom:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
     lbl.innerHTML=labelHtml; wrap.appendChild(lbl);
-    const row=document.createElement('div'); row.style.cssText='height:calc(var(--drop-height) / 2);display:flex;';
+    const row=document.createElement('div'); row.style.cssText='flex:1;display:flex;';
     ['On','Off'].forEach((t,i)=>{
       const on=i===0; const active=on?value:!value;
       const btn=document.createElement('button');
@@ -2193,22 +2461,26 @@ function renderSettingsBody(){
   // Data card — teal
   body.appendChild(makeSimpleCard('Data', DATA_COLOR, '#fff', openDataWindow));
 
+  // My Sales card — charcoal orange
+  const SALES_COLOR = '#4f3010'; // GT50 color-2-4 charcoal orange
+  body.appendChild(makeSimpleCard('My List of Sales', SALES_COLOR, '#fff', openSalesWindow));
+
   // Grocery List
   body.appendChild(makeSettingDivider('Grocery List'));
-  body.appendChild(makeOnOffCard('Show Add<br>Section', glShowAddPanel, v=>{
+  body.appendChild(makeOnOffCard('Show Add Section', glShowAddPanel, v=>{
     glShowAddPanel=v; lsSet('setting_gl_add_panel',v); glRender(); renderSettingsBody();
   }, GL_COLOR));
 
   // Comp Shop
   body.appendChild(makeSettingDivider('Comp Shop'));
   const pw=document.createElement('div');
-  pw.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;';
+  pw.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;height:var(--drop-height);box-sizing:border-box;display:flex;flex-direction:column;';
   const pl=document.createElement('div');
-  pl.style.cssText=`min-height:var(--drop-height);padding:4px 8px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:${CS_COLOR};border-bottom:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#fff;line-height:1.4;text-align:center;`;
-  pl.innerHTML='Price Previews<br>on Closed Cards';
+  pl.style.cssText=`flex:1;padding:0 8px;display:flex;align-items:center;justify-content:center;background:${CS_COLOR};border-bottom:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
+  pl.innerHTML='Price Previews on Closed Cards';
   pw.appendChild(pl);
   const tr=document.createElement('div');
-  tr.style.cssText='height:calc(var(--drop-height) / 2);display:flex;';
+  tr.style.cssText='flex:1;display:flex;';
   [1,2,3].forEach(n=>{
     const btn=document.createElement('button');
     btn.style.cssText=`flex:1;border:none;border-right:${n<3?'var(--border-width) solid var(--border-color)':'none'};font-size:11px;font-weight:800;cursor:pointer;background:${csPreviewCount===n?'var(--bg-4)':'var(--bg-3)'};color:${csPreviewCount===n?'var(--color-10)':'var(--muted)'};`;
@@ -2221,10 +2493,10 @@ function renderSettingsBody(){
 
   // My Store
   body.appendChild(makeSettingDivider('My Store'));
-  body.appendChild(makeOnOffCard('Show Add<br>Section', msShowAddPanel, v=>{
+  body.appendChild(makeOnOffCard('Show Add Section', msShowAddPanel, v=>{
     msShowAddPanel=v; lsSet('setting_ms_add_panel',v); msRender(); renderSettingsBody();
   }, MS_COLOR));
-  body.appendChild(makeOnOffCard('Add From<br>Category Dropdowns', msInlineAdd, v=>{
+  body.appendChild(makeOnOffCard('Add From Category Dropdowns', msInlineAdd, v=>{
     msInlineAdd=v; lsSet('setting_ms_inline_add',v); msRender(); renderSettingsBody();
   }, MS_COLOR));
   body.appendChild(makeSimpleCard('Categories', MS_COLOR, '#fff', ()=>{ closeSettings(); openModal('ms'); }));
@@ -2341,6 +2613,131 @@ function clearAllData(){
   glOpenState={}; msOpenState={}; csOpenState={};
   glRender(); csRender(); msRender();
   updateGlFooterBtn();
+}
+
+/* ── SALES WINDOW ── */
+function openSalesWindow(){
+  closeSettings();
+  renderSalesBody();
+  document.getElementById('salesWindow').classList.add('open');
+}
+
+function closeSalesWindow(){
+  document.getElementById('salesWindow').classList.remove('open');
+}
+
+function renderSalesBody(){
+  const body = document.getElementById('salesBody');
+  body.innerHTML = '';
+  const items = ls('ms_items', []);
+  const entries = ls('cs_entries', []);
+
+  const saleEntries = entries.filter(e => isSaleActive(e))
+    .sort((a,b)=>{
+      const na=items.find(i=>i.id===a.itemId)?.name||'';
+      const nb=items.find(i=>i.id===b.itemId)?.name||'';
+      return na.localeCompare(nb);
+    });
+
+  if(!saleEntries.length){
+    const empty = document.createElement('div');
+    empty.className = 'empty-state';
+    empty.textContent = 'No active sales right now.';
+    body.appendChild(empty);
+    return;
+  }
+
+  saleEntries.forEach(entry=>{
+    const item = items.find(i=>i.id===entry.itemId);
+    if(!item) return;
+    const unit = getUnit(item.unit||'unit');
+    const regularUp = entry.qty>0 ? entry.price/entry.qty : null;
+    const saleUp = entry.sale.price/entry.qty;
+    const saving = regularUp!==null ? regularUp-saleUp : null;
+    const endD = new Date(entry.sale.ends+'T00:00:00');
+    const now = new Date(); now.setHours(0,0,0,0);
+    const diff = Math.round((endD-now)/(1000*60*60*24));
+    let endStr;
+    if(diff<=0) endStr='Ends Today';
+    else if(diff===1) endStr='Ends Tomorrow';
+    else endStr='Ends '+(endD.getMonth()+1)+'/'+endD.getDate()+'/'+String(endD.getFullYear()).slice(2);
+
+    const card = document.createElement('div');
+    card.style.cssText = `border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;background:var(--bg-2);`;
+
+    // top — item name + store name centered
+    const nameRow = document.createElement('div');
+    nameRow.style.cssText = `display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 12px;border-bottom:var(--border-width) solid var(--border-color);gap:3px;`;
+    const itemName = document.createElement('div');
+    itemName.style.cssText = 'font-size:13px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-10);';
+    itemName.textContent = item.name;
+    const storeName = document.createElement('div');
+    storeName.style.cssText = 'font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);';
+    storeName.textContent = entry.store;
+    nameRow.append(itemName, storeName);
+    card.appendChild(nameRow);
+
+    // data row — price | savings | date
+    const dataRow = document.createElement('div');
+    dataRow.style.cssText = `display:flex;align-items:stretch;`;
+
+    // left — regular crossed out + sale price in orange
+    const priceCol = document.createElement('div');
+    priceCol.style.cssText = 'flex:1;background:var(--bg-3);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 4px;gap:3px;border-right:var(--border-width) solid var(--border-color);';
+    const regPrice = document.createElement('div');
+    regPrice.style.cssText = 'font-size:9px;font-weight:600;color:var(--muted);text-decoration:line-through;';
+    regPrice.textContent = regularUp!==null ? '$'+regularUp.toFixed(2)+'/'+unit.label : '—';
+    const salePriceEl = document.createElement('div');
+    salePriceEl.style.cssText = 'font-size:11px;font-weight:800;color:#d97f30;';
+    salePriceEl.textContent = '$'+saleUp.toFixed(2)+'/'+unit.label;
+    priceCol.append(regPrice, salePriceEl);
+
+    // middle — SAVINGS! + amount
+    const savCol = document.createElement('div');
+    savCol.style.cssText = 'flex:1;background:#374151;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 4px;gap:3px;border-right:var(--border-width) solid var(--border-color);';
+    const savLabel = document.createElement('div');
+    savLabel.style.cssText = 'font-size:8px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:#7dd4a8;';
+    savLabel.textContent = 'SAVINGS!';
+    const savAmt = document.createElement('div');
+    savAmt.style.cssText = 'font-size:11px;font-weight:800;color:#7dd4a8;';
+    savAmt.textContent = saving!==null ? '$'+saving.toFixed(2)+'/'+unit.label : '—';
+    savCol.append(savLabel, savAmt);
+
+    // right — end date
+    const dateCol = document.createElement('div');
+    dateCol.style.cssText = `flex:1;background:var(--bg-3);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 4px;gap:3px;`;
+    const dateVal = document.createElement('div');
+    dateVal.style.cssText = `font-size:10px;font-weight:800;color:${diff<=1?'#d97f30':'var(--muted)'};white-space:nowrap;`;
+    const dateStr = diff<=0?'Today':diff===1?'Tomorrow':(endD.getMonth()+1)+'/'+endD.getDate()+'/'+String(endD.getFullYear()).slice(2);
+    dateVal.textContent = 'SALE ENDS ' + dateStr;
+    const daysEl = document.createElement('div');
+    daysEl.style.cssText = `font-size:8px;font-weight:600;color:${diff<=1?'#d97f30':'var(--muted)'};`;
+    daysEl.textContent = diff<=0?'(today)':diff===1?'(1 day)':'('+diff+' days)';
+    dateCol.append(dateVal, daysEl);
+
+    dataRow.append(priceCol, savCol, dateCol);
+    card.appendChild(dataRow);
+
+    // add to grocery list row
+    const glItems = ls('gl_items', []);
+    const alreadyInList = glItems.some(g => g.name.toLowerCase() === item.name.toLowerCase());
+    const glRow = document.createElement('div');
+    glRow.style.cssText = `height:var(--drop-height);display:flex;align-items:center;justify-content:center;border-top:var(--border-width) solid var(--border-color);background:${alreadyInList ? '#1d442d' : '#4f3010'};cursor:${alreadyInList ? 'default' : 'pointer'};font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;`;
+    glRow.textContent = alreadyInList ? 'Added to Grocery List' : 'Add to Grocery List';
+    if(!alreadyInList){
+      glRow.onclick = ()=>{
+        const gl = ls('gl_items', []);
+        if(!gl.some(g=>g.name.toLowerCase()===item.name.toLowerCase())){
+          gl.push({id:'gl_'+Date.now()+Math.random(), name:item.name, category:item.category||'other', checked:false});
+          lsSet('gl_items', gl);
+        }
+        glRender();
+        renderSalesBody();
+      };
+    }
+    card.appendChild(glRow);
+    body.appendChild(card);
+  });
 }
 
 /* ── SETTINGS ── */
