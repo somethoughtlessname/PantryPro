@@ -1195,15 +1195,24 @@ const GL_EMPTY_MSGS = [
   'Nothing here! Your future self is already annoyed.',
 ];
 
+let GL_SESSION_EMPTY_MSG = GL_EMPTY_MSGS[Math.floor(Math.random()*GL_EMPTY_MSGS.length)];
+let GL_LAST_EMPTY = false;
+
 function glEmptyMsg(){
-  return GL_EMPTY_MSGS[Math.floor(Math.random()*GL_EMPTY_MSGS.length)];
+  if(!GL_LAST_EMPTY){
+    GL_SESSION_EMPTY_MSG = GL_EMPTY_MSGS[Math.floor(Math.random()*GL_EMPTY_MSGS.length)];
+    GL_LAST_EMPTY = true;
+  }
+  return GL_SESSION_EMPTY_MSG;
 }
 
 function updateGlFooterBtn(){
   const items = ls('gl_items', []);
+  const footer = document.querySelector('#pageGrocery .footer');
   const btn = document.getElementById('glFooterBtn');
-  if(items.length===0){ btn.style.display='none'; return; }
-  btn.style.display='';
+  if(!btn) return;
+  if(items.length===0){ if(footer) footer.style.display='none'; return; }
+  if(footer) footer.style.display='';
   const allUnchecked = items.every(i => !i.checked);
   if(allUnchecked && glClearAllPending){
     btn.textContent = 'Confirm Clear All';
@@ -1330,11 +1339,13 @@ function glRender(){
   const glQuery=(document.getElementById('glSearch')?.value||'').trim().toLowerCase();
   const viewToggle=document.querySelector('#pageGrocery .view-toggle');
   const footer=document.querySelector('#pageGrocery .footer');
+  updateGlFooterBtn();
+  if(glQuery && footer) footer.style.display='none';
   const glThinkSlot=document.getElementById('glThinkSlot');
 
   // hide view toggle and footer while searching
   if(viewToggle) viewToggle.style.display=glQuery?'none':'';
-  if(footer) footer.style.display=glQuery?'none':'';
+  // footer visibility always controlled by updateGlFooterBtn, not here
 
   // manage think slot
   if(glQuery && !glQuickAddState){
@@ -1443,6 +1454,7 @@ function glRender(){
     return;
   }
 
+  if(items.length > 0) GL_LAST_EMPTY = false;
   if(items.length===0){ showEmpty(container, glEmptyMsg()); return; }
 
   if(glViewMode==='simple'){
