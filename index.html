@@ -383,11 +383,11 @@ body {
 }
 
 
-#csThinkSlot, #msThinkSlot, #glThinkSlot {
+#csThinkSlot, #msThinkSlot, #glThinkSlot, #ptThinkSlot {
   display: flex; flex-direction: column;
   gap: var(--margin);
 }
-#csThinkSlot:empty, #msThinkSlot:empty, #glThinkSlot:empty {
+#csThinkSlot:empty, #msThinkSlot:empty, #glThinkSlot:empty, #ptThinkSlot:empty {
   display: none;
 }
 .thinking-dots span {
@@ -586,12 +586,76 @@ body {
   font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
   padding:0 10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px;
 }
+/* ── PANTRY TAB ── */
+#pagePantry {
+  flex-direction: column; gap: var(--margin);
+  overflow-y: auto;
+}
+.pt-card {
+  border: 3px solid #000;
+  border-radius: 8px; overflow: hidden; flex-shrink: 0;
+  width: 100%;
+}
+.pt-main {
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  box-sizing: border-box;
+  display: flex; align-items: stretch;
+  position: relative; overflow: hidden; cursor: pointer;
+}
+.pt-btn {
+  width: 32px; min-width: 32px; max-width: 32px;
+  height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700;
+  z-index: 2; flex-shrink: 0; cursor: pointer;
+  border: none; background: var(--bg-3); color: var(--color-10);
+  position: relative; box-sizing: border-box;
+}
+.pt-btn.left  { border-right: 3px solid #000; }
+.pt-btn.right { border-left:  3px solid #000; }
+.pt-center {
+  flex: 1; height: 32px; box-sizing: border-box;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 2; position: relative;
+  pointer-events: none; background: var(--bg-2); overflow: hidden;
+}
+.pt-name {
+  font-size: 10px; font-weight: 700; text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%; padding: 0 6px; line-height: 1; margin: 0;
+}
+.pt-value {
+  font-size: 8px; font-weight: 600; letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.7); text-align: center; line-height: 1; margin: 0;
+}
+.pt-expand {
+  background: var(--bg-3); overflow: hidden;
+  max-height: 0; transition: max-height 0.3s ease;
+}
+.pt-expand.open {
+  max-height: 600px;
+  border-top: var(--border-width) solid var(--border-color);
+}
+.pt-graph {
+  height: 80px; display: flex; align-items: flex-end;
+  padding: 8px 10px 6px; gap: 4px;
+}
+.pt-bar-wrap {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end; gap: 3px; cursor: pointer;
+}
+.pt-bar { width: 100%; border-radius: 2px 2px 0 0; min-height: 2px; }
+.pt-day { font-size: 6px; font-weight: 600; color: var(--muted); }
 </style>
 </head>
 <body>
 
 <div class="header-tab">
   <button class="header-tab-btn active" id="hGrocery" onclick="setPage('Grocery')">Grocery List</button>
+  <button class="header-tab-btn" id="hPantry" onclick="setPage('Pantry')">My Pantry</button>
   <button class="header-tab-btn" id="hShop" onclick="setPage('Shop')">Comp Shop</button>
   <button class="header-tab-btn" id="hMyShop" onclick="setPage('MyShop')">My Store</button>
 </div>
@@ -623,6 +687,15 @@ body {
     <div class="footer">
       <button class="btn-ghost" id="glFooterBtn" onclick="glFooterAction()">Uncheck All</button>
     </div>
+  </div>
+
+  <!-- MY PANTRY -->
+  <div class="page" id="pagePantry">
+    <div class="ms-search-wrap">
+      <input type="text" id="ptSearch" class="ms-search" placeholder="Search... type to find or add an item" oninput="ptSearchInput()">
+      <button class="ms-search-clear" onclick="document.getElementById('ptSearch').value='';ptThinkPhraseSet=false;ptQuickAddState=null;ptQuickAddName='';ptThinkCardEl=null;ptRender();">×</button>
+    </div>
+    <div id="ptThinkSlot"></div>
   </div>
 
   <!-- COMP SHOP -->
@@ -808,9 +881,11 @@ function setPage(p){
   const cs=document.getElementById('csSearch'); if(cs) cs.value='';
   msQuickAddState=null; msQuickAddName=''; msThinkPhraseSet=false; msThinkCardEl=null;
   csQuickAddState=null; csQuickAddName=''; csThinkPhraseSet=false; csThinkCardEl=null;
+  glOpenState={}; csOpenState={}; msOpenState={};
   if(p==='Grocery') glRender();
-  if(p==='Shop') csRender();
-  if(p==='MyShop') msRender();
+  if(p==='Pantry'){ ptCardRegistry.forEach(c=>c.close()); ptCardRegistry=[]; ptOpenSet.clear(); ptActiveFilter='all'; ptViewMode='pantry'; const pts=document.getElementById('ptSearch'); if(pts) pts.value=''; ptThinkPhraseSet=false; ptQuickAddState=null; ptQuickAddName=''; ptThinkCardEl=null; ptRender(); }
+  if(p==='Shop'){ csInvalidateSortCache(); csRender(); }
+  if(p==='MyShop'){ msInvalidateSortCache(); msRender(); }
 }
 
 /* ── MODAL ── */
@@ -833,6 +908,8 @@ function closeModal(){
   if(modalCtx==='gl-quickadd'){ window._glQuickAddName=null; glQuickAddState='confirm'; glRender(); }
   if(modalCtx==='cs-quickadd-cat'){ csQuickAddState='confirm'; csRender(); }
   if(modalCtx==='cs-quickadd-unit'){ csQuickAddState='pick-unit'; csRender(); }
+  if(modalCtx==='pt-quickadd-cat'){ ptQuickAddState='confirm'; const q=(document.getElementById('ptSearch')?.value||'').trim(); ptRenderThinkSlot(q); }
+  if(modalCtx==='pt-quickadd-unit'){ ptQuickAddState='pick-unit'; const q=(document.getElementById('ptSearch')?.value||'').trim(); ptRenderThinkSlot(q); }
   modalCtx=null; modalSelPend=null; editingColorCatId=null;
 }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
@@ -851,7 +928,7 @@ function buildModalGrid(){
   const grid=document.getElementById('modalGrid');
   grid.innerHTML='';
   grid.style.gridTemplateColumns='1fr 1fr';
-  const isUnit = modalCtx==='unit' || modalCtx==='ms-unit' || modalCtx==='cs-quickadd-unit';
+  const isUnit = modalCtx==='unit' || modalCtx==='ms-unit' || modalCtx==='cs-quickadd-unit' || modalCtx==='pt-quickadd-unit';
   const list=isUnit?getUnits():getCats();
 
   let curSel;
@@ -859,6 +936,8 @@ function buildModalGrid(){
   else if(modalCtx==='ms-unit'){ const it=ls('ms_items',[]).find(i=>i.id===msEditItemId); curSel=it?.unit||'unit'; }
   else if(modalCtx==='ms-cat'){ const it=ls('ms_items',[]).find(i=>i.id===msEditItemId); curSel=it?.category||'other'; }
   else if(modalCtx==='cs-quickadd-unit') curSel=csQuickAddUnit||'unit';
+  else if(modalCtx==='pt-quickadd-unit') curSel=ptQuickAddUnit||'unit';
+  else if(modalCtx==='pt-quickadd-cat') curSel=ptQuickAddCat||'other';
   else if(modalCtx==='cs-quickadd-cat') curSel=csQuickAddCat||'other';
   else curSel=modalCtx==='gl'?glSelectedCat:msSelectedCat;
 
@@ -886,6 +965,7 @@ function buildModalGrid(){
           modalSelPend=null;
           if(modalCtx==='ms-unit'){ msSetUnit(msEditItemId,item.id); closeModal(); }
           else if(modalCtx==='cs-quickadd-unit'){ csQuickAddUnit=item.id; closeModal(); csQuickAddState='done'; csQuickAddFinalise(); }
+          else if(modalCtx==='pt-quickadd-unit'){ ptQuickAddUnit=item.id; closeModal(); ptQuickAddState='done'; ptQuickAddFinalise(); }
           else { csSelectedUnit=item.id; updateUnitBtn(); closeModal(); }
         } else {
           modalSelPend=item.id; buildModalGrid();
@@ -900,6 +980,7 @@ function buildModalGrid(){
               const newItem={id:'gl_'+Date.now()+Math.random(),name,category:item.id,checked:false};
               const gl=ls('gl_items',[]); gl.push(newItem); lsSet('gl_items',gl);
               msPopulate(name,item.id);
+              trackCatUsage(item.id);
               window._glQuickAddName=null; glQuickAddState='success'; glQuickAddName='';
               closeModal(); glRender();
             }
@@ -912,6 +993,8 @@ function buildModalGrid(){
             }
           } else if(modalCtx==='cs-quickadd-cat'){
             csQuickAddCat=item.id; closeModal(); csQuickAddState='pick-unit'; csRender();
+          } else if(modalCtx==='pt-quickadd-cat'){
+            ptQuickAddCat=item.id; closeModal(); ptQuickAddState='pick-unit'; const q=(document.getElementById('ptSearch')?.value||'').trim(); ptRenderThinkSlot(q);
           } else if(modalCtx==='ms-cat'){ msSetCat(msEditItemId,item.id); closeModal(); }
           else if(modalCtx==='gl'){ glSelectedCat=item.id; updateGlBtn(); closeModal(); }
           else { msSelectedCat=item.id; updateMsBtn(); closeModal(); }
@@ -1092,6 +1175,7 @@ function glAdd(){
   const inp=document.getElementById('glInput'), name=inp.value.trim(); if(!name) return;
   const items=ls('gl_items',[]); items.push({id:'gl_'+Date.now()+Math.random(),name,category:glSelectedCat,checked:false});
   lsSet('gl_items',items);
+  trackCatUsage(glSelectedCat);
   msPopulate(name,glSelectedCat);
   inp.value=''; inp.focus();
   glRender(); msRender();
@@ -1284,6 +1368,60 @@ function makeGlRow(item, catColor, showDot){
   return row;
 }
 
+/* ── SMART SORT ── */
+let smartSort = ls('setting_smart_sort', true);
+
+function trackCatUsage(catId){
+  const usage = ls('cat_usage', {});
+  usage[catId] = (usage[catId]||0) + 1;
+  lsSet('cat_usage', usage);
+}
+
+let csCachedSortedCats = null;
+let csSortedCatIds = null;
+let msSortedCatIds = null;
+
+function csInvalidateSortCache(){
+  csCachedSortedCats = null;
+  csSortedCatIds = null;
+}
+
+function msInvalidateSortCache(){
+  msSortedCatIds = null;
+}
+
+function msGetSortedCats(){
+  if(!msSortedCatIds){
+    const sorted = smartSortCats([...getCats()].sort((a,b)=>a.label.localeCompare(b.label)));
+    msSortedCatIds = sorted.map(c=>c.id);
+  }
+  const allCats = getCats();
+  return msSortedCatIds.map(id=>allCats.find(c=>c.id===id)).filter(Boolean);
+}
+
+function csGetSortedCats(displayItems){
+  // build the locked order once per tab visit
+  if(!csSortedCatIds){
+    const sorted = smartSortCats(getCats());
+    csSortedCatIds = sorted.map(c=>c.id);
+  }
+  // return cats in locked order, filtered to only those with items
+  const allCats = getCats();
+  return csSortedCatIds
+    .map(id=>allCats.find(c=>c.id===id))
+    .filter(c=>c && displayItems.some(i=>i.category===c.id));
+}
+
+function smartSortCats(cats){
+  if(!smartSort) return cats;
+  const usage = ls('cat_usage', {});
+  return [...cats].sort((a,b) => {
+    const diff = (usage[b.id]||0) - (usage[a.id]||0);
+    if(diff !== 0) return diff;
+    return a.label.localeCompare(b.label); // alphabetical tiebreak
+  });
+}
+
 /* ── GROCERY LIST SEARCH + QUICK ADD ── */
 let glQuickAddState = null;
 let glQuickAddName = '';
@@ -1445,6 +1583,7 @@ function glRender(){
           if(!gl.some(g=>g.name.toLowerCase()===msItem.name.toLowerCase())){
             gl.push({id:'gl_'+Date.now()+Math.random(),name:msItem.name,category:msItem.category,checked:false});
             lsSet('gl_items',gl);
+            trackCatUsage(msItem.category);
           }
           glRender();
         };
@@ -1791,7 +1930,7 @@ function csRender(){
   if(csQuery){
     displayItems=items.filter(i=>{ const ws=i.name.toLowerCase().split(/\s+/); return ws.some(w=>w.startsWith(csQuery)); });
     // show as simple flat list, no category dividers
-    const cats=getCats().filter(c=>displayItems.some(i=>i.category===c.id));
+    const cats=csGetSortedCats(displayItems);
     cats.forEach(cat=>{
       const catItems=displayItems.filter(i=>i.category===cat.id);
       catItems.forEach(item=>container.appendChild(buildCsItem(item)));
@@ -1800,7 +1939,7 @@ function csRender(){
   }
 
   if(displayItems.length===0){ showEmpty(container,'Add items in My Store first.'); return; }
-  const cats=getCats().filter(c=>displayItems.some(i=>i.category===c.id));
+  const cats=csGetSortedCats(displayItems);
 
   // shared: build a full cs item section (header + body)
   function buildCsItem(item){
@@ -2034,7 +2173,9 @@ function msAddToGrocery(id){
   const gl=ls('gl_items',[]);
   if(!gl.some(i=>i.name.toLowerCase()===item.name.toLowerCase()&&!i.checked)){
     gl.push({id:'gl_'+Date.now()+Math.random(),name:item.name,category:item.category,checked:false});
-    lsSet('gl_items',gl); glRender();
+    lsSet('gl_items',gl);
+    trackCatUsage(item.category);
+    glRender();
   }
   msAddedSet.add(id); msRender();
   setTimeout(()=>{ msAddedSet.delete(id); msRender(); },1500);
@@ -2386,7 +2527,7 @@ function msRender(){
   msQuickAddState=null; msQuickAddName='';
 
   // all cats alphabetically, including empty ones
-  const allCats=[...getCats()].sort((a,b)=>a.label.localeCompare(b.label));
+  const allCats=msGetSortedCats();
   allCats.forEach(cat=>{
     const catItems=items.filter(i=>i.category===cat.id).sort((a,b)=>a.name.localeCompare(b.name));
     const stage=getMsStage(cat.id);
@@ -2484,6 +2625,51 @@ function renderSettingsBody(){
   }, GL_COLOR));
 
   // Comp Shop
+  body.appendChild(makeSettingDivider('Sorting'));
+  // Smart Sort card — 3 sections: label | on/off | reset counts
+  let resetCountsPending = false;
+  const ssWrap = document.createElement('div');
+  ssWrap.style.cssText = 'border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;';
+
+  // top label
+  const ssLbl = document.createElement('div');
+  ssLbl.style.cssText = `flex:1;min-height:calc((var(--drop-height) - var(--border-width)) / 2);padding:0 8px;display:flex;align-items:center;justify-content:center;background:#1d3a3a;border-bottom:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#fff;white-space:nowrap;`;
+  ssLbl.textContent = 'Smart Sort';
+
+  // on/off row
+  const ssRow = document.createElement('div');
+  ssRow.style.cssText = `min-height:calc((var(--drop-height) - var(--border-width)) / 2);display:flex;border-bottom:var(--border-width) solid var(--border-color);`;
+  ['On','Off'].forEach((t,i)=>{
+    const on=i===0; const active=on?smartSort:!smartSort;
+    const btn=document.createElement('button');
+    btn.style.cssText=`flex:1;border:none;border-right:${on?'var(--border-width) solid var(--border-color)':'none'};font-size:9px;font-weight:800;cursor:pointer;background:${active?'var(--bg-4)':'var(--bg-3)'};color:${active?'var(--color-10)':'var(--muted)'};`;
+    btn.textContent=t;
+    btn.onclick=()=>{ smartSort=on; lsSet('setting_smart_sort',on); csInvalidateSortCache(); msInvalidateSortCache(); csRender(); msRender(); renderSettingsBody(); };
+    ssRow.appendChild(btn);
+  });
+
+  // reset row
+  const ssReset = document.createElement('div');
+  ssReset.style.cssText = `min-height:calc((var(--drop-height) - var(--border-width)) / 2);padding:0 8px;display:flex;align-items:center;justify-content:center;background:#1d4040;font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.6);cursor:pointer;white-space:nowrap;`;
+  ssReset.textContent = 'Reset Sort Counts';
+  ssReset.onclick = ()=>{
+    if(resetCountsPending){
+      lsSet('cat_usage',{}); csInvalidateSortCache(); msInvalidateSortCache();
+      resetCountsPending=false;
+      ssReset.style.background='#1d4040'; ssReset.style.color='rgba(255,255,255,0.6)'; ssReset.textContent='Reset Sort Counts';
+    } else {
+      resetCountsPending=true;
+      ssReset.style.background='#fff'; ssReset.style.color='var(--color-1)'; ssReset.textContent='Confirm? Tap again to wipe';
+      setTimeout(()=>{ if(resetCountsPending){
+        resetCountsPending=false;
+        ssReset.style.background='#1d4040'; ssReset.style.color='rgba(255,255,255,0.6)'; ssReset.textContent='Reset Sort Counts';
+      }},3000);
+    }
+  };
+
+  ssWrap.append(ssLbl, ssRow, ssReset);
+  body.appendChild(ssWrap);
+
   body.appendChild(makeSettingDivider('Comp Shop'));
   const pw=document.createElement('div');
   pw.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;height:var(--drop-height);box-sizing:border-box;display:flex;flex-direction:column;';
@@ -2539,7 +2725,9 @@ const DATA_KEYS = [
   'setting_cs_preview', 'cs_view',
   'setting_ms_inline_add',
   'setting_ms_add_panel',
-  'setting_gl_add_panel',
+  'setting_smart_sort', 'cat_usage',
+  'pantry_data',
+  // NOTE: pantry_usage is intentionally NOT here — it is never cleared
 ];
 
 function exportData(){
@@ -2742,6 +2930,7 @@ function renderSalesBody(){
         if(!gl.some(g=>g.name.toLowerCase()===item.name.toLowerCase())){
           gl.push({id:'gl_'+Date.now()+Math.random(), name:item.name, category:item.category||'other', checked:false});
           lsSet('gl_items', gl);
+          trackCatUsage(item.category||'other');
         }
         glRender();
         renderSalesBody();
@@ -2786,9 +2975,559 @@ document.getElementById('vCat').classList.toggle('active',glViewMode==='cat');
 document.getElementById('vSimple').classList.toggle('active',glViewMode==='simple');
 document.getElementById('csVSimple').classList.toggle('active',csViewMode==='simple');
 document.getElementById('csVCat').classList.toggle('active',csViewMode==='cat');
-glRender(); csRender(); msRender();
+/* ══════════════════════════════════════
+   MY PANTRY TAB
+══════════════════════════════════════ */
 
-// Register service worker
+let ptActiveFilter='all';
+let ptViewMode='pantry';
+let ptFilterSnapshot=[];
+let ptCardRegistry=[];
+let ptOpenSet=new Set();
+
+function ptIsInPantry(item){
+  const pd=getItemPantry(item.id);
+  if(pd.containers.length>0) return true;
+  const thirtyDaysAgo=Date.now()-(30*24*60*60*1000);
+  return ls('pantry_usage_log',[]).some(e=>e.id===item.id&&e.ts>=thirtyDaysAgo);
+}
+
+function ptBuildViewToggle(){
+  const tog=document.createElement('div');
+  tog.style.cssText=`border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;display:flex;height:var(--drop-height);`;
+  [['pantry','Pantry Mode'],['all','All Grocery Items']].forEach(([v,lbl],i,arr)=>{
+    const active=ptViewMode===v;
+    const btn=document.createElement('div');
+    btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;background:${active?'var(--bg-2)':'var(--bg-3)'};color:${active?'var(--color-10)':'var(--muted)'};${i<arr.length-1?'border-right:var(--border-width) solid var(--border-color);':''}`;
+    btn.textContent=lbl;
+    btn.onclick=e=>{ e.stopPropagation(); if(ptViewMode===v) return; ptViewMode=v; ptActiveFilter='all'; ptCardRegistry.forEach(c=>c.close()); ptCardRegistry=[]; ptOpenSet.clear(); ptRender(); };
+    tog.appendChild(btn);
+  });
+  return tog;
+}
+
+function getPantryData(){ return ls('pantry_data',{}); }
+function setPantryData(d){ lsSet('pantry_data',d); }
+function getItemPantry(id){
+  const d=getPantryData();
+  if(!d[id]) d[id]={containers:[],totalCap:0,step:1};
+  return d[id];
+}
+function saveItemPantry(id,pd){ const d=getPantryData(); d[id]=pd; setPantryData(d); }
+
+function getPtUsage(){ return ls('pantry_usage',{}); }
+function trackPtUsage(id,amount){
+  if(amount<=0) return;
+  const u=getPtUsage(); u[id]=(u[id]||0)+amount; lsSet('pantry_usage',u);
+  // also log timestamped event for stats graphs
+  const log=ls('pantry_usage_log',[]); log.push({id,amount,ts:Date.now()}); lsSet('pantry_usage_log',log);
+}
+
+function ptGetStatsValues(id, mode){
+  const log=ls('pantry_usage_log',[]);
+  const now=new Date();
+  const todayMidnight=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const values=new Array(12).fill(0);
+  log.filter(e=>e.id===id).forEach(e=>{
+    const d=new Date(e.ts);
+    if(mode==='daily'){
+      const eMidnight=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+      const diffDays=Math.round((todayMidnight-eMidnight)/(1000*60*60*24));
+      const idx=11-diffDays;
+      if(idx>=0&&idx<=11) values[idx]+=e.amount;
+    } else if(mode==='weekly'){
+      const diffWeeks=Math.floor((now-d)/(1000*60*60*24*7));
+      const idx=11-diffWeeks;
+      if(idx>=0&&idx<=11) values[idx]+=e.amount;
+    } else {
+      const diffMonths=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth());
+      const idx=11-diffMonths;
+      if(idx>=0&&idx<=11) values[idx]+=e.amount;
+    }
+  });
+  return values.map(v=>parseFloat(v.toFixed(2)));
+}
+
+function ptGetStock(pd){ return parseFloat(pd.containers.reduce((s,c)=>s+c.amount,0).toFixed(1)); }
+function ptGetMax(pd){ return pd.totalCap; }
+function ptGetStatus(pd){ const max=ptGetMax(pd); if(max<=0) return 'ok'; const ratio=ptGetStock(pd)/max; if(ratio<=1/6) return 'low'; if(ratio<=1/3) return 'soon'; return 'ok'; }
+function ptFillColor(pd){ const st=ptGetStatus(pd); if(st==='ok') return '#48a971'; if(st==='soon') return '#5A8DB8'; return '#C85A5A'; }
+function ptConFillColor(con){ const ratio=con.cap>0?con.amount/con.cap:0; if(ratio<=1/6) return '#C85A5A'; if(ratio<=1/3) return '#5A8DB8'; return '#48a971'; }
+function ptDarken(hex,pct){ let c=hex.replace('#',''); if(c.length===3) c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2]; const r=Math.max(0,Math.round(parseInt(c.slice(0,2),16)*(1-pct))); const g=Math.max(0,Math.round(parseInt(c.slice(2,4),16)*(1-pct))); const b=Math.max(0,Math.round(parseInt(c.slice(4,6),16)*(1-pct))); return `rgb(${r},${g},${b})`; }
+
+function ptSmartSortItems(items){ if(!smartSort) return items; const usage=getPtUsage(); return [...items].sort((a,b)=>(usage[b.id]||0)-(usage[a.id]||0)); }
+
+function ptApplyFilter(){
+  const msItems=ls('ms_items',[]);
+  const base=ptViewMode==='pantry' ? msItems.filter(i=>ptIsInPantry(i)) : msItems;
+  ptFilterSnapshot=base.filter(item=>{
+    if(ptActiveFilter==='all') return true;
+    const pd=getItemPantry(item.id);
+    return ptGetStatus(pd)===ptActiveFilter;
+  });
+}
+
+function ptBuildFilterBar(){
+  const msItems=ls('ms_items',[]);
+  const base=ptViewMode==='pantry' ? msItems.filter(i=>ptIsInPantry(i)) : msItems;
+  const total=base.length;
+  const ok=base.filter(i=>ptGetStatus(getItemPantry(i.id))==='ok').length;
+  const soon=base.filter(i=>ptGetStatus(getItemPantry(i.id))==='soon').length;
+  const low=base.filter(i=>ptGetStatus(getItemPantry(i.id))==='low').length;
+  const bar=document.createElement('div');
+  bar.style.cssText=`border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;display:flex;height:var(--drop-height);`;
+  bar.className='pt-filter-bar';
+  [{key:'all',label:'All',count:total,color:null},{key:'ok',label:'OK',count:ok,color:'#48a971'},{key:'soon',label:'Low',count:soon,color:'#5A8DB8'},{key:'low',label:'Critical',count:low,color:'#C85A5A'}].forEach(({key,label,count,color},i,arr)=>{
+    const active=ptActiveFilter===key;
+    const btn=document.createElement('div');
+    btn.style.cssText=`flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:1px;background:${active?'var(--bg-4)':'var(--bg-2)'};${i<arr.length-1?'border-right:var(--border-width) solid var(--border-color);':''}`;
+    const v=document.createElement('div'); v.style.cssText=`font-size:11px;font-weight:800;color:${active?'#fff':color||'rgba(255,255,255,0.4)'};`; v.textContent=count;
+    const l=document.createElement('div'); l.style.cssText='font-size:6px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);'; l.textContent=label;
+    btn.append(v,l);
+    btn.onclick=e=>{ e.stopPropagation(); if(ptActiveFilter===key) return; ptActiveFilter=key; ptCardRegistry.forEach(c=>c.close()); ptCardRegistry=[]; ptOpenSet.clear(); ptRender(); };
+    bar.appendChild(btn);
+  });
+  return bar;
+}
+
+function ptDivider(label,color){
+  const d=document.createElement('div'); d.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 2px 2px;flex-shrink:0;';
+  const l1=document.createElement('div'); l1.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);';
+  const lbl=document.createElement('span'); lbl.style.cssText=`font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;flex-shrink:0;color:${color};`; lbl.textContent=label;
+  const l2=document.createElement('div'); l2.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);';
+  d.append(l1,lbl,l2); return d;
+}
+
+function ptRefreshCard(msItem,pd,wrap,selectedCon,expandView){
+  const newFc=ptFillColor(pd); const vMax=Math.max(ptGetMax(pd),ptGetStock(pd))||1;
+  const bPct=ptGetStock(pd)/vMax; const oPct=ptGetStock(pd)>ptGetMax(pd)?(ptGetStock(pd)-ptGetMax(pd))/vMax:0;
+  wrap._fillBase.style.width=(bPct*100).toFixed(1)+'%'; wrap._fillBase.style.background=newFc;
+  wrap._fillOver.style.width=(oPct*100).toFixed(1)+'%'; wrap._fillOver.style.background=ptDarken(newFc,0.5);
+  wrap._val.textContent=`${ptGetStock(pd)}/${ptGetMax(pd)}`;
+  const fb=document.querySelector('.pt-filter-bar'); if(fb){ const nfb=ptBuildFilterBar(); nfb.className='pt-filter-bar'; fb.replaceWith(nfb); }
+  wrap._renderExpand();
+}
+
+function ptBuildCard(msItem){
+  const pd=getItemPantry(msItem.id);
+  const selectedCon={id:null};
+  const expandView={mode:'containers',statView:'daily',selBar:null};
+
+  const wrap=document.createElement('div'); wrap.className='pt-card';
+  const main=document.createElement('div'); main.className='pt-main';
+  main.style.cssText='height:32px;min-height:32px;max-height:32px;display:flex;align-items:stretch;position:relative;overflow:hidden;cursor:pointer;background:var(--bg-3);box-sizing:border-box;';
+
+  const minBtn=document.createElement('button'); minBtn.className='pt-btn left'; minBtn.textContent='';
+  const plusBtn=document.createElement('button'); plusBtn.className='pt-btn right'; plusBtn.textContent='';
+
+  function updateBtnState(){ const a=!!selectedCon.id; minBtn.textContent=a?'−':''; plusBtn.textContent=a?'+':''; }
+
+  minBtn.onclick=e=>{ e.stopPropagation(); if(!selectedCon.id) return; const con=pd.containers.find(c=>c.id===selectedCon.id); if(!con) return; const prev=con.amount; con.amount=Math.max(0,parseFloat((con.amount-pd.step).toFixed(1))); const used=prev-con.amount; if(used>0) trackPtUsage(msItem.id,used); saveItemPantry(msItem.id,pd); if(con.amount===0&&prev>0) con._confirmEmpty=true; ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); };
+  plusBtn.onclick=e=>{ e.stopPropagation(); if(!selectedCon.id) return; const con=pd.containers.find(c=>c.id===selectedCon.id); if(!con) return; con.amount=Math.min(con.cap,parseFloat((con.amount+pd.step).toFixed(1))); saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); };
+
+  const center=document.createElement('div');
+  center.style.cssText='flex:1;height:32px;min-height:32px;max-height:32px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;background:#374151;';
+  const fc=ptFillColor(pd); const vMax=Math.max(ptGetMax(pd),ptGetStock(pd))||1;
+  const fillBase=document.createElement('div'); fillBase.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${(ptGetStock(pd)/vMax*100).toFixed(1)}%;background:${fc};opacity:0.5;transition:width 0.35s cubic-bezier(0.4,0,0.2,1);z-index:0;pointer-events:none;`;
+  const fillOver=document.createElement('div'); fillOver.style.cssText=`position:absolute;right:0;top:0;bottom:0;width:${(ptGetStock(pd)>ptGetMax(pd)?(ptGetStock(pd)-ptGetMax(pd))/vMax:0)*100}%;background:${ptDarken(fc,0.5)};opacity:0.7;transition:width 0.35s;z-index:1;pointer-events:none;`;
+  const nm=document.createElement('div');
+  nm.style.cssText='position:relative;z-index:2;font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;max-width:100%;padding:0 6px;line-height:1;';
+  nm.textContent=msItem.name;
+  const val=document.createElement('div');
+  val.style.cssText='position:relative;z-index:2;font-size:10px;font-weight:800;color:rgba(255,255,255,0.7);line-height:1;margin-top:1px;';
+  val.textContent=`${ptGetStock(pd)}/${ptGetMax(pd)}`;
+  center.append(fillBase,fillOver,nm,val);
+  wrap._fillBase=fillBase; wrap._fillOver=fillOver; wrap._val=val;
+  wrap._fillBase=fillBase; wrap._fillOver=fillOver; wrap._val=val;
+
+  main.append(minBtn, center, plusBtn);
+
+  const expand=document.createElement('div');
+  expand.style.cssText=`background:var(--bg-3);overflow:hidden;max-height:0;transition:max-height 0.3s ease;`;
+
+  function renderExpand(){
+    expand.innerHTML='';
+    const body=document.createElement('div'); body.style.cssText='display:flex;flex-direction:column;gap:4px;padding:4px;background:var(--bg-1);';
+
+    // grocery list card
+    const glItems=ls('gl_items',[]); const inList=glItems.some(i=>i.name.toLowerCase()===msItem.name.toLowerCase()&&!i.checked);
+    const glCard=document.createElement('div'); glCard.style.cssText=`height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;cursor:${inList?'default':'pointer'};`;
+    const glCheck=document.createElement('div'); glCheck.style.cssText=`width:32px;min-width:32px;display:flex;align-items:center;justify-content:center;background:#fff;border-right:3px solid #000;flex-shrink:0;`;
+    if(inList){ const dot=document.createElement('div'); dot.style.cssText='width:12px;height:12px;border-radius:50%;background:#48a971;flex-shrink:0;'; glCheck.appendChild(dot); }
+    else { glCheck.style.color='#48a971'; glCheck.style.fontSize='16px'; glCheck.style.fontWeight='700'; glCheck.textContent='+'; }
+    const glLbl=document.createElement('div'); glLbl.style.cssText=`flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:${inList?'var(--muted)':'var(--color-10)'};background:var(--bg-3);`; glLbl.textContent=inList?'Already in Grocery List':'Add to Grocery List';
+    glCard.append(glCheck,glLbl);
+    if(!inList){ glCard.onclick=e=>{ e.stopPropagation(); glCheck.innerHTML=''; glCheck.style.color='var(--color-10)'; glCheck.style.fontSize='16px'; glCheck.style.fontWeight='700'; glCheck.style.background='#48a971'; glCheck.textContent='✓'; setTimeout(()=>{ const gl=ls('gl_items',[]); if(!gl.some(i=>i.name.toLowerCase()===msItem.name.toLowerCase()&&!i.checked)){ gl.push({id:'gl_'+Date.now()+Math.random(),name:msItem.name,category:msItem.category,checked:false}); lsSet('gl_items',gl); trackCatUsage(msItem.category); } renderExpand(); glRender(); },600); }; }
+    body.appendChild(glCard);
+
+    // tabs
+    const tabs=document.createElement('div'); tabs.style.cssText=`height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;flex-shrink:0;`;
+    [['stats','Stats'],['containers','Containers'],['adjust','Adjust']].forEach(([mode,label],i,arr)=>{
+      const t=document.createElement('div'); const isAct=expandView.mode===mode;
+      t.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-3)'};color:${isAct?'var(--color-10)':'var(--muted)'};${i<arr.length-1?'border-right:3px solid #000;':''}`;
+      t.textContent=label; t.onclick=e=>{ e.stopPropagation(); expandView.mode=mode; renderExpand(); }; tabs.appendChild(t);
+    }); body.appendChild(tabs);
+
+    if(expandView.mode==='stats'){
+      const sv=expandView.statView||'daily'; const sb=expandView.selBar;
+      let labels,values;
+      const DAY_LETTERS=['S','M','T','W','T','F','S'];
+      const MONTH_LETTERS=['J','F','M','A','M','J','J','A','S','O','N','D'];
+      const now2=new Date();
+      const dayLabels=Array.from({length:12},(_,i)=>{ const d=new Date(now2); d.setDate(d.getDate()-(11-i)); return DAY_LETTERS[d.getDay()]; });
+      const monthLabels=Array.from({length:12},(_,i)=>{ const d=new Date(now2.getFullYear(),now2.getMonth()-(11-i),1); return MONTH_LETTERS[d.getMonth()]; });
+      if(sv==='daily'){ labels=dayLabels; }
+      else if(sv==='weekly'){ labels=['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12']; }
+      else { labels=monthLabels; }
+      values=ptGetStatsValues(msItem.id,sv);
+      const maxV=Math.max(...values,0.1); const curFc=ptFillColor(pd);
+      const gCard=document.createElement('div'); gCard.style.cssText=`border:3px solid #000;border-radius:8px;overflow:hidden;background:var(--bg-3);flex-shrink:0;`;
+      const graph=document.createElement('div'); graph.className='pt-graph';
+      values.forEach((u,i)=>{
+        const isSel=sb===i; const bw=document.createElement('div'); bw.className='pt-bar-wrap';
+        const num=document.createElement('div'); num.style.cssText=`font-size:5px;font-weight:700;color:${isSel?'#fff':'rgba(255,255,255,0.5)'};margin-bottom:1px;`; num.textContent=u>0?u:'';
+        const bar=document.createElement('div'); bar.className='pt-bar'; bar.style.cssText=`height:${Math.max(2,Math.round((u/maxV)*36))}px;background:${u>0?'#48a971':'rgba(255,255,255,0.08)'};opacity:${isSel?1:0.6};${isSel?'outline:2px solid rgba(255,255,255,0.6);outline-offset:-1px;':''}`;
+        const day=document.createElement('div'); day.className='pt-day'; day.style.color=isSel?'#fff':''; day.textContent=labels[i];
+        bw.append(num,bar,day); bw.onclick=e=>{ e.stopPropagation(); expandView.selBar=expandView.selBar===i?null:i; renderExpand(); }; graph.appendChild(bw);
+      }); gCard.appendChild(graph);
+      const total=values.reduce((s,v)=>s+v,0); const unit=getUnit(msItem.unit||'unit').label;
+      const foot=document.createElement('div'); foot.style.cssText=`height:32px;border-top:3px solid #000;display:flex;align-items:stretch;`;
+      const leftEl=document.createElement('div'); leftEl.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:8px;font-weight:600;color:var(--muted);border-right:3px solid #000;padding:0 8px;text-align:center;';
+      const rightEl=document.createElement('div'); rightEl.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:10px;font-weight:800;color:${curFc};padding:0 8px;`;
+      if(sb!==null&&sb!==undefined){ const u=values[sb]; const now=new Date(); let rt=''; if(sv==='daily'){ const d=new Date(now); d.setDate(d.getDate()-(11-sb)); rt=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); } else if(sv==='weekly'){ const end=new Date(now); end.setDate(end.getDate()-((11-sb)*7)); const start=new Date(end); start.setDate(start.getDate()-6); rt=start.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+end.toLocaleDateString('en-US',{month:'short',day:'numeric'}); } else { const d=new Date(now.getFullYear(),now.getMonth()-(11-sb),1); rt=d.toLocaleDateString('en-US',{month:'short',year:'numeric'}); } leftEl.textContent=rt; rightEl.textContent=parseFloat(u.toFixed(2))+' '+unit; }
+      else { leftEl.textContent=sv==='daily'?'12 Day Total':sv==='weekly'?'12 Week Total':'12 Month Total'; rightEl.textContent=parseFloat(total.toFixed(1))+' '+unit; }
+      foot.append(leftEl,rightEl); gCard.appendChild(foot); body.appendChild(gCard);
+      const tog=document.createElement('div'); tog.style.cssText=`height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;flex-shrink:0;`;
+      [['daily','Daily'],['weekly','Weekly'],['monthly','Monthly']].forEach(([v,lbl],i,arr)=>{ const btn=document.createElement('div'); const act=sv===v; btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${act?'var(--bg-4)':'var(--bg-3)'};color:${act?'var(--color-10)':'var(--muted)'};${i<arr.length-1?'border-right:3px solid #000;':''}`;
+      btn.textContent=lbl; btn.onclick=e=>{ e.stopPropagation(); expandView.statView=v; expandView.selBar=null; renderExpand(); }; tog.appendChild(btn); }); body.appendChild(tog);
+
+    } else if(expandView.mode==='containers'){
+      const selCon=selectedCon.id?pd.containers.find(c=>c.id===selectedCon.id):null;
+      const sorted=[...pd.containers].sort((a,b)=>(a.amount===0&&b.amount>0)?1:(b.amount===0&&a.amount>0)?-1:0);
+      let pendingConfirm=null;
+      if(pd.containers.length===0){ const emptyMsg=document.createElement('div'); emptyMsg.style.cssText=`height:32px;border:3px solid #000;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;font-weight:600;color:var(--muted);font-style:italic;`; emptyMsg.textContent='No containers — add one below'; body.appendChild(emptyMsg); }
+      else {
+        const barRow=document.createElement('div'); barRow.style.cssText='display:flex;gap:4px;';
+        sorted.forEach(con=>{ const isSel=selectedCon.id===con.id; const vM=Math.max(con.cap,con.amount)||1; const cPct=(con.amount/vM*100).toFixed(1); const oPct=con.amount>con.cap?((con.amount-con.cap)/vM*100).toFixed(1):0;
+          const b=document.createElement('div'); b.style.cssText=`flex:1;height:32px;border:3px solid ${isSel?'#fff':'#000'};border-radius:8px;overflow:hidden;position:relative;display:flex;align-items:stretch;cursor:pointer;min-width:0;`;
+          const fill=document.createElement('div'); fill.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${cPct}%;background:${ptConFillColor(con)};transition:width 0.3s ease;pointer-events:none;`;
+          const fillO=document.createElement('div'); fillO.style.cssText=`position:absolute;right:0;top:0;bottom:0;width:${oPct}%;background:${ptDarken(ptConFillColor(con),0.5)};opacity:0.7;transition:width 0.3s ease;pointer-events:none;`;
+          const v=document.createElement('div'); v.style.cssText=`position:relative;z-index:2;flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:${isSel?'#fff':'rgba(255,255,255,0.6)'};`; v.textContent=`${con.amount}/${con.cap}`;
+          b.append(fill,fillO,v); b.onclick=e=>{ e.stopPropagation(); selectedCon.id=selectedCon.id===con.id?null:con.id; updateBtnState(); renderExpand(); };
+          if(con._confirmEmpty) pendingConfirm=con; barRow.appendChild(b);
+        }); body.appendChild(barRow);
+        if(pendingConfirm){ const con=pendingConfirm; const conf=document.createElement('div'); conf.style.cssText=`height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;`; const msg=document.createElement('div'); msg.style.cssText='flex:1;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:700;color:#e08080;background:#2a1010;'; msg.textContent='Container empty?'; const yBtn=document.createElement('div'); yBtn.style.cssText='width:48px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;background:#502424;color:#fff;cursor:pointer;border-left:3px solid #000;'; yBtn.textContent='YES'; yBtn.onclick=e=>{ e.stopPropagation(); con._confirmEmpty=false; con._isEmptyChoice=true; saveItemPantry(msItem.id,pd); renderExpand(); }; const nBtn=document.createElement('div'); nBtn.style.cssText='width:48px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;background:#1d442d;color:#fff;cursor:pointer;border-left:3px solid #000;'; nBtn.textContent='NO'; nBtn.onclick=e=>{ e.stopPropagation(); con.amount=pd.step; con._confirmEmpty=false; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; conf.append(msg,yBtn,nBtn); body.appendChild(conf); }
+        pd.containers.filter(c=>c._isEmptyChoice).forEach(con=>{ const ch=document.createElement('div'); ch.style.cssText=`border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;`; const bR=document.createElement('div'); bR.style.cssText='height:32px;display:flex;align-items:stretch;'; const dBtn=document.createElement('div'); dBtn.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;background:#502424;color:#fff;cursor:pointer;border-right:3px solid #000;'; dBtn.textContent='Delete Container'; dBtn.onclick=e=>{ e.stopPropagation(); pd.containers=pd.containers.filter(c=>c.id!==con.id); if(selectedCon.id===con.id) selectedCon.id=null; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; const kBtn=document.createElement('div'); kBtn.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;background:#1d3318;color:#48a971;cursor:pointer;'; kBtn.textContent='Keep Empty'; kBtn.onclick=e=>{ e.stopPropagation(); con._isEmptyChoice=false; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; bR.append(dBtn,kBtn); ch.append(bR); body.appendChild(ch); });
+      }
+      // fraction card
+      const fracColors={3:'#8a7ca8',4:'#5A8DB8',5:'#48a971',8:'#C7824A'};
+      const fracs=[{n:1,d:8},{n:1,d:5},{n:1,d:4},{n:1,d:3},{n:3,d:8},{n:2,d:5},{n:1,d:2},{n:3,d:5},{n:5,d:8},{n:2,d:3},{n:3,d:4},{n:4,d:5},{n:7,d:8}];
+      const selCon2=selectedCon.id?pd.containers.find(c=>c.id===selectedCon.id):null;
+      const fCard=document.createElement('div'); fCard.style.cssText=`height:45px;box-sizing:border-box;border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;`;
+      const fLbl=document.createElement('div'); fLbl.style.cssText=`height:calc((45px - 3px) / 2);display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-bottom:3px solid #000;font-size:7px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.5);`; fLbl.textContent='Set Fill To'; fCard.appendChild(fLbl);
+      const fRow=document.createElement('div'); fRow.style.cssText=`height:calc((45px - 3px) / 2);display:flex;align-items:stretch;`;
+      fracs.forEach(({n,d},i)=>{ const btn=document.createElement('div'); const fc2=fracColors[d]||'var(--bg-2)'; const isSelFrac=selCon2&&parseFloat((selCon2.amount/selCon2.cap).toFixed(4))===parseFloat((n/d).toFixed(4)); btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${isSelFrac?fc2:'#fff'};background:${!selCon2?'var(--bg-4)':isSelFrac?'#fff':fc2};cursor:${selCon2?'pointer':'default'};${i<fracs.length-1?'border-right:3px solid #000;':''}`; btn.innerHTML=`<sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub>`; btn.onclick=e=>{ e.stopPropagation(); if(!selCon2) return; selCon2.amount=parseFloat((selCon2.cap*(n/d)).toFixed(1)); saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; fRow.appendChild(btn); });
+      fCard.appendChild(fRow); body.appendChild(fCard);
+      // bottom row
+      function makeDoubleTap(label,bgDef,onConfirm){ const s=document.createElement('div'); s._t=0; s._timer=null; s.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#fff;background:${bgDef};cursor:${selCon?'pointer':'default'};opacity:${selCon?'1':'0.3'};`; s.textContent=label; s.onclick=e=>{ e.stopPropagation(); if(!selCon) return; s._t++; clearTimeout(s._timer); if(s._t>=2){ s._t=0; s.style.background=bgDef; s.style.opacity='1'; onConfirm(); } else{ s.style.background='#fff'; s.style.color='#C85A5A'; s._timer=setTimeout(()=>{ s._t=0; s.style.background=bgDef; s.style.color='#fff'; },3000); } }; return s; }
+      const bRow=document.createElement('div'); bRow.style.cssText='display:flex;gap:4px;';
+      const addCard=document.createElement('div'); addCard.style.cssText=`flex:1;height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;`;
+      const capInp=document.createElement('input'); capInp.type='number'; capInp.min='0'; capInp.placeholder='New container cap…'; capInp.style.cssText='flex:1;min-width:0;background:var(--bg-3);border:none;color:var(--color-10);font-size:10px;font-weight:600;padding:0 10px;outline:none;font-family:inherit;';
+      const addBtnEl=document.createElement('div'); addBtnEl.style.cssText='width:48px;min-width:48px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;background:var(--bg-2);color:var(--muted);cursor:pointer;border-left:3px solid #000;'; addBtnEl.textContent='+ Add'; addBtnEl.onclick=e=>{ e.stopPropagation(); const cap=parseFloat(capInp.value); if(!cap||cap<=0) return; pd.containers.push({id:Date.now(),label:'Container '+(pd.containers.length+1),amount:cap,cap}); capInp.value=''; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; capInp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.stopPropagation(); addBtnEl.onclick(e); } }); addCard.append(capInp,addBtnEl);
+      const actCard=document.createElement('div'); actCard.style.cssText=`flex:1;height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;`;
+      const fillSec=makeDoubleTap('FILL','var(--bg-2)',()=>{ selCon.amount=selCon.cap; selCon._confirmEmpty=false; selCon._isEmptyChoice=false; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); });
+      const d1=document.createElement('div'); d1.style.cssText='width:3px;background:#000;flex-shrink:0;';
+      const empSec=makeDoubleTap('EMPTY','var(--bg-2)',()=>{ selCon.amount=0; selCon._confirmEmpty=false; selCon._isEmptyChoice=false; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); });
+      const d2=document.createElement('div'); d2.style.cssText='width:3px;background:#000;flex-shrink:0;';
+      const delSec=makeDoubleTap('DELETE','var(--bg-2)',()=>{ pd.containers=pd.containers.filter(c=>c.id!==selCon.id); selectedCon.id=null; updateBtnState(); saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); });
+      actCard.append(fillSec,d1,empSec,d2,delSec); bRow.append(addCard,actCard); body.appendChild(bRow);
+
+    } else {
+      function makeAdjCard(label,getVal,setVal,minVal,getStep){ const card=document.createElement('div'); card.style.cssText=`display:flex;align-items:stretch;height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;`; const m=document.createElement('div'); m.style.cssText='width:32px;min-width:32px;border:none;border-right:3px solid #000;background:var(--bg-2);color:var(--color-10);font-size:18px;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;'; m.textContent='−'; const ctr=document.createElement('div'); ctr.style.cssText='flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg-3);gap:1px;'; const vEl=document.createElement('div'); vEl.style.cssText='font-size:11px;font-weight:800;'; vEl.textContent=getVal(); const lEl=document.createElement('div'); lEl.style.cssText='font-size:7px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);'; lEl.textContent=label; ctr.append(vEl,lEl); const p=document.createElement('div'); p.style.cssText='width:32px;min-width:32px;border:none;border-left:3px solid #000;background:var(--bg-2);color:var(--color-10);font-size:18px;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;'; p.textContent='+'; const step=()=>getStep?getStep():0.5; m.onclick=e=>{ e.stopPropagation(); const v=Math.max(minVal,parseFloat((getVal()-step()).toFixed(1))); setVal(v); vEl.textContent=v; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; p.onclick=e=>{ e.stopPropagation(); const v=parseFloat((getVal()+step()).toFixed(1)); setVal(v); vEl.textContent=v; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; card.append(m,ctr,p); return card; }
+      body.appendChild(makeAdjCard('Total Cap',()=>pd.totalCap,v=>{ pd.totalCap=v; },0,()=>pd.step));
+      body.appendChild(makeAdjCard('Step',()=>pd.step,v=>{ pd.step=v; },0.5,()=>0.5));
+
+      // today's usage adjuster — reads/writes pantry_usage_log for today only
+      const todayMidnight=new Date(); todayMidnight.setHours(0,0,0,0);
+      function getTodayUsage(){
+        const log=ls('pantry_usage_log',[]);
+        return parseFloat(log.filter(e=>e.id===msItem.id&&new Date(e.ts)>=todayMidnight).reduce((s,e)=>s+e.amount,0).toFixed(2));
+      }
+      function setTodayUsage(newVal){
+        const log=ls('pantry_usage_log',[]);
+        // remove all today's entries for this item and replace with one entry
+        const filtered=log.filter(e=>!(e.id===msItem.id&&new Date(e.ts)>=todayMidnight));
+        if(newVal>0) filtered.push({id:msItem.id,amount:newVal,ts:Date.now()});
+        lsSet('pantry_usage_log',filtered);
+        // sync pantry_usage total
+        const u=getPtUsage();
+        u[msItem.id]=parseFloat(ls('pantry_usage_log',[]).filter(e=>e.id===msItem.id).reduce((s,e)=>s+e.amount,0).toFixed(2));
+        lsSet('pantry_usage',u);
+      }
+
+      const adjUsageCard=makeAdjCard(
+        'Used Today',
+        ()=>getTodayUsage(),
+        v=>setTodayUsage(v),
+        0,
+        ()=>pd.step
+      );
+      body.appendChild(adjUsageCard);
+    }
+    expand.appendChild(body);
+  }
+  wrap._renderExpand=renderExpand;
+
+  const closeThisCard=()=>{ ptOpenSet.delete(msItem.id); expand.style.maxHeight='0'; expand.style.borderTop='none'; selectedCon.id=null; updateBtnState(); };
+  ptCardRegistry.push({close:closeThisCard});
+  main.addEventListener('click',()=>{
+    if(ptOpenSet.has(msItem.id)){ closeThisCard(); }
+    else { ptCardRegistry.forEach(c=>{ if(c.close!==closeThisCard) c.close(); }); ptOpenSet.add(msItem.id); expandView.mode='containers'; expandView.selBar=null; selectedCon.id=null; updateBtnState(); renderExpand(); expand.style.maxHeight='600px'; expand.style.borderTop='3px solid #000'; }
+  });
+  wrap.appendChild(main);
+  wrap.appendChild(expand);
+  return wrap;
+}
+
+const PT_CRITICAL_EMPTY_MSGS = [
+  'Nothing critical. Your pantry is suspiciously well-stocked.',
+  'Zero critical items. Are you okay? This is unprecedented.',
+  'Critical list empty. The apocalypse is not today.',
+  'All clear. Either you\'re very organized or very in denial.',
+  'No critical items. The fridge would like a word though.',
+  'Nothing to panic about. Statistically, this never lasts.',
+  'Critical: 0. Personal best? Probably personal best.',
+  'Your pantry is thriving. Sickeningly so.',
+  'Nothing critical. Enjoy it. It won\'t last.',
+  'All items accounted for. Whoever you are, teach us your ways.',
+  'No red flags in the pantry. Plenty elsewhere, presumably.',
+  'Empty critical list. You\'re either very prepared or this just refreshed.',
+  'Nothing running low enough to be a problem. Today.',
+  'Pantry looking healthy. Refrigerator unavailable for comment.',
+  'Critical section empty. A moment of disbelief, please.',
+  'You\'ve got nothing critical. That\'s either great news or a data error.',
+  'Not a single critical item. The bar was low and you cleared it.',
+  'All good here. The universe remains suspicious.',
+  'Zero emergencies. Save this screenshot for later.',
+  'Nothing critical detected. Carry on, you pantry genius.',
+  'This section intentionally left empty. By you. Somehow.',
+  'No critical items. Is this a simulation?',
+  'Pantry status: thriving. Chef status: unknown.',
+  'Zero critical. You have achieved the impossible or just restocked.',
+  'Nothing to worry about here. Worry elsewhere. There\'s plenty.',
+  'Critical shelf is empty. The shelves themselves, however, are not.',
+  'All clear. Bask in it. Just for a moment.',
+  'No items critically low. Your past self really came through.',
+  'Critical items: none. Suspicious items: also none. Miraculous.',
+  'Not one critical item. This is peak pantry performance.',
+  'The critical zone is a ghost town today.',
+  'Nothing critical. Buy a lottery ticket.',
+  'Zero red alerts. The pantry gods smile upon you.',
+  'Clean slate. Enjoy the calm before the soy sauce runs out.',
+  'Nothing here. Either impressive or deeply suspicious.',
+  'All items have acceptable levels. You did that.',
+  'Not a single thing is critically low. Incredible scenes.',
+  'Your pantry is operating at full capacity. Respect.',
+  'Zero items in crisis. The kitchen is at peace.',
+  'Nothing critical. Somewhere, a chef is weeping with joy.',
+  'Pantry morale: high. Critical count: zero.',
+  'Empty here. As it should be, ideally, always, forever.',
+  'No critical items. History will remember this day.',
+  'You\'ve got nothing critical. Genuinely impressive.',
+  'This is what peak performance looks like apparently.',
+  'Nothing critical. Light a candle. Say a prayer. It could change.',
+  'Zero emergencies detected. Scanners are functioning correctly.',
+  'Critical list: empty. Grocery list: probably not. Balance.',
+  'Nothing critical. Don\'t get cocky. The olive oil is watching.',
+  'All items holding. For now. For now.',
+];
+let ptLastCriticalMsgIdx = -1;
+function ptGetCriticalMsg(){
+  let idx; do { idx = Math.floor(Math.random() * PT_CRITICAL_EMPTY_MSGS.length); } while(idx === ptLastCriticalMsgIdx && PT_CRITICAL_EMPTY_MSGS.length > 1);
+  ptLastCriticalMsgIdx = idx;
+  return PT_CRITICAL_EMPTY_MSGS[idx];
+}
+
+/* ── Pantry search ── */
+let ptQuickAddState=null;
+let ptQuickAddName='';
+let ptQuickAddCat=null;
+let ptQuickAddUnit=null;
+let ptSearchIdleTimer=null;
+let ptThinkPhraseSet=false;
+let ptCurrentThinkPhrase=null;
+let ptThinkCardEl=null;
+
+function ptPickNextThinkPhrase(){
+  const available=MS_THINK_PHRASES.filter(p=>p!==ptCurrentThinkPhrase);
+  ptCurrentThinkPhrase=available[Math.floor(Math.random()*available.length)];
+  ptThinkCardEl=null;
+}
+
+function ptGetOrCreateThinkCard(){
+  if(ptThinkCardEl) return ptThinkCardEl;
+  const card=document.createElement('div');
+  card.style.cssText=`height:32px;display:flex;border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;`;
+  const txt=document.createElement('div');
+  txt.style.cssText='flex:1;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--muted);font-style:italic;';
+  const phraseText=ptCurrentThinkPhrase.replace(/[.…]+$/,'');
+  txt.innerHTML=phraseText+'<span class="thinking-dots" style="font-style:normal;margin-left:1px;"><span>.</span><span>.</span><span>.</span></span>';
+  card.appendChild(txt); ptThinkCardEl=card; return card;
+}
+
+function ptSearchInput(){
+  clearTimeout(ptSearchIdleTimer);
+  const q=(document.getElementById('ptSearch')?.value||'').trim();
+  if(!q){
+    ptThinkPhraseSet=false; ptQuickAddState=null; ptQuickAddName=''; ptThinkCardEl=null;
+    ptShowSearchMode(false); return;
+  }
+  if(ptQuickAddState && ptQuickAddState!=='pick-cat' && ptQuickAddState!=='pick-unit'){
+    ptQuickAddState=null; ptThinkCardEl=null; ptPickNextThinkPhrase();
+  }
+  if(!ptThinkPhraseSet){ ptPickNextThinkPhrase(); ptThinkPhraseSet=true; }
+  ptShowSearchMode(true, q);
+  ptSearchIdleTimer=setTimeout(()=>{
+    const allItems=ls('ms_items',[]);
+    const qLower=q.toLowerCase().trim();
+    const exists=allItems.some(i=>i.name.toLowerCase().trim()===qLower);
+    ptQuickAddState=exists?'found':'confirm';
+    ptQuickAddName=q;
+    ptRenderThinkSlot(q);
+  },2000);
+}
+
+// show/hide search mode without rebuilding DOM
+function ptShowSearchMode(searching, q){
+  const page=document.getElementById('pagePantry');
+  const viewTog=page.querySelector('.pt-view-toggle');
+  const filterBar=page.querySelector('.pt-filter-bar');
+  const itemsWrap=page.querySelector('.pt-items-wrap');
+  if(!searching){
+    if(viewTog) viewTog.style.display='';
+    if(filterBar) filterBar.style.display='';
+    if(itemsWrap) itemsWrap.style.display='';
+    const slot=document.getElementById('ptThinkSlot'); if(slot) slot.innerHTML='';
+    return;
+  }
+  if(viewTog) viewTog.style.display='none';
+  if(filterBar) filterBar.style.display='none';
+
+  // update think slot — show thinking card immediately
+  ptRenderThinkSlot(q);
+
+  if(itemsWrap){
+    itemsWrap.innerHTML='';
+    itemsWrap.style.cssText='display:flex;flex-direction:column;gap:4px;';
+    const allItems=ls('ms_items',[]);
+    const qLower=(q||'').toLowerCase();
+    const matches=allItems.filter(i=>{
+      const words=i.name.toLowerCase().split(/\s+/);
+      return words.some(w=>w.startsWith(qLower));
+    });
+    if(matches.length===0){ itemsWrap.style.display='none'; }
+    else { matches.forEach(item=>itemsWrap.appendChild(ptBuildCard(item))); }
+  }
+}
+
+function ptRenderThinkSlot(q){
+  const slot=document.getElementById('ptThinkSlot'); if(!slot) return;
+  const items=ls('ms_items',[]);
+  slot.innerHTML='';
+  if(!q){ return; }
+  if(!ptQuickAddState){
+    slot.appendChild(ptGetOrCreateThinkCard()); return;
+  }
+  if(ptQuickAddState==='success'){
+    const card=document.createElement('div'); card.style.cssText=`height:32px;display:flex;border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;`;
+    const txt=document.createElement('div'); txt.style.cssText='flex:1;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--color-4);';
+    txt.textContent=MS_SUCCESS_PHRASES[Math.floor(Math.random()*MS_SUCCESS_PHRASES.length)]; card.appendChild(txt); slot.appendChild(card); return;
+  }
+  if(ptQuickAddState==='found'){
+    const card=document.createElement('div'); card.style.cssText=`height:32px;display:flex;border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;`;
+    const txt=document.createElement('div'); txt.style.cssText='flex:1;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--color-4);';
+    txt.textContent=MS_FOUND_PHRASES[Math.floor(Math.random()*MS_FOUND_PHRASES.length)]; card.appendChild(txt); slot.appendChild(card); return;
+  }
+  if(ptQuickAddState==='confirm'){
+    const card=document.createElement('div'); card.style.cssText=`height:32px;display:flex;border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;`;
+    const txt=document.createElement('div'); txt.style.cssText='flex:1;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--color-10);';
+    txt.textContent=`Add "${q}"?`;
+    const yesBtn=document.createElement('div'); yesBtn.style.cssText='width:56px;min-width:56px;background:#1d3f5c;border-left:3px solid #000;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#fff;cursor:pointer;';
+    yesBtn.textContent='YES!'; yesBtn.onclick=e=>{ e.stopPropagation(); ptQuickAddState='pick-cat'; ptOpenCatModal(); };
+    card.append(txt,yesBtn); slot.appendChild(card); return;
+  }
+  if(ptQuickAddState==='pick-cat'){
+    const card=document.createElement('div'); card.style.cssText=`height:32px;display:flex;border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;`;
+    const txt=document.createElement('div'); txt.style.cssText='flex:1;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--color-10);'; txt.textContent='Pick a category...';
+    const btn=document.createElement('div'); btn.style.cssText='width:72px;min-width:72px;background:#1d442d;border-left:3px solid #000;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#fff;cursor:pointer;'; btn.textContent='OK!'; btn.onclick=e=>{ e.stopPropagation(); ptOpenCatModal(); };
+    card.append(txt,btn); slot.appendChild(card); return;
+  }
+  if(ptQuickAddState==='pick-unit'){
+    const card=document.createElement('div'); card.style.cssText=`height:32px;display:flex;border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;`;
+    const txt=document.createElement('div'); txt.style.cssText='flex:1;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--color-10);'; txt.textContent='Pick a unit...';
+    const btn=document.createElement('div'); btn.style.cssText='width:72px;min-width:72px;background:#3d1a5c;border-left:3px solid #000;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#fff;cursor:pointer;'; btn.textContent='OF COURSE!'; btn.onclick=e=>{ e.stopPropagation(); ptOpenUnitModal(); };
+    card.append(txt,btn); slot.appendChild(card); return;
+  }
+}
+
+function ptOpenCatModal(){
+  modalCtx='pt-quickadd-cat'; modalSelPend=null; modalDelPend.clear();
+  editingColorCatId=null; selectedRootIdx=0; newCatColor=ROOT_COLORS[0].shades[2];
+  document.getElementById('modalTitle').textContent='Category';
+  buildModalGrid(); document.getElementById('modalOverlay').classList.add('open');
+}
+
+function ptOpenUnitModal(){
+  modalCtx='pt-quickadd-unit'; modalSelPend=null; modalDelPend.clear();
+  document.getElementById('modalTitle').textContent='Unit';
+  buildModalGrid(); document.getElementById('modalOverlay').classList.add('open');
+}
+
+function ptQuickAddFinalise(){
+  if(!ptQuickAddName||!ptQuickAddCat||!ptQuickAddUnit) return;
+  const newItem={id:'ms_'+Date.now()+Math.random(),name:ptQuickAddName,category:ptQuickAddCat,unit:ptQuickAddUnit};
+  const ms=ls('ms_items',[]); ms.push(newItem); lsSet('ms_items',ms);
+  ptQuickAddState='success'; ptQuickAddName=''; ptQuickAddCat=null; ptQuickAddUnit=null;
+  ptThinkPhraseSet=false; ptThinkCardEl=null;
+  const q=(document.getElementById('ptSearch')?.value||'').trim();
+  ptRender();
+  if(q){ ptRenderThinkSlot(q); ptShowSearchMode(true,q); }
+  msRender();
+}
+
+function ptRender(){
+  ptCardRegistry=[];
+  ptApplyFilter();
+  const page=document.getElementById('pagePantry');
+  // preserve search wrap and think slot, clear only content below
+  const searchWrap=page.querySelector('.ms-search-wrap');
+  const thinkSlot=page.querySelector('#ptThinkSlot');
+  page.innerHTML='';
+  if(searchWrap) page.appendChild(searchWrap);
+  if(thinkSlot){ page.appendChild(thinkSlot); const q=(document.getElementById('ptSearch')?.value||'').trim(); ptRenderThinkSlot(q); }
+  else { const ts=document.createElement('div'); ts.id='ptThinkSlot'; page.appendChild(ts); }
+
+  const msItems=ls('ms_items',[]);
+  if(msItems.length===0){ const empty=document.createElement('div'); empty.style.cssText='display:flex;align-items:center;justify-content:center;padding:40px;font-size:10px;font-weight:600;color:var(--muted);font-style:italic;text-align:center;'; empty.textContent='No items in My Store yet. Add items there to track them here.'; page.appendChild(empty); return; }
+  const q=(document.getElementById('ptSearch')?.value||'').trim();
+  if(!q){
+    const tog=ptBuildViewToggle(); tog.className+=' pt-view-toggle'; page.appendChild(tog);
+    const fb=ptBuildFilterBar(); page.appendChild(fb);
+  }
+  if(ptFilterSnapshot.length===0 && !q){
+    const empty=document.createElement('div');
+    empty.style.cssText='display:flex;align-items:center;justify-content:center;padding:20px 16px;font-size:10px;font-weight:600;color:var(--muted);font-style:italic;text-align:center;border:3px solid #000;border-radius:8px;background:var(--bg-2);';
+    empty.textContent=ptActiveFilter==='low' ? ptGetCriticalMsg() : 'No items in this category';
+    page.appendChild(empty); return;
+  }
+  if(q) return;
+  const itemsWrap=document.createElement('div'); itemsWrap.className='pt-items-wrap'; itemsWrap.style.cssText='display:flex;flex-direction:column;gap:4px;';
+  const cats=[...new Set(ptFilterSnapshot.map(i=>i.category))];
+  cats.forEach(catId=>{ const catItems=ptSmartSortItems(ptFilterSnapshot.filter(i=>i.category===catId)); const cat=getCat(catId); itemsWrap.appendChild(ptDivider(cat.label,cat.color)); catItems.forEach(item=>itemsWrap.appendChild(ptBuildCard(item))); });
+  page.appendChild(itemsWrap);
+}
+
+glRender(); csRender(); msRender();
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
     navigator.serviceWorker.register('./sw.js')
