@@ -3104,6 +3104,12 @@ function ptRefreshCard(msItem,pd,wrap,selectedCon,expandView){
   wrap._fillBase.style.width=(bPct*100).toFixed(1)+'%'; wrap._fillBase.style.background=newFc;
   wrap._fillOver.style.width=(oPct*100).toFixed(1)+'%'; wrap._fillOver.style.background=ptDarken(newFc,0.5);
   wrap._val.textContent=`${ptGetStock(pd)}/${ptGetMax(pd)}`;
+  // update red tint
+  if(wrap._redTint){
+    const thirtyDaysAgo=Date.now()-(30*24*60*60*1000);
+    const usedRecently=ls('pantry_usage_log',[]).some(e=>e.id===msItem.id&&e.ts>=thirtyDaysAgo);
+    wrap._redTint.style.display=(ptGetStock(pd)===0&&(usedRecently||pd.containers.length>0))?'':'none';
+  }
   const fb=document.querySelector('.pt-filter-bar'); if(fb){ const nfb=ptBuildFilterBar(); nfb.className='pt-filter-bar'; fb.replaceWith(nfb); }
   wrap._renderExpand();
 }
@@ -3128,8 +3134,22 @@ function ptBuildCard(msItem){
   const center=document.createElement('div');
   center.style.cssText='flex:1;height:32px;min-height:32px;max-height:32px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;background:#374151;';
   const fc=ptFillColor(pd); const vMax=Math.max(ptGetMax(pd),ptGetStock(pd))||1;
+  const thirtyDaysAgo=Date.now()-(30*24*60*60*1000);
+  const usedRecently=ls('pantry_usage_log',[]).some(e=>e.id===msItem.id&&e.ts>=thirtyDaysAgo);
+  const emptyAndUsed=ptGetStock(pd)===0&&(usedRecently||pd.containers.length>0);
   const fillBase=document.createElement('div'); fillBase.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${(ptGetStock(pd)/vMax*100).toFixed(1)}%;background:${fc};opacity:0.5;transition:width 0.35s cubic-bezier(0.4,0,0.2,1);z-index:0;pointer-events:none;`;
   const fillOver=document.createElement('div'); fillOver.style.cssText=`position:absolute;right:0;top:0;bottom:0;width:${(ptGetStock(pd)>ptGetMax(pd)?(ptGetStock(pd)-ptGetMax(pd))/vMax:0)*100}%;background:${ptDarken(fc,0.5)};opacity:0.7;transition:width 0.35s;z-index:1;pointer-events:none;`;
+  if(emptyAndUsed){
+    const redTint=document.createElement('div');
+    redTint.style.cssText='position:absolute;left:0;top:0;right:0;bottom:0;background:rgba(200,90,90,0.15);z-index:0;pointer-events:none;';
+    center.appendChild(redTint);
+    wrap._redTint=redTint;
+  } else {
+    const redTint=document.createElement('div');
+    redTint.style.cssText='position:absolute;left:0;top:0;right:0;bottom:0;background:rgba(200,90,90,0.15);z-index:0;pointer-events:none;display:none;';
+    center.appendChild(redTint);
+    wrap._redTint=redTint;
+  }
   const nm=document.createElement('div');
   nm.style.cssText='position:relative;z-index:2;font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;max-width:100%;padding:0 6px;line-height:1;';
   nm.textContent=msItem.name;
