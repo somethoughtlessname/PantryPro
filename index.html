@@ -273,12 +273,12 @@ body {
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;
 }
 .item-del {
-  width:32px; min-width:32px; background:var(--bg-3); border:none;
+  width:32px; min-width:32px; background:var(--color-1); border:none;
   border-left:var(--border-width) solid var(--border-color);
-  color:var(--muted); font-size:14px; font-weight:700;
+  color:#fff; font-size:14px; font-weight:700;
   cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;
 }
-.item-del.pending { background:var(--color-10); color:var(--color-1); }
+.item-del.pending { background:#fff; color:var(--color-1); }
 
 /* EMPTY */
 .empty-state {
@@ -298,7 +298,7 @@ body {
 /* MODAL */
 .modal-overlay {
   display:none; position:fixed; top:0; left:0; right:0; bottom:0;
-  background:rgba(0,0,0,0.85); z-index:200;
+  background:rgba(0,0,0,0.85); z-index:400;
 }
 .modal-overlay.open { display:block; }
 .modal {
@@ -340,6 +340,9 @@ body {
 .modal-cat-label {
   flex:1; display:flex; align-items:center; justify-content:center;
   padding:0 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.modal-cat-label[style*="flex-direction:column"] {
+  flex-direction:column; gap:2px; white-space:normal;
 }
 .modal-del-sq {
   width:32px; min-width:32px; background:var(--bg-3);
@@ -795,6 +798,24 @@ body {
   <div class="data-body" id="salesBody"></div>
 </div>
 
+<!-- RECIPES WINDOW -->
+<div class="data-window" id="recipesWindow">
+  <div class="data-window-header">
+    <div class="data-window-title">Recipes</div>
+    <button class="data-window-close" onclick="closeRecipesWindow()">×</button>
+  </div>
+  <div class="data-body" id="recipesBody" style="padding:4px;gap:4px;display:flex;flex-direction:column;overflow-y:auto;"></div>
+</div>
+
+<!-- MEALS WINDOW -->
+<div class="data-window" id="mealsWindow">
+  <div class="data-window-header">
+    <div class="data-window-title">Meals</div>
+    <button class="data-window-close" onclick="closeMealsWindow()">×</button>
+  </div>
+  <div class="data-body" id="mealsBody" style="padding:4px;gap:4px;display:flex;flex-direction:column;overflow-y:auto;"></div>
+</div>
+
 <script>
 'use strict';
 
@@ -864,8 +885,9 @@ function getCatColor(id, fallback){
   return ov[id]||fallback||'#9ca3af';
 }
 function getUnits(){
-  const del=ls('unit_deleted',[]), custom=ls('unit_custom',[]);
-  return [DEFAULT_UNITS[0],...DEFAULT_UNITS.slice(1).filter(u=>!del.includes(u.id)),...custom];
+  const del=ls('unit_deleted',[]), custom=ls('unit_custom',[]), ov=ls('unit_overrides',{});
+  const base=[DEFAULT_UNITS[0],...DEFAULT_UNITS.slice(1).filter(u=>!del.includes(u.id)),...custom];
+  return base.map(u=>ov[u.id]?{...u,...ov[u.id]}:u);
 }
 function getUnit(id){ return getUnits().find(u=>u.id===id)||DEFAULT_UNITS[0]; }
 
@@ -879,7 +901,7 @@ function setPage(p){
   const gl=document.getElementById('glSearch'); if(gl) gl.value='';
   glQuickAddState=null; glQuickAddName=''; glThinkPhraseSet=false; glThinkCardEl=null;
   const cs=document.getElementById('csSearch'); if(cs) cs.value='';
-  msQuickAddState=null; msQuickAddName=''; msThinkPhraseSet=false; msThinkCardEl=null;
+  msQuickAddState=null; msQuickAddName=''; msQuickAddCat=null; msThinkPhraseSet=false; msThinkCardEl=null;
   csQuickAddState=null; csQuickAddName=''; csThinkPhraseSet=false; csThinkCardEl=null;
   glOpenState={}; csOpenState={}; msOpenState={};
   if(p==='Grocery') glRender();
@@ -928,7 +950,7 @@ function buildModalGrid(){
   const grid=document.getElementById('modalGrid');
   grid.innerHTML='';
   grid.style.gridTemplateColumns='1fr 1fr';
-  const isUnit = modalCtx==='unit' || modalCtx==='ms-unit' || modalCtx==='cs-quickadd-unit' || modalCtx==='pt-quickadd-unit';
+  const isUnit = modalCtx==='unit' || modalCtx==='ms-unit' || modalCtx==='cs-quickadd-unit' || modalCtx==='pt-quickadd-unit' || modalCtx==='new-item-unit';
   const list=isUnit?getUnits():getCats();
 
   let curSel;
@@ -937,6 +959,7 @@ function buildModalGrid(){
   else if(modalCtx==='ms-cat'){ const it=ls('ms_items',[]).find(i=>i.id===msEditItemId); curSel=it?.category||'other'; }
   else if(modalCtx==='cs-quickadd-unit') curSel=csQuickAddUnit||'unit';
   else if(modalCtx==='pt-quickadd-unit') curSel=ptQuickAddUnit||'unit';
+  else if(modalCtx==='new-item-unit') curSel=window._newItemUnit||'unit';
   else if(modalCtx==='pt-quickadd-cat') curSel=ptQuickAddCat||'other';
   else if(modalCtx==='cs-quickadd-cat') curSel=csQuickAddCat||'other';
   else curSel=modalCtx==='gl'?glSelectedCat:msSelectedCat;
@@ -952,11 +975,19 @@ function buildModalGrid(){
     if(!isUnit) btn.style.setProperty('--cat-color',catColor);
     if(item.id==='other'||item.id==='unit') btn.style.gridColumn='1/-1';
 
-    const lbl=document.createElement('span');
-    lbl.className='modal-cat-label';
-    if(!isUnit) lbl.style.color=catColor;
-    lbl.textContent=item.label;
-    btn.appendChild(lbl);
+    if(isUnit){
+      const UNIT_NAMES={'oz':'Ounces','lbs':'Pounds','g':'Grams','kg':'Kilograms','ml':'Millilitres','l':'Litres','fl oz':'Fluid Oz','cartons':'Cartons','cans':'Cans','each':'Each','unit':'Unit','pinch':'Pinch','tbsp':'Tablespoon','tsp':'Teaspoon','cups':'Cups'};
+      const inner=document.createElement('span'); inner.className='modal-cat-label'; inner.style.cssText='flex-direction:column;gap:2px;';
+      const nameEl=document.createElement('span'); nameEl.style.cssText='font-size:10px;font-weight:800;'; nameEl.textContent=UNIT_NAMES[item.id]||item.label;
+      const abbrEl=document.createElement('span'); abbrEl.style.cssText='font-size:7px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;opacity:0.6;'; abbrEl.textContent=item.abbr||item.id;
+      inner.append(nameEl,abbrEl); btn.appendChild(inner);
+    } else {
+      const lbl=document.createElement('span');
+      lbl.className='modal-cat-label';
+      if(!isUnit) lbl.style.color=catColor;
+      lbl.textContent=item.label;
+      btn.appendChild(lbl);
+    }
 
     btn.onclick=e=>{
       if(e.target.closest('.modal-del-sq')) return;
@@ -966,10 +997,11 @@ function buildModalGrid(){
           if(modalCtx==='ms-unit'){ msSetUnit(msEditItemId,item.id); closeModal(); }
           else if(modalCtx==='cs-quickadd-unit'){ csQuickAddUnit=item.id; closeModal(); csQuickAddState='done'; csQuickAddFinalise(); }
           else if(modalCtx==='pt-quickadd-unit'){ ptQuickAddUnit=item.id; closeModal(); ptQuickAddState='done'; ptQuickAddFinalise(); }
+          else if(modalCtx==='new-item-unit'){ window._newItemUnit=item.id; closeModal(); if(window._newItemUnitCallback) window._newItemUnitCallback(item.id); }
           else { csSelectedUnit=item.id; updateUnitBtn(); closeModal(); }
         } else {
           modalSelPend=item.id; buildModalGrid();
-          setTimeout(()=>{ if(modalSelPend===item.id){ modalSelPend=null; buildModalGrid(); } },2000);
+          if(!isUnit) setTimeout(()=>{ if(modalSelPend===item.id){ modalSelPend=null; buildModalGrid(); } },3000);
         }
       } else {
         if(modalSelPend===item.id){
@@ -984,18 +1016,15 @@ function buildModalGrid(){
               window._glQuickAddName=null; glQuickAddState='success'; glQuickAddName='';
               closeModal(); glRender();
             }
-          } else if(modalCtx==='ms-quickadd'){            const name=window._msQuickAddName||'';
-            if(name){
-              const newItem={id:'ms_'+Date.now()+Math.random(),name,category:item.id,unit:'unit'};
-              const ms=ls('ms_items',[]); ms.push(newItem); lsSet('ms_items',ms);
-              window._msQuickAddName=null; msQuickAddState='success'; msQuickAddName='';
-              closeModal(); msRender();
-            }
+          } else if(modalCtx==='ms-quickadd'){
+            msQuickAddCat=item.id;
+            closeModal(); msQuickAddState='pick-buysize'; msRender();
           } else if(modalCtx==='cs-quickadd-cat'){
             csQuickAddCat=item.id; closeModal(); csQuickAddState='pick-unit'; csRender();
           } else if(modalCtx==='pt-quickadd-cat'){
             ptQuickAddCat=item.id; closeModal(); ptQuickAddState='pick-unit'; const q=(document.getElementById('ptSearch')?.value||'').trim(); ptRenderThinkSlot(q);
           } else if(modalCtx==='ms-cat'){ msSetCat(msEditItemId,item.id); closeModal(); }
+          else if(modalCtx==='new-item-cat'){ const cat=getCat(item.id); closeModal(); if(window._newItemCatCallback) window._newItemCatCallback(item.id, cat.label, cat.color); }
           else if(modalCtx==='gl'){ glSelectedCat=item.id; updateGlBtn(); closeModal(); }
           else { msSelectedCat=item.id; updateMsBtn(); closeModal(); }
         } else {
@@ -1030,74 +1059,79 @@ function buildModalGrid(){
   // Add panel
   const panel=document.createElement('div');
   panel.className='add-cat-panel';
-  const inp=document.createElement('input');
-  inp.className='add-cat-input';
-  inp.placeholder=isUnit?'New unit label…':'New category name…';
-  inp.maxLength=30;
-  panel.appendChild(inp);
 
-  if(!isUnit){
-    // panel title
-    if(editingColorCatId){
-      const editLbl=document.createElement('div');
-      const editCat=getCat(editingColorCatId);
-      editLbl.style.cssText='font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:'+editCat.color+';';
-      editLbl.textContent='Editing: '+editCat.label;
+  if(isUnit && modalSelPend){
+    // Edit panel for pending unit
+    const pendUnit=list.find(u=>u.id===modalSelPend);
+    if(pendUnit){
+      const editLbl=document.createElement('div'); editLbl.style.cssText='font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);'; editLbl.textContent='Editing: '+pendUnit.label;
       panel.appendChild(editLbl);
+      const nameInpE=document.createElement('input'); nameInpE.className='add-cat-input'; nameInpE.placeholder='Full name…'; nameInpE.value=pendUnit.label; nameInpE.maxLength=30;
+      const abbrInpE=document.createElement('input'); abbrInpE.className='add-cat-input'; abbrInpE.placeholder='Abbreviation (e.g. lbs)…'; abbrInpE.value=pendUnit.abbr||pendUnit.id; abbrInpE.maxLength=10;
+      const editBtnRow=document.createElement('div'); editBtnRow.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
+      const saveE=document.createElement('div'); saveE.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;background:#1d3318;color:#48a971;cursor:pointer;'; saveE.textContent='Update Unit';
+      saveE.onclick=()=>{
+        const newLabel=nameInpE.value.trim(); if(!newLabel) return;
+        const newAbbr=abbrInpE.value.trim()||newLabel.toLowerCase().slice(0,3);
+        const custom=ls('unit_custom',[]); const cu=custom.find(u=>u.id===pendUnit.id);
+        if(cu){ cu.label=newLabel; cu.abbr=newAbbr; lsSet('unit_custom',custom); }
+        else {
+          // default unit — store override
+          const ov=ls('unit_overrides',{}); ov[pendUnit.id]={label:newLabel,abbr:newAbbr}; lsSet('unit_overrides',ov);
+        }
+        modalSelPend=null; buildModalGrid();
+      };
+      const divider=document.createElement('div'); divider.style.cssText='width:var(--border-width);background:var(--border-color);flex-shrink:0;';
+      const deselCard=document.createElement('div'); deselCard.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;background:var(--bg-3);color:var(--muted);cursor:pointer;'; deselCard.textContent='Deselect';
+      deselCard.onclick=()=>{ modalSelPend=null; buildModalGrid(); };
+      editBtnRow.append(saveE,divider,deselCard);
+      panel.append(nameInpE,abbrInpE,editBtnRow);
     }
-    // root color dots row
-    const rootRow=document.createElement('div'); rootRow.className='swatches'; rootRow.style.justifyContent='space-between';
-    ROOT_COLORS.forEach((root,ri)=>{
-      const s=document.createElement('div');
-      s.className='swatch'+(selectedRootIdx===ri?' active':'');
-      s.style.background=root.shades[2];
-      s.style.border='3px solid '+(selectedRootIdx===ri?'#fff':'#000');
-      s.onclick=()=>{ selectedRootIdx=ri; buildModalGrid(); };
-      rootRow.appendChild(s);
-    });
-    panel.appendChild(rootRow);
+  } else {
+    // New unit add panel
+    const inp=document.createElement('input'); inp.className='add-cat-input'; inp.placeholder=isUnit?'Full name (e.g. Pounds)…':'New category name…'; inp.maxLength=30; panel.appendChild(inp);
+    let abbrInp=null;
+    if(isUnit){
+      abbrInp=document.createElement('input'); abbrInp.className='add-cat-input'; abbrInp.placeholder='Abbreviation (e.g. lbs)…'; abbrInp.maxLength=10; panel.appendChild(abbrInp);
+    }
 
-    // divider
-    const div=document.createElement('div');
-    div.style.cssText='height:0;border-bottom:var(--border-width) solid var(--border-color);margin:2px 0;';
-    panel.appendChild(div);
-
-    // shade dots for selected root
-    const used=getUsedColors();
-    const shadeRow=document.createElement('div'); shadeRow.className='swatches'; shadeRow.style.justifyContent='space-between';
-    ROOT_COLORS[selectedRootIdx].shades.forEach(shade=>{
-      const isUsed=used.includes(shade.toLowerCase()) && shade.toLowerCase()!==newCatColor.toLowerCase();
-      const s=document.createElement('div');
-      s.style.cssText=`width:24px;height:24px;border-radius:50%;background:${shade};border:3px solid ${shade===newCatColor.toLowerCase()||shade.toLowerCase()===newCatColor.toLowerCase()?'#fff':'#000'};cursor:${isUsed?'default':'pointer'};position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0;`;
-      if(isUsed){
-        const x=document.createElement('span'); x.textContent='×';
-        x.style.cssText='color:#fff;font-size:16px;font-weight:900;line-height:1;';
-        s.appendChild(x);
-      } else {
-        s.onclick=()=>{
-          newCatColor=shade;
-          if(editingColorCatId){
-            updateCatColor(editingColorCatId,shade);
-            editingColorCatId=null; modalSelPend=null;
-          }
-          buildModalGrid();
-        };
+    if(!isUnit){
+      if(editingColorCatId){
+        const editLbl=document.createElement('div');
+        const editCat=getCat(editingColorCatId);
+        editLbl.style.cssText='font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:'+editCat.color+';';
+        editLbl.textContent='Editing: '+editCat.label;
+        panel.appendChild(editLbl);
       }
-      shadeRow.appendChild(s);
-    });
-    panel.appendChild(shadeRow);
-  }
+      const rootRow=document.createElement('div'); rootRow.className='swatches'; rootRow.style.justifyContent='space-between';
+      ROOT_COLORS.forEach((root,ri)=>{
+        const s=document.createElement('div'); s.className='swatch'+(selectedRootIdx===ri?' active':''); s.style.background=root.shades[2]; s.style.border='3px solid '+(selectedRootIdx===ri?'#fff':'#000'); s.onclick=()=>{ selectedRootIdx=ri; buildModalGrid(); }; rootRow.appendChild(s);
+      }); panel.appendChild(rootRow);
+      const div=document.createElement('div'); div.style.cssText='height:0;border-bottom:var(--border-width) solid var(--border-color);margin:2px 0;'; panel.appendChild(div);
+      const used=getUsedColors(); const shadeRow=document.createElement('div'); shadeRow.className='swatches'; shadeRow.style.justifyContent='space-between';
+      ROOT_COLORS[selectedRootIdx].shades.forEach(shade=>{
+        const isUsed=used.includes(shade.toLowerCase()) && shade.toLowerCase()!==newCatColor.toLowerCase();
+        const s=document.createElement('div'); s.style.cssText=`width:24px;height:24px;border-radius:50%;background:${shade};border:3px solid ${shade===newCatColor.toLowerCase()||shade.toLowerCase()===newCatColor.toLowerCase()?'#fff':'#000'};cursor:${isUsed?'default':'pointer'};position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0;`;
+        if(isUsed){ const x=document.createElement('span'); x.textContent='×'; x.style.cssText='color:#fff;font-size:16px;font-weight:900;line-height:1;'; s.appendChild(x); }
+        else { s.onclick=()=>{ newCatColor=shade; if(editingColorCatId){ updateCatColor(editingColorCatId,shade); editingColorCatId=null; modalSelPend=null; } buildModalGrid(); }; }
+        shadeRow.appendChild(s);
+      }); panel.appendChild(shadeRow);
+    }
 
-  const addBtn=document.createElement('button');
-  addBtn.className='add-cat-btn';
-  addBtn.textContent=isUnit?'+ Add Unit':'+ Add Category';
-  addBtn.onclick=()=>{
-    const name=inp.value.trim(); if(!name) return;
-    if(isUnit){ const c=ls('unit_custom',[]); c.push({id:'cu_'+Date.now(),label:name}); lsSet('unit_custom',c); }
-    else { const c=ls('cat_custom',[]); c.push({id:'cc_'+Date.now(),label:name,color:newCatColor}); lsSet('cat_custom',c); }
-    inp.value=''; buildModalGrid();
-  };
-  panel.appendChild(addBtn);
+    const addBtn=document.createElement('button'); addBtn.className='add-cat-btn'; addBtn.textContent=isUnit?'+ Add Unit':'+ Add Category';
+    addBtn.onclick=()=>{
+      const name=inp.value.trim(); if(!name) return;
+      if(isUnit){
+        const abbr=(abbrInp?.value.trim()||name.toLowerCase().slice(0,3)).toLowerCase();
+        const id='cu_'+Date.now();
+        const c=ls('unit_custom',[]); c.push({id,label:name,abbr}); lsSet('unit_custom',c);
+      } else {
+        const c=ls('cat_custom',[]); c.push({id:'cc_'+Date.now(),label:name,color:newCatColor}); lsSet('cat_custom',c);
+      }
+      inp.value=''; if(abbrInp) abbrInp.value=''; buildModalGrid();
+    };
+    panel.appendChild(addBtn);
+  }
   grid.appendChild(panel);
 }
 
@@ -1515,7 +1549,7 @@ function glRender(){
       const yesBtn=document.createElement('div');
       yesBtn.style.cssText='width:48px;min-width:48px;background:#347ab8;border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#fff;cursor:pointer;flex-shrink:0;';
       yesBtn.textContent='YES!';
-      yesBtn.onclick=e=>{ e.stopPropagation(); glQuickAddName=displayName; glQuickAddState='pick-cat'; glRender(); };
+      yesBtn.onclick=e=>{ e.stopPropagation(); openNewItemOverlay(displayName, ()=>{ glQuickAddState='success'; glRender(); }); };
       qaCard.append(txt,yesBtn);
     } else if(glQuickAddState==='pick-cat'){
       const txt=document.createElement('div');
@@ -1898,7 +1932,7 @@ function csRender(){
         const yesBtn=document.createElement('div');
         yesBtn.style.cssText='width:48px;min-width:48px;background:#347ab8;border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#fff;cursor:pointer;flex-shrink:0;';
         yesBtn.textContent='YES!';
-        yesBtn.onclick=e=>{ e.stopPropagation(); csQuickAddName=displayName; csQuickAddState='pick-cat'; csRender(); };
+        yesBtn.onclick=e=>{ e.stopPropagation(); openNewItemOverlay(displayName, ()=>{ csQuickAddState='success'; csRender(); }); };
         qaCard.append(txt,yesBtn);
       } else if(csQuickAddState==='pick-cat'){
         const txt=document.createElement('div');
@@ -2107,6 +2141,13 @@ let msSelectedCat='produce';
 let msOpenState={};
 let msEditItemId=null;
 
+function openMsCatModal(itemId){
+  msEditItemId=itemId; modalCtx='ms-cat'; modalSelPend=null; modalDelPend.clear();
+  editingColorCatId=null; selectedRootIdx=0; newCatColor=ROOT_COLORS[0].shades[2];
+  document.getElementById('modalTitle').textContent='Category';
+  buildModalGrid(); document.getElementById('modalOverlay').classList.add('open');
+}
+
 function openMsUnitModal(itemId){
   msEditItemId=itemId; modalCtx='ms-unit'; modalSelPend=null; modalDelPend.clear();
   editingColorCatId=null;
@@ -2143,10 +2184,20 @@ function msAdd(){
 
 function msDelete(id){
   msDelPend.delete(id);
+  const item=ls('ms_items',[]).find(i=>i.id===id);
+  const itemName=item?.name?.toLowerCase()||'';
+  // Remove from My Store
   lsSet('ms_items',ls('ms_items',[]).filter(i=>i.id!==id));
-  // remove all comp shop entries for this item
+  // Remove from Comp Shop entries
   lsSet('cs_entries',ls('cs_entries',[]).filter(e=>e.itemId!==id));
-  msRender(); csRender();
+  // Remove from Grocery List (match by name since gl uses name not id)
+  if(itemName) lsSet('gl_items',ls('gl_items',[]).filter(i=>i.name.toLowerCase()!==itemName));
+  // Remove from Pantry data
+  const pd=ls('pantry_data',{}); delete pd[id]; lsSet('pantry_data',pd);
+  // Remove from pantry usage logs
+  lsSet('pantry_usage',ls('pantry_usage',{})[id]?Object.fromEntries(Object.entries(ls('pantry_usage',{})).filter(([k])=>k!==id)):{});
+  lsSet('pantry_usage_log',ls('pantry_usage_log',[]).filter(e=>e.id!==id));
+  msRender(); csRender(); glRender(); ptRender();
 }
 
 function msSetUnit(id, unitId){
@@ -2235,59 +2286,34 @@ function msBuildRow(item){
   addSq.dataset.id=item.id;
   addSq.onclick=e=>{ e.stopPropagation(); msAddToGrocery(e.currentTarget.dataset.id); };
 
-  // name — either static or input
+  // name — tapping directly enters edit mode
   let nm;
   if(isEditing){
     nm=document.createElement('input');
-    nm.style.cssText='flex:1;min-width:0;background:var(--bg-3);border:none;border-left:var(--border-width) solid var(--border-color);border-right:var(--border-width) solid var(--border-color);color:var(--color-10);font-size:10px;font-weight:600;padding:0 8px;outline:none;height:100%;';
+    nm.style.cssText='flex:1;min-width:0;background:var(--bg-4);border:none;color:var(--color-10);font-size:10px;font-weight:600;padding:0 8px;outline:none;height:100%;';
     nm.value=item.name;
     nm.onclick=e=>e.stopPropagation();
     nm.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.stopPropagation(); msSaveName(item.id,nm.value); } });
-    // auto focus without opening keyboard on mobile
-    setTimeout(()=>{ nm.focus(); nm.select(); },50);
+    nm.addEventListener('blur',()=>msSaveName(item.id,nm.value));
+    setTimeout(()=>nm.focus(),50);
   } else {
     nm=document.createElement('div'); nm.className='item-name';
     nm.textContent=isAdded?item.name+'  — Added':item.name;
     if(isAdded) nm.style.color='var(--color-4)';
+    nm.style.cursor='text';
+    nm.onclick=e=>{ e.stopPropagation(); msEditingId.current=item.id; msRender(); };
   }
 
-  // edit handle
-  const editSq=document.createElement('div');
-  editSq.style.cssText=`width:32px;min-width:32px;background:${isEditing?'#fff':'var(--bg-3)'};border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;font-size:${isEditing?'14px':'11px'};font-weight:900;letter-spacing:-1px;`;
-
-  if(isEditing){
-    editSq.style.animation='ms-blink-red 0.7s infinite';
-    editSq.style.color='var(--color-1)';
-    editSq.textContent='✓';
-    editSq.onclick=e=>{ e.stopPropagation(); msSaveName(item.id, nm.value||item.name); };
-    // add blink keyframes if not already added
-    if(!document.getElementById('ms-blink-style')){
-      const st=document.createElement('style'); st.id='ms-blink-style';
-      st.textContent='@keyframes ms-blink-red{0%,100%{color:var(--color-1)}50%{color:transparent}}@keyframes ms-blink-green{0%,100%{color:var(--color-4)}50%{color:transparent}}';
-      document.head.appendChild(st);
-    }
-  } else {
-    editSq.style.color='var(--muted)';
-    editSq.textContent='≡';
-    editSq.dataset.id=item.id;
-    editSq.onclick=e=>{
-      e.stopPropagation();
-      const id=e.currentTarget.dataset.id;
-      if(msEditPend.has(id)){
-        msEditPend.delete(id);
-        msEditingId.current=id;
-        msRender();
-      } else {
-        msEditPend.add(id);
-        editSq.style.background='var(--bg-4)'; editSq.style.color='var(--color-10)';
-        setTimeout(()=>{ msEditPend.delete(id); editSq.style.background='var(--bg-3)'; editSq.style.color='var(--muted)'; },2000);
-      }
-    };
-  }
+  // category badge — shows cat name in cat color, taps to change category
+  const catBadge=document.createElement('div');
+  catBadge.style.cssText=`width:20%;min-width:0;background:var(--bg-2);border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:${cat.color||'var(--muted)'};cursor:pointer;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;`;
+  catBadge.textContent=cat.label;
+  catBadge.dataset.id=item.id;
+  catBadge.onclick=e=>{ e.stopPropagation(); openMsCatModal(e.currentTarget.dataset.id); };
 
   // unit badge
   const unitBadge=document.createElement('div');
-  unitBadge.style.cssText=`width:25%;min-width:0;background:var(--bg-3);border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);cursor:pointer;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;`;
+  unitBadge.style.cssText=`width:20%;min-width:0;background:var(--bg-4);border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#fff;cursor:pointer;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;`;
   unitBadge.textContent=unit.label;
   unitBadge.dataset.id=item.id;
   unitBadge.onclick=e=>{ e.stopPropagation(); openMsUnitModal(e.currentTarget.dataset.id); };
@@ -2302,7 +2328,7 @@ function msBuildRow(item){
     else { msDelPend.add(id); del.className='item-del pending'; setTimeout(()=>{ msDelPend.delete(id); msRender(); },2000); }
   };
 
-  row.append(addSq,nm,editSq,unitBadge,del);
+  row.append(addSq,nm,catBadge,unitBadge,del);
   return row;
 }
 
@@ -2387,6 +2413,10 @@ const MS_SUCCESS_PHRASES = [
 
 let msQuickAddState = null;
 let msQuickAddName = '';
+let msQuickAddCat = null;
+let msQuickAddBuyAmt = '';
+let msQuickAddBuyUnit = 'oz';
+const MS_BUY_UNITS = ['oz','lbs','g','kg','ml','l','cartons','cans','each'];
 let msSearchIdleTimer = null;
 let msThinkTimer = null;
 let msCurrentThinkPhrase = MS_THINK_PHRASES[0];
@@ -2422,7 +2452,7 @@ function msSearchInput(){
   const q = (document.getElementById('msSearch')?.value||'').trim();
   if(!q){ msThinkPhraseSet=false; msQuickAddState=null; msQuickAddName=''; msThinkCardEl=null; msRender(); return; }
   // if user types again after idle fired, reset back to thinking
-  if(msQuickAddState && msQuickAddState!=='pick-cat'){
+  if(msQuickAddState && msQuickAddState!=='pick-cat' && msQuickAddState!=='confirm' && msQuickAddState!=='pick-buysize'){
     msQuickAddState=null; msThinkCardEl=null; msPickNextThinkPhrase();
   }
   if(!msThinkPhraseSet){ msPickNextThinkPhrase(); msThinkPhraseSet=true; }
@@ -2499,9 +2529,15 @@ function msRender(){
         const yesBtn=document.createElement('div');
         yesBtn.style.cssText='width:48px;min-width:48px;background:#347ab8;border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#fff;cursor:pointer;flex-shrink:0;';
         yesBtn.textContent='YES!';
-        yesBtn.onclick=e=>{ e.stopPropagation(); msQuickAddName=displayName; msQuickAddState='pick-cat'; msRender(); };
+        yesBtn.onclick=e=>{ e.stopPropagation(); openNewItemOverlay(displayName, ()=>{ msQuickAddState='success'; msRender(); }); };
         qaCard.append(txt,yesBtn);
-      } else if(msQuickAddState==='pick-cat'){
+      } else if(msQuickAddState==='pick-buysize'){
+        const bsLbl=document.createElement('div'); bsLbl.style.cssText='flex:1;min-width:0;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--muted);flex-shrink:0;white-space:nowrap;'; bsLbl.textContent='Buy size:';
+        const amtInp=document.createElement('input'); amtInp.type='number'; amtInp.min='0'; amtInp.step='0.1'; amtInp.placeholder='0'; amtInp.value=msQuickAddBuyAmt; amtInp.style.cssText='width:52px;min-width:52px;background:var(--bg-3);border:none;border-left:var(--border-width) solid var(--border-color);color:var(--color-10);font-size:11px;font-weight:700;padding:0 6px;outline:none;font-family:inherit;'; amtInp.oninput=e=>msQuickAddBuyAmt=e.target.value;
+        const unitSel=document.createElement('select'); unitSel.style.cssText='width:52px;background:var(--bg-2);border:none;border-left:var(--border-width) solid var(--border-color);color:var(--color-10);font-size:9px;font-weight:700;padding:0 4px;outline:none;font-family:inherit;cursor:pointer;appearance:none;text-align:center;'; MS_BUY_UNITS.forEach(u=>{ const o=document.createElement('option'); o.value=u; o.textContent=u; if(u===msQuickAddBuyUnit) o.selected=true; unitSel.appendChild(o); }); unitSel.onchange=e=>msQuickAddBuyUnit=e.target.value;
+        const saveBtn=document.createElement('div'); saveBtn.style.cssText='width:56px;min-width:56px;background:#1d3318;border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#48a971;cursor:pointer;'; saveBtn.textContent='SAVE!';
+        saveBtn.onclick=e=>{ e.stopPropagation(); const name=msQuickAddName||displayName; const buyAmt=parseFloat(msQuickAddBuyAmt)||0; const newItem={id:'ms_'+Date.now()+Math.random(),name,category:msQuickAddCat,buySize:{amount:buyAmt,unit:msQuickAddBuyUnit}}; const ms=ls('ms_items',[]); ms.push(newItem); lsSet('ms_items',ms); msQuickAddState='success'; msQuickAddName=''; msQuickAddCat=null; msQuickAddBuyAmt=''; msRender(); };
+        qaCard.append(bsLbl,amtInp,unitSel,saveBtn);
         const txt=document.createElement('div');
         txt.style.cssText='flex:1;min-width:0;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--muted);';
         txt.textContent='Pick your category';
@@ -2611,8 +2647,12 @@ function renderSettingsBody(){
     wrap.appendChild(row); return wrap;
   }
 
-  // Data card — teal
-  body.appendChild(makeSimpleCard('Data', DATA_COLOR, '#fff', openDataWindow));
+  // Recipes & Meals settings cards
+  body.appendChild(makeSettingDivider('Recipes & Meals'));
+  const RECIPE_COLOR='#1d3318';
+  const MEALS_COLOR='#1d2a3f';
+  body.appendChild(makeSimpleCard('Recipes', RECIPE_COLOR, '#48a971', openRecipesWindow));
+  body.appendChild(makeSimpleCard('Meals', MEALS_COLOR, '#5A8DB8', openMealsWindow));
 
   // My Sales card — charcoal orange
   const SALES_COLOR = '#4f3010'; // GT50 color-2-4 charcoal orange
@@ -2742,6 +2782,90 @@ function importData(json){
     DATA_KEYS.forEach(k=>{ if(obj[k]!==undefined) localStorage.setItem(k, JSON.stringify(obj[k])); });
     return true;
   } catch(e){ return false; }
+}
+
+/* ── New Item Overlay (shared by all search bars) ── */
+function openNewItemOverlay(prefillName, onSave){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-3);z-index:150;display:flex;flex-direction:column;overflow:hidden;font-family:inherit;';
+  const hdr=document.createElement('div'); hdr.style.cssText='height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-1);';
+  const htitle=document.createElement('div'); htitle.style.cssText='flex:1;display:flex;align-items:center;padding:0 14px;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;'; htitle.textContent='New Item';
+  const hclose=document.createElement('button'); hclose.style.cssText='width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff;cursor:pointer;'; hclose.textContent='×'; hclose.onclick=()=>ov.remove();
+  hdr.append(htitle,hclose);
+  const body=document.createElement('div'); body.style.cssText='flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--margin);padding:var(--margin);background:var(--bg-3);';
+
+  // Name
+  const nameWrap=document.createElement('div'); nameWrap.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;';
+  const nameInp=document.createElement('input'); nameInp.type='text'; nameInp.placeholder='Item name…'; nameInp.value=prefillName||''; nameInp.style.cssText='flex:1;background:#c8cdd4;border:none;color:#1a1a1a;font-size:13px;font-weight:600;padding:0 10px;outline:none;font-family:inherit;';
+  nameWrap.appendChild(nameInp); body.appendChild(nameWrap);
+
+  // Category — full width, grey bg, no arrow, taps open modal
+  let selectedCatId=null;
+  const catCard=document.createElement('div'); catCard.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;background:var(--bg-2);';
+  const catLbl=document.createElement('div'); catLbl.style.cssText='font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);'; catLbl.textContent='TAP TO PICK CATEGORY';
+  catCard.appendChild(catLbl);
+  catCard.onclick=()=>{
+    modalCtx='new-item-cat'; modalSelPend=null; modalDelPend.clear();
+    editingColorCatId=null; selectedRootIdx=0; newCatColor=ROOT_COLORS[0].shades[2];
+    document.getElementById('modalTitle').textContent='Category';
+    buildModalGrid(); document.getElementById('modalOverlay').classList.add('open');
+  };
+  window._newItemCatCallback=(catId,catLabel,catColor)=>{
+    selectedCatId=catId;
+    catCard.style.background='var(--bg-2)';
+    catLbl.textContent=catLabel.toUpperCase();
+    catLbl.style.color=catColor||'var(--color-10)';
+  };
+  body.appendChild(catCard);
+
+  // Buy unit only
+  let buyUnit=null;
+  const sizeCard=document.createElement('div'); sizeCard.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;background:var(--bg-2);';
+  function updateUnitDisplay(){
+    sizeCard.innerHTML='';
+    if(!buyUnit){
+      const lbl=document.createElement('div'); lbl.style.cssText='font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);'; lbl.textContent='TAP TO PICK UNIT';
+      sizeCard.appendChild(lbl);
+    } else {
+      sizeCard.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;cursor:pointer;';
+      const u=getUnit(buyUnit);
+      const left=document.createElement('div'); left.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-10);background:var(--bg-2);'; left.textContent=(u.label||buyUnit).toUpperCase();
+      const div=document.createElement('div'); div.style.cssText='width:var(--border-width);background:var(--border-color);flex-shrink:0;';
+      const right=document.createElement('div'); right.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);background:var(--bg-2);'; right.textContent=(u.abbr||buyUnit).toUpperCase();
+      sizeCard.append(left,div,right);
+    }
+  }
+  updateUnitDisplay();
+  const unitBtn=sizeCard;
+  unitBtn.onclick=e=>{ e.stopPropagation();
+    window._newItemUnit=buyUnit;
+    window._newItemUnitCallback=(unitId)=>{ buyUnit=unitId; updateUnitDisplay(); };
+    modalCtx='new-item-unit'; modalSelPend=null; modalDelPend.clear();
+    document.getElementById('modalTitle').textContent='Unit';
+    buildModalGrid(); document.getElementById('modalOverlay').classList.add('open');
+  };
+  body.appendChild(sizeCard);
+
+  // Error
+  const errMsg=document.createElement('div'); errMsg.style.cssText='font-size:9px;color:var(--color-1);padding:2px 4px;min-height:16px;'; body.appendChild(errMsg);
+
+  // Save
+  const saveBtn=document.createElement('div'); saveBtn.style.cssText='height:var(--card-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;cursor:pointer;';
+  const saveLbl=document.createElement('div'); saveLbl.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;background:#1d3318;color:#48a971;'; saveLbl.textContent='Add to My Store';
+  saveBtn.appendChild(saveLbl);
+  saveBtn.onclick=()=>{
+    const name=nameInp.value.trim();
+    if(!name){ errMsg.textContent='Please enter a name.'; return; }
+    if(!selectedCatId){ errMsg.textContent='Please pick a category.'; return; }
+    const newItem={id:'ms_'+Date.now()+Math.random(),name,category:selectedCatId,unit:buyUnit||'unit',buySize:{unit:buyUnit||null}};
+    const ms=ls('ms_items',[]); ms.push(newItem); lsSet('ms_items',ms);
+    ov.remove();
+    if(onSave) onSave(newItem);
+    msRender();
+  };
+  body.appendChild(saveBtn);
+  ov.append(hdr,body);
+  document.body.appendChild(ov);
 }
 
 function openDataWindow(){
@@ -3013,6 +3137,145 @@ function getItemPantry(id){
   if(!d[id]) d[id]={containers:[],totalCap:0,step:1};
   return d[id];
 }
+function openAddContainerWindow(msItem, pd, wrap, selectedCon, expandView){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-3);z-index:300;display:flex;flex-direction:column;overflow:hidden;font-family:inherit;';
+
+  const hdr=document.createElement('div'); hdr.style.cssText='height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-1);';
+  const htitle=document.createElement('div'); htitle.style.cssText='flex:1;display:flex;align-items:center;padding:0 14px;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;'; htitle.textContent='New Container';
+  const hclose=document.createElement('button'); hclose.style.cssText='width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff;cursor:pointer;'; hclose.textContent='×'; hclose.onclick=()=>ov.remove();
+  hdr.append(htitle,hclose);
+
+  const body=document.createElement('div'); body.style.cssText='flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--margin);padding:var(--margin);';
+
+  const OZ_UNIT=new Set(['oz','fl oz']);
+
+  let chosenUnit=pd.unit||null;
+  let amtValue=null;
+  let ozType=pd.ozType||null;
+  let convValue=null;
+  let priceMode=null;
+  let priceVal=null;
+
+  function isComplete(){
+    const isOz=chosenUnit&&OZ_UNIT.has(chosenUnit);
+    const ozOk=!isOz||(ozType!==null);
+    const hasAmt=amtValue!==null&&amtValue>0;
+    const priceOk=priceMode==='free'||(priceMode==='price'&&priceVal>0);
+    return !!chosenUnit&&ozOk&&hasAmt&&priceOk;
+  }
+
+  // helper: make a tap-to-enter card that switches from prompt to input
+  function makeTapCard(prompt, buildInput){
+    const card=document.createElement('div');
+    card.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;background:var(--bg-2);';
+    const lbl=document.createElement('div'); lbl.style.cssText='font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-align:center;padding:0 10px;'; lbl.textContent=prompt;
+    card.appendChild(lbl);
+    card.onclick=()=>{ card.innerHTML=''; card.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;cursor:default;'; buildInput(card); };
+    return card;
+  }
+
+  // ── Name
+  const nameCard=makeTapCard('TAP TO ADD NAME', card=>{
+    const inp=document.createElement('input'); inp.type='text'; inp.placeholder='Container name…'; inp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:13px;font-weight:600;padding:0 14px;outline:none;font-family:inherit;';
+    inp.oninput=()=>refreshSave();
+    card.appendChild(inp); setTimeout(()=>inp.focus(),50);
+  });
+  body.appendChild(nameCard);
+
+  // ── Measurement unit
+  const unitCard=makeTapCard('TAP TO ADD MEASUREMENT UNIT', card=>{
+    card.style.cursor='pointer';
+    card.onclick=()=>{ window._newItemUnit=chosenUnit||'unit'; window._newItemUnitCallback=(unitId)=>{ chosenUnit=unitId; const u=getUnit(unitId); card.innerHTML=''; card.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;cursor:pointer;'; const l=document.createElement('div'); l.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-10);background:var(--bg-2);'; l.textContent=(u.label||unitId).toUpperCase(); const d=document.createElement('div'); d.style.cssText='width:var(--border-width);background:var(--border-color);flex-shrink:0;'; const r=document.createElement('div'); r.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);background:var(--bg-2);'; r.textContent=(u.abbr||unitId).toUpperCase(); card.append(l,d,r); ozTypeCard.style.display=OZ_UNIT.has(unitId)?'flex':'none'; refreshSave(); }; modalCtx='new-item-unit'; modalSelPend=null; modalDelPend.clear(); document.getElementById('modalTitle').textContent='Measurement Unit'; buildModalGrid(); document.getElementById('modalOverlay').classList.add('open'); };
+    const lbl=document.createElement('div'); lbl.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);'; lbl.textContent='TAP TO CHANGE UNIT'; card.appendChild(lbl);
+  });
+  if(chosenUnit){ unitCard.onclick(); } // pre-fill if unit already set
+  body.appendChild(unitCard);
+
+  // ── Unit Amount
+  const amtCard=makeTapCard('TAP TO ADD UNIT AMOUNT', card=>{
+    const inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.1'; inp.placeholder='Amount…'; inp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:14px;font-weight:700;padding:0 14px;outline:none;font-family:inherit;';
+    inp.oninput=e=>{ amtValue=parseFloat(e.target.value)||0; refreshSave(); };
+    card.appendChild(inp); setTimeout(()=>inp.focus(),50);
+  });
+  body.appendChild(amtCard);
+
+  // ── Unit Type (liquid or dry) — only for oz units
+  const ozTypeCard=document.createElement('div'); ozTypeCard.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:none;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;background:var(--bg-2);';
+  function renderOzTypeCard(){
+    ozTypeCard.innerHTML='';
+    if(!ozType){
+      const lbl=document.createElement('div'); lbl.style.cssText='font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-align:center;padding:0 10px;'; lbl.textContent='TAP TO ADD UNIT TYPE: LIQUID OR DRY';
+      ozTypeCard.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;background:var(--bg-2);';
+      ozTypeCard.appendChild(lbl);
+      ozTypeCard.onclick=()=>{ ozType='dry'; renderOzTypeCard(); refreshSave(); };
+    } else {
+      ozTypeCard.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
+      const dry=document.createElement('div'); dry.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;background:${ozType==='dry'?'var(--bg-4)':'var(--bg-2)'};color:${ozType==='dry'?'#fff':'var(--muted)'};`; dry.textContent='DRY';
+      const divEl=document.createElement('div'); divEl.style.cssText='width:var(--border-width);background:var(--border-color);flex-shrink:0;';
+      const liq=document.createElement('div'); liq.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;background:${ozType==='liquid'?'var(--bg-4)':'var(--bg-2)'};color:${ozType==='liquid'?'#fff':'var(--muted)'};`; liq.textContent='LIQUID';
+      dry.onclick=e=>{ e.stopPropagation(); ozType='dry'; renderOzTypeCard(); refreshSave(); };
+      liq.onclick=e=>{ e.stopPropagation(); ozType='liquid'; renderOzTypeCard(); refreshSave(); };
+      ozTypeCard.append(dry,divEl,liq); ozTypeCard.onclick=null;
+    }
+  }
+  renderOzTypeCard();
+  body.appendChild(ozTypeCard);
+
+  // ── Unit Conversion
+  const convCard=makeTapCard('TAP TO ADD UNIT CONVERSION', card=>{
+    const inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.01'; inp.placeholder='oz equivalent (e.g. 14.5)…'; inp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:13px;font-weight:700;padding:0 14px;outline:none;font-family:inherit;';
+    const lbl=document.createElement('div'); lbl.style.cssText='padding:0 12px;display:flex;align-items:center;font-size:9px;font-weight:700;color:var(--muted);background:var(--bg-3);border-left:var(--border-width) solid var(--border-color);white-space:nowrap;'; lbl.textContent='oz per unit';
+    inp.oninput=e=>{ convValue=parseFloat(e.target.value)||null; refreshSave(); };
+    card.append(inp,lbl); setTimeout(()=>inp.focus(),50);
+  });
+  body.appendChild(convCard);
+
+  // ── Price
+  const priceCard=makeTapCard('TAP TO ADD PRICE', card=>{
+    const inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.01'; inp.placeholder='$ paid'; inp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:14px;font-weight:700;padding:0 14px;outline:none;font-family:inherit;';
+    inp.oninput=e=>{ priceMode='price'; priceVal=parseFloat(e.target.value)||0; refreshSave(); };
+    const freeEl=document.createElement('div'); freeEl.style.cssText='padding:0 18px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#48a971;background:var(--bg-2);cursor:pointer;border-left:var(--border-width) solid var(--border-color);white-space:nowrap;'; freeEl.textContent='FREE';
+    freeEl.onclick=e=>{ e.stopPropagation(); priceMode=priceMode==='free'?'price':'free'; freeEl.style.background=priceMode==='free'?'#1d3318':'var(--bg-2)'; inp.disabled=priceMode==='free'; inp.style.opacity=priceMode==='free'?'0.3':'1'; if(priceMode==='free') inp.value=''; refreshSave(); };
+    card.append(inp,freeEl);
+  });
+  body.appendChild(priceCard);
+
+  // ── Add Container button
+  const saveBtn=document.createElement('div'); saveBtn.style.cssText='height:var(--card-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;cursor:default;margin-top:4px;';
+  const saveLbl=document.createElement('div'); saveLbl.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;background:var(--bg-3);color:var(--muted);'; saveLbl.textContent='Add Container';
+  saveBtn.appendChild(saveLbl);
+
+  function refreshSave(){
+    const ok=isComplete();
+    saveLbl.style.background=ok?'#1d3318':'var(--bg-3)';
+    saveLbl.style.color=ok?'#48a971':'var(--muted)';
+    saveBtn.style.cursor=ok?'pointer':'default';
+  }
+  refreshSave();
+
+  const errMsg=document.createElement('div'); errMsg.style.cssText='font-size:9px;color:var(--color-1);padding:2px 4px;min-height:16px;'; body.appendChild(errMsg);
+  body.appendChild(saveBtn);
+
+  saveBtn.onclick=()=>{
+    if(!isComplete()) return;
+    const unit=chosenUnit||(pd.unit||'oz');
+    pd.unit=unit;
+    if(ozType) pd.ozType=ozType;
+    if(convValue) pd.ozPerUnit=convValue;
+    const price=priceMode==='free'?null:priceVal;
+    const free=priceMode==='free';
+    const nameInp=nameCard.querySelector('input');
+    const label=(nameInp?.value||'').trim()||('Container '+(pd.containers.length+1));
+    pd.containers.push({id:Date.now(),label,amount:amtValue,cap:amtValue,addedTs:Date.now(),price,free});
+    saveItemPantry(msItem.id,pd);
+    ov.remove();
+    ptRefreshCard(msItem,pd,wrap,selectedCon,expandView);
+  };
+  ov.append(hdr,body);
+  document.body.appendChild(ov);
+}
+
 function saveItemPantry(id,pd){ const d=getPantryData(); d[id]=pd; setPantryData(d); }
 
 function getPtUsage(){ return ls('pantry_usage',{}); }
@@ -3225,17 +3488,42 @@ function ptBuildCard(msItem){
       const selCon=selectedCon.id?pd.containers.find(c=>c.id===selectedCon.id):null;
       const sorted=[...pd.containers].sort((a,b)=>(a.amount===0&&b.amount>0)?1:(b.amount===0&&a.amount>0)?-1:0);
       let pendingConfirm=null;
-      if(pd.containers.length===0){ const emptyMsg=document.createElement('div'); emptyMsg.style.cssText=`height:32px;border:3px solid #000;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;font-weight:600;color:var(--muted);font-style:italic;`; emptyMsg.textContent='No containers — add one below'; body.appendChild(emptyMsg); }
+      if(pd.containers.length===0){ const emptyMsg=document.createElement('div'); emptyMsg.style.cssText='height:var(--card-height);border:3px solid #000;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;font-weight:600;color:var(--muted);font-style:italic;'; emptyMsg.textContent='No containers — add one below'; body.appendChild(emptyMsg); }
       else {
-        const barRow=document.createElement('div'); barRow.style.cssText='display:flex;gap:4px;';
-        sorted.forEach(con=>{ const isSel=selectedCon.id===con.id; const vM=Math.max(con.cap,con.amount)||1; const cPct=(con.amount/vM*100).toFixed(1); const oPct=con.amount>con.cap?((con.amount-con.cap)/vM*100).toFixed(1):0;
-          const b=document.createElement('div'); b.style.cssText=`flex:1;height:32px;border:3px solid ${isSel?'#fff':'#000'};border-radius:8px;overflow:hidden;position:relative;display:flex;align-items:stretch;cursor:pointer;min-width:0;`;
-          const fill=document.createElement('div'); fill.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${cPct}%;background:${ptConFillColor(con)};transition:width 0.3s ease;pointer-events:none;`;
-          const fillO=document.createElement('div'); fillO.style.cssText=`position:absolute;right:0;top:0;bottom:0;width:${oPct}%;background:${ptDarken(ptConFillColor(con),0.5)};opacity:0.7;transition:width 0.3s ease;pointer-events:none;`;
-          const v=document.createElement('div'); v.style.cssText=`position:relative;z-index:2;flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:${isSel?'#fff':'rgba(255,255,255,0.6)'};`; v.textContent=`${con.amount}/${con.cap}`;
-          b.append(fill,fillO,v); b.onclick=e=>{ e.stopPropagation(); selectedCon.id=selectedCon.id===con.id?null:con.id; updateBtnState(); renderExpand(); };
-          if(con._confirmEmpty) pendingConfirm=con; barRow.appendChild(b);
-        }); body.appendChild(barRow);
+        // split into rows of max 3, balanced: e.g. 4→[2,2], 5→[3,2], 7→[3,3,1]
+        function chunkContainers(arr){
+          const total=arr.length, rows=Math.ceil(total/3), chunks=[];
+          let rem=total;
+          for(let r=0;r<rows;r++){
+            const rowsLeft=rows-r;
+            const size=Math.ceil(rem/rowsLeft);
+            chunks.push(arr.slice(total-rem,total-rem+size));
+            rem-=size;
+          }
+          return chunks;
+        }
+        chunkContainers(sorted).forEach(rowCons=>{
+          const rowEl=document.createElement('div'); rowEl.style.cssText='display:flex;gap:4px;';
+          rowCons.forEach(con=>{
+            const isSel=selectedCon.id===con.id;
+            const vM=Math.max(con.cap,con.amount)||1; const cPct=(con.amount/vM*100).toFixed(1);
+            const card=document.createElement('div'); card.style.cssText=`flex:1;height:var(--card-height);border:3px solid ${isSel?'#fff':'#000'};border-radius:8px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;min-width:0;`;
+            const fill=document.createElement('div'); fill.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${cPct}%;background:${ptConFillColor(con)};opacity:0.3;transition:width 0.3s;pointer-events:none;`;
+            const inner=document.createElement('div'); inner.style.cssText='position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:100%;padding:0 4px;box-sizing:border-box;';
+            const nmEl=document.createElement('div'); nmEl.style.cssText='font-size:11px;font-weight:800;color:#fff;letter-spacing:0.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center;'; nmEl.textContent=con.label||'Container';
+            const amtEl=document.createElement('div'); amtEl.style.cssText='font-size:10px;font-weight:700;color:rgba(255,255,255,0.7);text-align:center;'; amtEl.textContent=`${con.amount} / ${con.cap}`;
+            const prEl=document.createElement('div'); prEl.style.cssText='text-align:center;';
+            if(con.free){ prEl.style.cssText+='font-size:9px;font-weight:800;color:#48a971;'; prEl.textContent='FREE'; }
+            else if(con.price!=null){ const ppu=con.cap>0?(con.price/con.cap).toFixed(2):'?'; prEl.style.cssText+='font-size:9px;font-weight:700;color:rgba(255,255,255,0.5);'; prEl.textContent='$'+ppu+'/'+(pd.unit||'unit'); }
+            else { prEl.style.cssText+='font-size:9px;font-weight:700;color:#C85A5A;'; prEl.textContent='no price'; }
+            inner.append(nmEl,amtEl,prEl);
+            card.append(fill,inner);
+            card.onclick=e=>{ e.stopPropagation(); selectedCon.id=selectedCon.id===con.id?null:con.id; updateBtnState(); renderExpand(); };
+            if(con._confirmEmpty) pendingConfirm=con;
+            rowEl.appendChild(card);
+          });
+          body.appendChild(rowEl);
+        });
         if(pendingConfirm){ const con=pendingConfirm; const conf=document.createElement('div'); conf.style.cssText=`height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;`; const msg=document.createElement('div'); msg.style.cssText='flex:1;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:700;color:#e08080;background:#2a1010;'; msg.textContent='Container empty?'; const yBtn=document.createElement('div'); yBtn.style.cssText='width:48px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;background:#502424;color:#fff;cursor:pointer;border-left:3px solid #000;'; yBtn.textContent='YES'; yBtn.onclick=e=>{ e.stopPropagation(); con._confirmEmpty=false; con._isEmptyChoice=true; saveItemPantry(msItem.id,pd); renderExpand(); }; const nBtn=document.createElement('div'); nBtn.style.cssText='width:48px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;background:#1d442d;color:#fff;cursor:pointer;border-left:3px solid #000;'; nBtn.textContent='NO'; nBtn.onclick=e=>{ e.stopPropagation(); con.amount=pd.step; con._confirmEmpty=false; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; conf.append(msg,yBtn,nBtn); body.appendChild(conf); }
         pd.containers.filter(c=>c._isEmptyChoice).forEach(con=>{ const ch=document.createElement('div'); ch.style.cssText=`border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;`; const bR=document.createElement('div'); bR.style.cssText='height:32px;display:flex;align-items:stretch;'; const dBtn=document.createElement('div'); dBtn.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;background:#502424;color:#fff;cursor:pointer;border-right:3px solid #000;'; dBtn.textContent='Delete Container'; dBtn.onclick=e=>{ e.stopPropagation(); pd.containers=pd.containers.filter(c=>c.id!==con.id); if(selectedCon.id===con.id) selectedCon.id=null; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; const kBtn=document.createElement('div'); kBtn.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;background:#1d3318;color:#48a971;cursor:pointer;'; kBtn.textContent='Keep Empty'; kBtn.onclick=e=>{ e.stopPropagation(); con._isEmptyChoice=false; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; bR.append(dBtn,kBtn); ch.append(bR); body.appendChild(ch); });
       }
@@ -3248,19 +3536,23 @@ function ptBuildCard(msItem){
       const fRow=document.createElement('div'); fRow.style.cssText=`height:calc((45px - 3px) / 2);display:flex;align-items:stretch;`;
       fracs.forEach(({n,d},i)=>{ const btn=document.createElement('div'); const fc2=fracColors[d]||'var(--bg-2)'; const isSelFrac=selCon2&&parseFloat((selCon2.amount/selCon2.cap).toFixed(4))===parseFloat((n/d).toFixed(4)); btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${isSelFrac?fc2:'#fff'};background:${!selCon2?'var(--bg-4)':isSelFrac?'#fff':fc2};cursor:${selCon2?'pointer':'default'};${i<fracs.length-1?'border-right:3px solid #000;':''}`; btn.innerHTML=`<sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub>`; btn.onclick=e=>{ e.stopPropagation(); if(!selCon2) return; selCon2.amount=parseFloat((selCon2.cap*(n/d)).toFixed(1)); saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; fRow.appendChild(btn); });
       fCard.appendChild(fRow); body.appendChild(fCard);
-      // bottom row
+      // Add New Container card
+      const addConBtn=document.createElement('div'); addConBtn.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;cursor:pointer;';
+      const addConIcon=document.createElement('div'); addConIcon.style.cssText='width:32px;min-width:32px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;background:var(--bg-2);color:#48a971;border-right:3px solid #000;'; addConIcon.textContent='+';
+      const addConLbl=document.createElement('div'); addConLbl.style.cssText='flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);background:var(--bg-3);'; addConLbl.textContent='Add New Container';
+      addConBtn.append(addConIcon,addConLbl);
+      addConBtn.onclick=e=>{ e.stopPropagation(); openAddContainerWindow(msItem,pd,wrap,selectedCon,expandView); };
+      body.appendChild(addConBtn);
+
+      // FILL / EMPTY / DELETE — only when container selected
+      const actCard=document.createElement('div'); actCard.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
       function makeDoubleTap(label,bgDef,onConfirm){ const s=document.createElement('div'); s._t=0; s._timer=null; s.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#fff;background:${bgDef};cursor:${selCon?'pointer':'default'};opacity:${selCon?'1':'0.3'};`; s.textContent=label; s.onclick=e=>{ e.stopPropagation(); if(!selCon) return; s._t++; clearTimeout(s._timer); if(s._t>=2){ s._t=0; s.style.background=bgDef; s.style.opacity='1'; onConfirm(); } else{ s.style.background='#fff'; s.style.color='#C85A5A'; s._timer=setTimeout(()=>{ s._t=0; s.style.background=bgDef; s.style.color='#fff'; },3000); } }; return s; }
-      const bRow=document.createElement('div'); bRow.style.cssText='display:flex;gap:4px;';
-      const addCard=document.createElement('div'); addCard.style.cssText=`flex:1;height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;`;
-      const capInp=document.createElement('input'); capInp.type='number'; capInp.min='0'; capInp.placeholder='New container cap…'; capInp.style.cssText='flex:1;min-width:0;background:var(--bg-3);border:none;color:var(--color-10);font-size:10px;font-weight:600;padding:0 10px;outline:none;font-family:inherit;';
-      const addBtnEl=document.createElement('div'); addBtnEl.style.cssText='width:48px;min-width:48px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;background:var(--bg-2);color:var(--muted);cursor:pointer;border-left:3px solid #000;'; addBtnEl.textContent='+ Add'; addBtnEl.onclick=e=>{ e.stopPropagation(); const cap=parseFloat(capInp.value); if(!cap||cap<=0) return; pd.containers.push({id:Date.now(),label:'Container '+(pd.containers.length+1),amount:cap,cap}); capInp.value=''; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; capInp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.stopPropagation(); addBtnEl.onclick(e); } }); addCard.append(capInp,addBtnEl);
-      const actCard=document.createElement('div'); actCard.style.cssText=`flex:1;height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;`;
       const fillSec=makeDoubleTap('FILL','var(--bg-2)',()=>{ selCon.amount=selCon.cap; selCon._confirmEmpty=false; selCon._isEmptyChoice=false; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); });
       const d1=document.createElement('div'); d1.style.cssText='width:3px;background:#000;flex-shrink:0;';
       const empSec=makeDoubleTap('EMPTY','var(--bg-2)',()=>{ selCon.amount=0; selCon._confirmEmpty=false; selCon._isEmptyChoice=false; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); });
       const d2=document.createElement('div'); d2.style.cssText='width:3px;background:#000;flex-shrink:0;';
       const delSec=makeDoubleTap('DELETE','var(--bg-2)',()=>{ pd.containers=pd.containers.filter(c=>c.id!==selCon.id); selectedCon.id=null; updateBtnState(); saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); });
-      actCard.append(fillSec,d1,empSec,d2,delSec); bRow.append(addCard,actCard); body.appendChild(bRow);
+      actCard.append(fillSec,d1,empSec,d2,delSec); body.appendChild(actCard);
 
     } else {
       function makeAdjCard(label,getVal,setVal,minVal,getStep){ const card=document.createElement('div'); card.style.cssText=`display:flex;align-items:stretch;height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;`; const m=document.createElement('div'); m.style.cssText='width:32px;min-width:32px;border:none;border-right:3px solid #000;background:var(--bg-2);color:var(--color-10);font-size:18px;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;'; m.textContent='−'; const ctr=document.createElement('div'); ctr.style.cssText='flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg-3);gap:1px;'; const vEl=document.createElement('div'); vEl.style.cssText='font-size:11px;font-weight:800;'; vEl.textContent=getVal(); const lEl=document.createElement('div'); lEl.style.cssText='font-size:7px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);'; lEl.textContent=label; ctr.append(vEl,lEl); const p=document.createElement('div'); p.style.cssText='width:32px;min-width:32px;border:none;border-left:3px solid #000;background:var(--bg-2);color:var(--color-10);font-size:18px;font-weight:700;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;'; p.textContent='+'; const step=()=>getStep?getStep():0.5; m.onclick=e=>{ e.stopPropagation(); const v=Math.max(minVal,parseFloat((getVal()-step()).toFixed(1))); setVal(v); vEl.textContent=v; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; p.onclick=e=>{ e.stopPropagation(); const v=parseFloat((getVal()+step()).toFixed(1)); setVal(v); vEl.textContent=v; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; card.append(m,ctr,p); return card; }
@@ -3473,7 +3765,7 @@ function ptRenderThinkSlot(q){
     const txt=document.createElement('div'); txt.style.cssText='flex:1;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--color-10);';
     txt.textContent=`Add "${q}"?`;
     const yesBtn=document.createElement('div'); yesBtn.style.cssText='width:56px;min-width:56px;background:#1d3f5c;border-left:3px solid #000;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#fff;cursor:pointer;';
-    yesBtn.textContent='YES!'; yesBtn.onclick=e=>{ e.stopPropagation(); ptQuickAddState='pick-cat'; ptOpenCatModal(); };
+    yesBtn.textContent='YES!'; yesBtn.onclick=e=>{ e.stopPropagation(); openNewItemOverlay(displayName||ptQuickAddName, newItem=>{ ptQuickAddState='success'; ptQuickAddName=''; ptRender(); ptShowSearchMode(true,(document.getElementById('ptSearch')?.value||'').trim()); }); };
     card.append(txt,yesBtn); slot.appendChild(card); return;
   }
   if(ptQuickAddState==='pick-cat'){
@@ -3548,6 +3840,175 @@ function ptRender(){
 }
 
 glRender(); csRender(); msRender();
+
+/* ══════════════════════════════════════
+   RECIPES & MEALS
+══════════════════════════════════════ */
+function rxParseNum(str){ const m=(str||'').match(/[\d.]+/); return m?parseFloat(m[0]):0; }
+function rxParseUnit(str){ return (str||'').replace(/[\d.\s¼½¾⅓⅔⅛⅜⅝⅞⅕⅖]+/g,'').trim().toLowerCase(); }
+function rxToOz(val,unit){ const u=(unit||'').toLowerCase().replace(/s$/,''); const map={lbs:16,lb:16,g:0.03527,kg:35.27,ml:0.03381,l:33.81,'fl oz':1,oz:1}; return val*(map[u]||1); }
+function rxGetIngRatio(ing){ const nc=rxParseNum(ing.needConverted); if(nc>0){ return rxToOz(rxParseNum(ing.haveAmt),rxParseUnit(ing.haveAmt)||'oz')/nc; } const nq=rxParseNum(ing.needAmt); return nq>0?rxParseNum(ing.haveAmt)/nq:Infinity; }
+function rxIngOk(ing){ return rxGetIngRatio(ing)>=1; }
+function rxComputeStatus(r){ let hasZero=false,hasShort=false; r.ingredients.forEach(ing=>{ if(rxGetIngRatio(ing)<1){ if(rxParseNum(ing.haveAmt)===0) hasZero=true; else hasShort=true; } }); if(hasZero) return 'missing'; if(hasShort) return 'partial'; return 'ready'; }
+function rxOzToVolume(oz){ if(!oz||oz<=0) return '—'; const fracs=[[1,'1'],[7/8,'⅞'],[3/4,'¾'],[2/3,'⅔'],[5/8,'⅝'],[1/2,'½'],[2/5,'⅖'],[3/8,'⅜'],[1/3,'⅓'],[1/4,'¼'],[1/5,'⅕'],[1/8,'⅛']]; function bf(val){ const w=Math.floor(val),r=val-w; const f=fracs.reduce((a,b)=>Math.abs(b[0]-r)<Math.abs(a[0]-r)?b:a); if(Math.abs(f[0]-r)>0.06) return val>=0.95?Math.round(val).toString():val.toFixed(2); const ws=w>0?w.toString():'',fs=f[1]==='1'?'':f[1]==='0'?'':f[1]; return (ws&&fs)?ws+fs:(ws||fs||'0'); } const cups=oz/8; if(cups>=0.24) return bf(cups)+' cup'+(cups>=1.9?'s':''); const tbsp=oz/0.5; if(tbsp>=0.9) return bf(tbsp)+' tbsp'; return bf(oz/0.167)+' tsp'; }
+function rxGetScaledDisplay(ing,frac){ const qty=rxParseNum(ing.needAmt); const unit=ing.needAmt.replace(/[\d.¼½¾⅓⅔⅛⅜⅝⅞⅕⅖\s]+/,'').trim(); const scaled=qty*frac; const fracs2=[[1,'1'],[7/8,'⅞'],[3/4,'¾'],[2/3,'⅔'],[5/8,'⅝'],[1/2,'½'],[2/5,'⅖'],[3/8,'⅜'],[1/3,'⅓'],[1/4,'¼'],[1/5,'⅕'],[1/8,'⅛'],[0,'0']]; function bf(val){ const w=Math.floor(val),r=val-w; const f=fracs2.reduce((a,b)=>Math.abs(b[0]-r)<Math.abs(a[0]-r)?b:a); if(Math.abs(f[0]-r)>0.04) return r>0?(w>0?w+val.toFixed(2).slice(1):val.toFixed(2)):w.toString(); const ws=w>0?w.toString():'',fs=f[1]==='1'?'':f[1]==='0'?'':f[1]; return (ws&&fs)?ws+fs:(ws||fs||'0'); } if(unit==='cups'||unit==='cup'){ if(scaled>=1||scaled===0) return bf(scaled)+' cups'; const tb=scaled*16; if(tb>=1) return bf(tb)+' tbsp'; return bf(tb*3)+' tsp'; } if(unit==='tbsp'){ if(scaled>=1) return bf(scaled)+' tbsp'; return bf(scaled*3)+' tsp'; } return bf(scaled)+(unit?' '+unit:''); }
+function rxGetRecipes(){ return ls('rx_recipes',[]); }
+function rxSetRecipes(d){ lsSet('rx_recipes',d); }
+function rxGetMeals(){ return ls('rx_meals',[]); }
+function rxSetMeals(d){ lsSet('rx_meals',d); }
+function rxGetHistory(){ return ls('rx_history',[]); }
+function rxSetHistory(d){ lsSet('rx_history',d); }
+function openRecipesWindow(){ closeSettings(); renderRecipesBody(); document.getElementById('recipesWindow').classList.add('open'); }
+function closeRecipesWindow(){ document.getElementById('recipesWindow').classList.remove('open'); }
+function openMealsWindow(){ closeSettings(); renderMealsBody(); document.getElementById('mealsWindow').classList.add('open'); }
+function closeMealsWindow(){ document.getElementById('mealsWindow').classList.remove('open'); }
+const RX_STATUS_ICON={ready:'✓',partial:'~',missing:'✗'};
+const RX_STATUS_COLOR={ready:'#48a971',partial:'#5A8DB8',missing:'#C85A5A'};
+const RX_FRAC_COLORS={3:'#8a7ca8',4:'#5A8DB8',5:'#48a971',8:'#C7824A'};
+const RX_FRACS=[{n:1,d:8},{n:1,d:5},{n:1,d:4},{n:1,d:3},{n:3,d:8},{n:2,d:5},{n:1,d:2},{n:3,d:5},{n:5,d:8},{n:2,d:3},{n:3,d:4},{n:4,d:5},{n:7,d:8}];
+const RX_UNITS=['oz','lbs','g','kg','ml','l','fl oz','cups','tbsp','tsp','cans','cartons','each','cloves','pinch'];
+function rxDiv(label,color){ const d=document.createElement('div'); d.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 2px 2px;flex-shrink:0;'; const l1=document.createElement('div'); l1.style.cssText='flex:1;height:3px;background:#000;'; const sp=document.createElement('span'); sp.style.cssText=`font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:${color||'var(--muted)'};flex-shrink:0;`; sp.textContent=label; const l2=document.createElement('div'); l2.style.cssText='flex:1;height:3px;background:#000;'; d.append(l1,sp,l2); return d; }
+
+// 50-item cup→oz conversion table (word-match keys)
+const RX_CUP_TO_OZ={'flour':4.4,'bread flour':4.8,'whole wheat':4.8,'almond flour':3.4,'cornstarch':4.5,'baking soda':9.6,'baking powder':6.9,'sugar':7.1,'brown sugar':7.8,'powdered sugar':4.0,'honey':12.0,'maple syrup':11.5,'rice':6.5,'brown rice':6.8,'oats':3.2,'rolled oats':3.2,'breadcrumbs':4.0,'cornmeal':5.0,'pasta':3.5,'quinoa':6.4,'couscous':6.0,'olive oil':7.7,'vegetable oil':7.7,'coconut oil':7.6,'butter':8.0,'milk':8.6,'cream':8.4,'yogurt':8.6,'sour cream':8.5,'water':8.3,'stock':8.4,'broth':8.4,'lentils':6.9,'chickpeas':6.7,'black beans':6.7,'beans':5.8,'almonds':5.1,'walnuts':3.5,'peanuts':5.2,'sesame':5.1,'sunflower':5.1,'chia':5.9,'flax':5.4,'peanut butter':9.0,'salt':10.2,'kosher salt':6.0,'pepper':4.0,'cocoa':3.4,'soy sauce':9.0,'tomato paste':9.2,'cheese':4.0,'coconut':2.6};
+function rxWordMatch(name){ const n=(name||'').toLowerCase(); for(const key of Object.keys(RX_CUP_TO_OZ)){ if(n.includes(key)) return RX_CUP_TO_OZ[key]; } return null; }
+function rxCookingUnitToOz(amount,unit,itemName){ const cupOz=rxWordMatch(itemName); if(!cupOz) return null; const u=(unit||'').toLowerCase(); if(u==='cup'||u==='cups') return amount*cupOz; if(u==='tbsp') return amount*(cupOz/16); if(u==='tsp') return amount*(cupOz/48); if(u==='fl oz') return amount*(cupOz/8); return null; }
+
+function rxSyncIngHave(r){
+  const msItems=ls('ms_items',[]); const pantryData=ls('pantry_data',{});
+  r.ingredients.forEach(ing=>{
+    const msItem=msItems.find(i=>i.name.toLowerCase()===ing.name.toLowerCase());
+    if(msItem){
+      const pd=pantryData[msItem.id];
+      const stock=pd?pd.containers.reduce((s,c)=>s+(c.amount||0),0):0;
+      const pantryUnit=pd?.unit||'oz';
+      ing.haveAmt=stock+' '+pantryUnit;
+      // auto-detect needConverted if not set
+      if(!ing.needConverted){
+        const needNum=rxParseNum(ing.needAmt);
+        const needUnit=ing.needAmt.replace(/[\d.¼½¾⅓⅔⅛⅜⅝⅞⅕⅖\s]+/,'').trim();
+        const needOz=rxCookingUnitToOz(needNum,needUnit,ing.name);
+        if(needOz!=null) ing.needConverted=String(parseFloat(needOz.toFixed(3)));
+      }
+    }
+  });
+}
+
+function rxOpenNewRecipeOverlay(){
+  const winEl=document.getElementById('recipesWindow');
+  const ov=document.createElement('div'); ov.style.cssText='position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg-3);z-index:10;display:flex;flex-direction:column;overflow:hidden;';
+  const hdr=document.createElement('div'); hdr.style.cssText='height:45px;display:flex;align-items:stretch;border-bottom:3px solid #000;flex-shrink:0;background:var(--bg-1);';
+  const ht=document.createElement('div'); ht.style.cssText='flex:1;display:flex;align-items:center;padding:0 14px;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;'; ht.textContent='New Recipe';
+  const hx=document.createElement('button'); hx.style.cssText='width:45px;min-width:45px;background:#502424;border:none;border-left:3px solid #000;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff;cursor:pointer;'; hx.textContent='×'; hx.onclick=()=>ov.remove();
+  hdr.append(ht,hx);
+  const body=document.createElement('div'); body.style.cssText='flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding:4px;background:var(--bg-3);';
+  const nameWrap=document.createElement('div'); nameWrap.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;';
+  const nameInp=document.createElement('input'); nameInp.type='text'; nameInp.placeholder='Recipe name…'; nameInp.style.cssText='flex:1;background:#c8cdd4;border:none;color:#1a1a1a;font-size:12px;font-weight:600;padding:0 10px;outline:none;font-family:inherit;';
+  nameWrap.appendChild(nameInp); body.appendChild(nameWrap);
+  body.appendChild(rxDiv('Ingredients','#48a971'));
+  const ingList=document.createElement('div'); ingList.style.cssText='display:flex;flex-direction:column;gap:4px;'; body.appendChild(ingList);
+  let ings=[]; const msItemNames=ls('ms_items',[]).map(i=>i.name);
+  function renderIngs(){
+    ingList.innerHTML='';
+    ings.forEach((ing,idx)=>{
+      const row=document.createElement('div'); row.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;';
+      const top=document.createElement('div'); top.style.cssText='height:32px;display:flex;align-items:stretch;';
+      const ai=document.createElement('input'); ai.type='number'; ai.placeholder='Amt'; ai.value=ing.amt||''; ai.style.cssText='width:52px;background:#c8cdd4;border:none;border-right:3px solid #000;color:#1a1a1a;font-size:11px;font-weight:700;padding:0 6px;outline:none;font-family:inherit;'; ai.oninput=e=>ings[idx].amt=e.target.value;
+      const us=document.createElement('select'); us.style.cssText='width:56px;background:var(--bg-2);border:none;border-right:3px solid #000;color:#fff;font-size:9px;font-weight:700;padding:0 2px;outline:none;font-family:inherit;cursor:pointer;appearance:none;text-align:center;'; RX_UNITS.forEach(u=>{ const o=document.createElement('option'); o.value=u; o.textContent=u; if(u===ing.unit) o.selected=true; us.appendChild(o); }); us.onchange=e=>ings[idx].unit=e.target.value;
+      const ni=document.createElement('input'); ni.type='text'; ni.placeholder='Ingredient name…'; ni.value=ing.name||''; ni.style.cssText='flex:1;background:var(--bg-3);border:none;color:#fff;font-size:10px;font-weight:600;padding:0 8px;outline:none;font-family:inherit;'; ni.oninput=e=>{ ings[idx].name=e.target.value; const q=e.target.value.toLowerCase(); let ac=row.querySelector('.rx-ac'); if(ac) ac.remove(); const sugg=msItemNames.filter(n=>n.toLowerCase().startsWith(q)&&q.length>1); if(sugg.length){ ac=document.createElement('div'); ac.className='rx-ac'; ac.style.cssText='background:var(--bg-2);border-top:2px solid #000;'; sugg.slice(0,3).forEach(s=>{ const si=document.createElement('div'); si.style.cssText='height:28px;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:600;color:#fff;cursor:pointer;border-bottom:1px solid rgba(0,0,0,0.3);'; si.textContent=s; si.onmousedown=ev=>{ ev.preventDefault(); ni.value=s; ings[idx].name=s; ac.remove(); }; ac.appendChild(si); }); row.appendChild(ac); } };
+      const dx=document.createElement('div'); dx.style.cssText='width:32px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:#502424;color:#fff;cursor:pointer;border-left:3px solid #000;'; dx.textContent='×'; dx.onclick=()=>{ ings.splice(idx,1); renderIngs(); };
+      const bot=document.createElement('div'); bot.style.cssText='height:28px;display:flex;align-items:stretch;border-top:2px solid #000;';
+      const ci=document.createElement('input'); ci.type='number'; ci.step='0.01'; ci.placeholder='Converted oz (e.g. 4.4 for 1 cup flour)'; ci.value=ing.converted||''; ci.style.cssText='flex:1;background:var(--bg-3);border:none;color:var(--muted);font-size:9px;font-weight:600;padding:0 8px;outline:none;font-family:inherit;'; ci.oninput=e=>ings[idx].converted=e.target.value;
+      const cl=document.createElement('div'); cl.style.cssText='padding:0 8px;display:flex;align-items:center;font-size:7px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;background:var(--bg-3);border-left:2px solid #000;white-space:nowrap;'; cl.textContent='oz conversion';
+      bot.append(ci,cl); top.append(ai,us,ni,dx); row.append(top,bot); ingList.appendChild(row);
+    });
+    const addBtn=document.createElement('div'); addBtn.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;cursor:pointer;'; const ai2=document.createElement('div'); ai2.style.cssText='width:32px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;background:var(--bg-2);color:#48a971;border-right:3px solid #000;'; ai2.textContent='+'; const al=document.createElement('div'); al.style.cssText='flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);background:var(--bg-3);'; al.textContent='Add Ingredient'; addBtn.append(ai2,al); addBtn.onclick=()=>{ ings.push({name:'',amt:'',unit:'oz',converted:''}); renderIngs(); setTimeout(()=>{ const ins=ingList.querySelectorAll('input[type=text]'); if(ins.length) ins[ins.length-1].focus(); },50); }; ingList.appendChild(addBtn);
+  }
+  renderIngs();
+  const saveRow=document.createElement('div'); saveRow.style.cssText='height:45px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;margin-top:8px;cursor:pointer;'; const saveLbl=document.createElement('div'); saveLbl.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;background:#1d3318;color:#48a971;'; saveLbl.textContent='Save Recipe'; const errMsg=document.createElement('div'); errMsg.style.cssText='font-size:9px;color:var(--color-1);padding:4px 8px;text-align:center;min-height:20px;'; saveRow.appendChild(saveLbl);
+  saveRow.onclick=()=>{ const name=nameInp.value.trim(); if(!name){ errMsg.textContent='Please enter a name.'; return; } const validIngs=ings.filter(i=>i.name.trim()); if(!validIngs.length){ errMsg.textContent='Add at least one ingredient.'; return; } const recipes=rxGetRecipes(); recipes.push({id:'rx_'+Date.now(),name,ingredients:validIngs.map(i=>({name:i.name.trim(),needAmt:i.amt+' '+i.unit,needConverted:i.converted||'',haveAmt:'—'})),cookLog:[],totalCost:0,costBreakdown:[]}); rxSetRecipes(recipes); ov.remove(); renderRecipesBody(); };
+  body.append(saveRow,errMsg); ov.append(hdr,body); winEl.appendChild(ov);
+}
+
+let rxOpenId=null, rxExpandTab={};
+function rxBuildCard(r){
+  rxSyncIngHave(r); const status=rxComputeStatus(r);
+  const wrap=document.createElement('div'); wrap.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;';
+  const main=document.createElement('div'); main.style.cssText='height:32px;display:flex;align-items:stretch;position:relative;overflow:hidden;cursor:pointer;background:var(--bg-2);';
+  const fill=document.createElement('div'); fill.style.cssText='position:absolute;left:0;top:0;bottom:0;width:0%;pointer-events:none;';
+  const icon=document.createElement('div'); icon.style.cssText=`width:32px;min-width:32px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:${RX_STATUS_COLOR[status]};border-right:var(--border-width) solid var(--border-color);z-index:2;flex-shrink:0;`; icon.textContent=RX_STATUS_ICON[status];
+  const center=document.createElement('div'); center.style.cssText='flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;z-index:2;overflow:hidden;';
+  const nm=document.createElement('div'); nm.style.cssText='font-size:10px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;padding:0 6px;line-height:1;'; nm.textContent=r.name;
+  const mt=document.createElement('div'); mt.style.cssText='font-size:8px;font-weight:600;color:rgba(255,255,255,0.55);line-height:1;margin-top:2px;'; mt.textContent=`${r.ingredients.filter(rxIngOk).length}/${r.ingredients.length} ready`;
+  center.append(nm,mt);
+  const ce=document.createElement('div'); ce.style.cssText='width:52px;min-width:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:var(--border-width) solid var(--border-color);background:var(--bg-3);z-index:2;flex-shrink:0;gap:1px;'; const cvv=document.createElement('div'); cvv.style.cssText='font-size:9px;font-weight:800;color:#48a971;'; cvv.textContent=r.totalCost>0?'$'+r.totalCost.toFixed(2):'—'; const cll=document.createElement('div'); cll.style.cssText='font-size:6px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);'; cll.textContent='batch'; ce.append(cvv,cll); main.append(fill,icon,center,ce);
+  const expand=document.createElement('div'); expand.style.cssText='background:var(--bg-1);overflow:hidden;max-height:0;transition:max-height 0.3s ease;';
+  function renderExpand(){
+    expand.innerHTML=''; const body=document.createElement('div'); body.style.cssText='display:flex;flex-direction:column;gap:4px;padding:4px;'; const tab=rxExpandTab[r.id]||'ingredients';
+    const ts=document.createElement('div'); ts.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;flex-shrink:0;';
+    [['ingredients','Ingredients'],['cost','Cost'],['log','Log']].forEach(([t,l],i,arr)=>{ const btn=document.createElement('div'); btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;background:${tab===t?'var(--bg-4)':'var(--bg-3)'};color:${tab===t?'#fff':'var(--muted)'};${i<arr.length-1?'border-right:var(--border-width) solid var(--border-color);':''}`; btn.textContent=l; btn.onclick=e=>{ e.stopPropagation(); rxExpandTab[r.id]=t; renderExpand(); }; ts.appendChild(btn); }); body.appendChild(ts);
+    if(tab==='ingredients'){
+      const rc=document.createElement('div'); rc.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;position:relative;flex-shrink:0;'; const rfill=document.createElement('div'); rfill.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${r.ingredients.filter(rxIngOk).length/r.ingredients.length*100}%;background:${RX_STATUS_COLOR[status]};opacity:0.25;pointer-events:none;`; const rtxt=document.createElement('div'); rtxt.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;position:relative;z-index:2;'; rtxt.textContent=`${r.ingredients.filter(rxIngOk).length} of ${r.ingredients.length} ingredients available`; rc.append(rfill,rtxt); body.appendChild(rc);
+      r.ingredients.forEach(ing=>{ const ok=rxIngOk(ing); const row=document.createElement('div'); row.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;position:relative;'; const ifill=document.createElement('div'); ifill.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${ok?100:10}%;background:${ok?'#48a971':'#C85A5A'};opacity:0.15;pointer-events:none;`; const nc=document.createElement('div'); nc.style.cssText='width:64px;min-width:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg-3);border-right:var(--border-width) solid var(--border-color);position:relative;z-index:2;gap:1px;'; const nv=document.createElement('div'); nv.style.cssText='font-size:9px;font-weight:800;color:#fff;'; nv.textContent=ing.needAmt; const nl=document.createElement('div'); nl.style.cssText='font-size:7px;font-weight:700;color:rgba(255,255,255,0.4);'; nl.textContent=ing.needConverted?rxParseNum(ing.needConverted)+'oz':''; nc.append(nv,nl); const inm=document.createElement('div'); inm.style.cssText='flex:1;display:flex;align-items:center;padding:0 8px;font-size:9px;font-weight:700;color:#fff;position:relative;z-index:2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'; inm.textContent=ing.name; const hc=document.createElement('div'); hc.style.cssText=`width:64px;min-width:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:var(--border-width) solid var(--border-color);position:relative;z-index:2;gap:1px;background:${ok?'rgba(72,169,113,0.15)':'rgba(200,90,90,0.15)'};`; const hv=document.createElement('div'); hv.style.cssText=`font-size:9px;font-weight:800;color:${ok?'#48a971':'#C85A5A'};`; hv.textContent=ing.haveAmt; const hl=document.createElement('div'); hl.style.cssText='font-size:6px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;'; hl.textContent='in pantry'; hc.append(hv,hl); row.append(ifill,nc,inm,hc); body.appendChild(row); });
+      if(status!=='ready'){ const glBtn=document.createElement('div'); glBtn.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;cursor:pointer;'; const glI=document.createElement('div'); glI.style.cssText='width:32px;background:#fff;border-right:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#48a971;'; glI.textContent='+'; const glL=document.createElement('div'); glL.style.cssText='flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#fff;background:var(--bg-3);'; glL.textContent='Add Missing to Grocery List'; glBtn.append(glI,glL); glBtn.onclick=e=>{ e.stopPropagation(); const gl=ls('gl_items',[]); r.ingredients.filter(i=>!rxIngOk(i)).forEach(ing=>{ if(!gl.find(g=>g.name.toLowerCase()===ing.name.toLowerCase())){ const msItem=ls('ms_items',[]).find(m=>m.name.toLowerCase()===ing.name.toLowerCase()); if(msItem) gl.push({id:'gl_'+Date.now()+Math.random(),name:ing.name,category:msItem.category,checked:false}); } }); lsSet('gl_items',gl); glRender(); }; body.appendChild(glBtn); }
+      if(status==='partial'){ const ratios=r.ingredients.map(ing=>({ing,ratio:rxGetIngRatio(ing)})).filter(x=>isFinite(x.ratio)&&x.ratio>=0); const sf=ratios.length>0?Math.max(0,Math.min(1,parseFloat(Math.min(...ratios.map(x=>x.ratio)).toFixed(4)))):1; const sp=Math.round(sf*100); const limIng=ratios.length>0?ratios.reduce((a,b)=>a.ratio<b.ratio?a:b).ing:null; if(sp>0&&sf>0){ const scCard=document.createElement('div'); scCard.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;'; const scHdr=document.createElement('div'); scHdr.style.cssText='height:32px;display:flex;align-items:stretch;position:relative;overflow:hidden;'; const scFill=document.createElement('div'); scFill.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${sp}%;background:#5A8DB8;opacity:0.25;pointer-events:none;`; const scL=document.createElement('div'); scL.style.cssText='flex:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:0 10px;position:relative;z-index:2;gap:1px;'; const scT=document.createElement('div'); scT.style.cssText='font-size:9px;font-weight:800;color:#fff;'; scT.textContent=`Scale to ${sp}% batch`; const scS=document.createElement('div'); scS.style.cssText='font-size:7px;font-weight:600;color:rgba(255,255,255,0.5);'; scS.textContent=limIng?`Limited by: ${limIng.name}`:''; scL.append(scT,scS); scHdr.append(scFill,scL); scCard.appendChild(scHdr); const scIW=document.createElement('div'); scIW.style.cssText='border-top:var(--border-width) solid var(--border-color);'; r.ingredients.forEach((ing,idx)=>{ const scaledOz=ing.needConverted?parseFloat((rxParseNum(ing.needConverted)*sf).toFixed(3)):null; const scRow=document.createElement('div'); scRow.style.cssText=`height:32px;display:flex;align-items:stretch;${idx<r.ingredients.length-1?'border-bottom:var(--border-width) solid var(--border-color);':''}`; const scN=document.createElement('div'); scN.style.cssText='width:72px;min-width:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg-3);border-right:var(--border-width) solid var(--border-color);gap:1px;'; const snv=document.createElement('div'); snv.style.cssText=`font-size:9px;font-weight:800;color:${ing===limIng?'#C7824A':'#fff'};`; snv.textContent=scaledOz!==null?rxOzToVolume(scaledOz):rxGetScaledDisplay(ing,sf); const snl=document.createElement('div'); snl.style.cssText='font-size:6px;font-weight:700;color:var(--muted);letter-spacing:0.06em;'; snl.textContent=scaledOz!==null?scaledOz+' oz':'—'; scN.append(snv,snl); const scNm=document.createElement('div'); scNm.style.cssText='flex:1;display:flex;align-items:center;padding:0 8px;font-size:9px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'; scNm.textContent=ing.name; const hvn=rxParseNum(ing.haveAmt); const nsn=scaledOz||rxParseNum(ing.needAmt)*sf; const ok2=hvn>=nsn; const scH=document.createElement('div'); scH.style.cssText=`width:72px;min-width:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:var(--border-width) solid var(--border-color);gap:1px;background:${ok2?'rgba(72,169,113,0.15)':'rgba(200,90,90,0.15)'};`; const shv=document.createElement('div'); shv.style.cssText=`font-size:9px;font-weight:800;color:${ok2?'#48a971':'#C85A5A'};`; shv.textContent=ing.haveAmt; const shl=document.createElement('div'); shl.style.cssText='font-size:6px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;'; shl.textContent='in pantry'; scH.append(shv,shl); scRow.append(scN,scNm,scH); scIW.appendChild(scRow); }); scCard.appendChild(scIW); body.appendChild(scCard); } }
+      const canCook=status==='ready'; const isPartial=status==='partial'; const ratios2=r.ingredients.map(ing=>({ing,ratio:rxGetIngRatio(ing)})).filter(x=>isFinite(x.ratio)&&x.ratio>=0); const sf2=ratios2.length>0?Math.max(0,Math.min(1,parseFloat(Math.min(...ratios2.map(x=>x.ratio)).toFixed(4)))):0; const sp2=Math.round(sf2*100);
+      const cookCard=document.createElement('div'); cookCard.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;'; const cookLbl=document.createElement('div'); cookLbl.style.cssText='flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);background:var(--bg-3);'; cookLbl.textContent=canCook?'Full batch — all ingredients ready':isPartial?`Cook at ${sp2}% — max available`:'Missing ingredients — cannot cook'; const cookBtn=document.createElement('div'); cookBtn.style.cssText=`width:72px;min-width:72px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;border-left:var(--border-width) solid var(--border-color);background:${canCook||isPartial?'#1d3318':'var(--bg-4)'};color:${canCook||isPartial?'#48a971':'var(--muted)'};cursor:${canCook||isPartial?'pointer':'default'};`; cookBtn.textContent='COOK'; cookBtn.onclick=e=>{ e.stopPropagation(); if(!canCook&&!isPartial) return; const frac=canCook?1:sf2; const label=canCook?r.name:`${r.name} (${sp2}%)`; const meals=rxGetMeals(); meals.unshift({id:'meal_'+Date.now(),recipeId:r.id,recipeName:label,cookedDate:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),cookedTs:Date.now(),remaining:1.0,cost:parseFloat((r.totalCost*frac).toFixed(2)),confirmFinished:false}); rxSetMeals(meals); closeRecipesWindow(); openMealsWindow(); }; cookCard.append(cookLbl,cookBtn); body.appendChild(cookCard);
+    } else if(tab==='cost'){
+      if(!r.costBreakdown||!r.costBreakdown.length){ const e=document.createElement('div'); e.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;color:var(--muted);font-style:italic;'; e.textContent='No cost data yet'; body.appendChild(e); }
+      else { const cc=document.createElement('div'); cc.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;'; const ch=document.createElement('div'); ch.style.cssText='height:32px;display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);background:var(--bg-2);'; const ct=document.createElement('div'); ct.style.cssText='flex:1;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);'; ct.textContent='Cost Breakdown'; const ctot=document.createElement('div'); ctot.style.cssText='padding:0 14px;display:flex;align-items:center;font-size:13px;font-weight:800;color:#48a971;border-left:var(--border-width) solid var(--border-color);'; ctot.textContent='$'+r.totalCost.toFixed(2); ch.append(ct,ctot); cc.appendChild(ch); r.costBreakdown.forEach((item,idx)=>{ const row=document.createElement('div'); row.style.cssText=`height:32px;display:flex;align-items:stretch;${idx<r.costBreakdown.length-1?'border-bottom:var(--border-width) solid var(--border-color);':''}`; const ci=document.createElement('div'); ci.style.cssText='flex:1;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:600;color:#fff;background:var(--bg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'; ci.textContent=item.name; const ca=document.createElement('div'); ca.style.cssText='width:64px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#48a971;border-left:var(--border-width) solid var(--border-color);background:var(--bg-2);'; ca.textContent=item.cost; row.append(ci,ca); cc.appendChild(row); }); body.appendChild(cc); }
+    } else if(tab==='log'){
+      if(!r.cookLog||!r.cookLog.length){ const e=document.createElement('div'); e.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;color:var(--muted);font-style:italic;'; e.textContent='No cook history yet'; body.appendChild(e); }
+      else r.cookLog.forEach(entry=>{ const row=document.createElement('div'); row.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;'; const ld=document.createElement('div'); ld.style.cssText='width:64px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--muted);background:var(--bg-2);border-right:var(--border-width) solid var(--border-color);'; ld.textContent=entry.date; const ll=document.createElement('div'); ll.style.cssText='flex:1;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:600;color:#fff;background:var(--bg-3);'; ll.textContent=entry.note||'Cooked'; row.append(ld,ll); body.appendChild(row); });
+    }
+    expand.appendChild(body);
+  }
+  main.addEventListener('click',()=>{ if(rxOpenId===r.id){ rxOpenId=null; expand.style.maxHeight='0'; expand.style.borderTop='none'; } else { document.querySelectorAll('.rx-exp-open').forEach(e=>{ e.style.maxHeight='0'; e.style.borderTop='none'; e.classList.remove('rx-exp-open'); }); rxOpenId=r.id; renderExpand(); expand.style.maxHeight='900px'; expand.style.borderTop='var(--border-width) solid var(--border-color)'; expand.classList.add('rx-exp-open'); } });
+  wrap.append(main,expand); return wrap;
+}
+
+function renderRecipesBody(){
+  const container=document.getElementById('recipesBody'); container.innerHTML='';
+  const sw=document.createElement('div'); sw.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;'; const si=document.createElement('input'); si.type='text'; si.placeholder='Search recipes…'; si.style.cssText='flex:1;background:#c8cdd4;border:none;color:#1a1a1a;font-size:13px;font-weight:600;padding:0 10px;outline:none;font-family:inherit;'; const sx=document.createElement('div'); sx.style.cssText='width:32px;background:#8896a8;border-left:var(--border-width) solid var(--border-color);color:#fff;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;'; sx.textContent='×'; sx.onclick=()=>{ si.value=''; renderRecipesBody(); }; sw.append(si,sx); container.appendChild(sw); si.oninput=()=>{ const q=si.value.trim().toLowerCase(); container.querySelectorAll('.rx-rc').forEach(c=>{ c.style.display=!q||c.dataset.name.toLowerCase().includes(q)?'':'none'; }); };
+  const recipes=rxGetRecipes(); const addCard=document.createElement('div'); addCard.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;cursor:pointer;'; const ai=document.createElement('div'); ai.style.cssText='width:32px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;background:var(--bg-2);color:#48a971;border-right:var(--border-width) solid var(--border-color);'; ai.textContent='+'; const al=document.createElement('div'); al.style.cssText='flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);background:var(--bg-3);'; al.textContent='New Recipe'; addCard.append(ai,al); addCard.onclick=rxOpenNewRecipeOverlay; container.appendChild(addCard);
+  if(!recipes.length){ const e=document.createElement('div'); e.style.cssText='display:flex;align-items:center;justify-content:center;padding:40px;font-size:10px;font-weight:600;color:var(--muted);font-style:italic;text-align:center;'; e.textContent='No recipes yet. Tap + to add your first.'; container.appendChild(e); return; }
+  container.appendChild(rxDiv('My Recipes','var(--muted)'));
+  recipes.forEach(r=>{ const card=rxBuildCard(r); card.classList.add('rx-rc'); card.dataset.name=r.name; container.appendChild(card); });
+}
+
+let rxMealOpenId=null;
+function rxBuildMealGroupCard(batches){
+  const first=batches[0]; const wrap=document.createElement('div'); wrap.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;';
+  const avgRem=batches.reduce((s,b)=>s+b.remaining,0)/batches.length; const totalCost=batches.reduce((s,b)=>s+b.cost,0);
+  const main=document.createElement('div'); main.style.cssText='height:32px;display:flex;align-items:stretch;position:relative;overflow:hidden;cursor:pointer;background:var(--bg-2);';
+  const fill=document.createElement('div'); fill.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${avgRem*100}%;background:#48a971;opacity:0.4;transition:width 0.35s;pointer-events:none;z-index:0;`;
+  const nm=document.createElement('div'); nm.style.cssText='flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;z-index:2;gap:1px;'; const nt=document.createElement('div'); nt.style.cssText='font-size:10px;font-weight:700;color:#fff;'; nt.textContent=first.recipeName; const ns=document.createElement('div'); ns.style.cssText='font-size:8px;font-weight:600;color:rgba(255,255,255,0.55);'; ns.textContent=batches.length===1?`${Math.round(batches[0].remaining*100)}% left · ${batches[0].cookedDate}`:`${batches.length} batches`; nm.append(nt,ns);
+  const ce=document.createElement('div'); ce.style.cssText='width:52px;min-width:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:var(--border-width) solid var(--border-color);background:var(--bg-3);z-index:2;flex-shrink:0;gap:1px;'; const cvv=document.createElement('div'); cvv.style.cssText='font-size:9px;font-weight:800;color:#48a971;'; cvv.textContent=totalCost>0?'$'+totalCost.toFixed(2):'—'; const cll=document.createElement('div'); cll.style.cssText='font-size:6px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);'; cll.textContent=batches.length>1?'total':'batch'; ce.append(cvv,cll); main.append(fill,nm,ce);
+  const expand=document.createElement('div'); expand.style.cssText='background:var(--bg-1);overflow:hidden;max-height:0;transition:max-height 0.3s ease;';
+  const activeBatchesInit=batches.filter(b=>!b.confirmFinished); const sel={id:activeBatchesInit.length===1?activeBatchesInit[0].id:null}; let fracPending={idx:null,timer:null};
+  function re(){
+    expand.innerHTML=''; const body=document.createElement('div'); body.style.cssText='display:flex;flex-direction:column;gap:4px;padding:4px;'; const selBatch=sel.id?batches.find(b=>b.id===sel.id):null;
+    batches.filter(b=>b.confirmFinished).forEach(batch=>{
+      const conf=document.createElement('div'); conf.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;'; const msg=document.createElement('div'); msg.style.cssText='flex:1;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:700;color:#e08080;background:#2a1010;'; msg.textContent=batches.length>1?`"${batch.cookedDate}" all finished?`:'All finished?'; const yBtn=document.createElement('div'); yBtn.style.cssText='width:48px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;background:#502424;color:#fff;cursor:pointer;border-left:var(--border-width) solid var(--border-color);'; yBtn.textContent='YES'; yBtn.onclick=e=>{ e.stopPropagation(); const days=Math.max(1,Math.round((Date.now()-batch.cookedTs)/86400000)); const hist=rxGetHistory(); hist.unshift({id:'h_'+Date.now(),recipeName:batch.recipeName,cookedDate:batch.cookedDate,finishedDate:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),days,cost:batch.cost}); rxSetHistory(hist); rxSetMeals(rxGetMeals().filter(m=>m.id!==batch.id)); if(sel.id===batch.id) sel.id=null; renderMealsBody(); }; const nBtn=document.createElement('div'); nBtn.style.cssText='width:48px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;background:#1d442d;color:#fff;cursor:pointer;border-left:var(--border-width) solid var(--border-color);'; nBtn.textContent='NO'; nBtn.onclick=e=>{ e.stopPropagation(); batch.remaining=0.125; batch.confirmFinished=false; const meals=rxGetMeals(); const m=meals.find(m=>m.id===batch.id); if(m){ m.remaining=0.125; m.confirmFinished=false; rxSetMeals(meals); } re(); }; conf.append(msg,yBtn,nBtn); body.appendChild(conf);
+    });
+    const activeBatches=batches.filter(b=>!b.confirmFinished).sort((a,b)=>a.cookedTs!==b.cookedTs?a.cookedTs-b.cookedTs:a.remaining-b.remaining);
+    if(activeBatches.length>1){ const barRow=document.createElement('div'); barRow.style.cssText='display:flex;gap:4px;'; activeBatches.forEach(batch=>{ const isSel=sel.id===batch.id; const b=document.createElement('div'); b.style.cssText=`flex:1;height:32px;border:${isSel?'3px solid #fff':'var(--border-width) solid var(--border-color)'};border-radius:var(--radius);overflow:hidden;position:relative;display:flex;align-items:stretch;cursor:pointer;min-width:0;`; const bF=document.createElement('div'); bF.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${batch.remaining*100}%;background:#48a971;opacity:0.5;transition:width 0.3s;pointer-events:none;`; const bV=document.createElement('div'); bV.style.cssText='position:relative;z-index:2;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;'; const bP=document.createElement('div'); bP.style.cssText=`font-size:9px;font-weight:800;color:${isSel?'#fff':'rgba(255,255,255,0.7)'};`; bP.textContent=Math.round(batch.remaining*100)+'% left'; const bD=document.createElement('div'); bD.style.cssText='font-size:6px;font-weight:700;color:rgba(255,255,255,0.5);'; bD.textContent=batch.cookedDate; bV.append(bP,bD); b.append(bF,bV); b.onclick=e=>{ e.stopPropagation(); sel.id=isSel?null:batch.id; re(); }; barRow.appendChild(b); }); body.appendChild(barRow); }
+    const fCard=document.createElement('div'); fCard.style.cssText='height:45px;box-sizing:border-box;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;'; const fLbl=document.createElement('div'); fLbl.style.cssText='height:21px;display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-bottom:var(--border-width) solid var(--border-color);font-size:7px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.5);'; fLbl.textContent=selBatch?'This Much Remains':'← Select a Batch'; const fRow=document.createElement('div'); fRow.style.cssText='height:21px;display:flex;align-items:stretch;';
+    const emptyBtn=document.createElement('div'); emptyBtn.style.cssText=`width:28px;min-width:28px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff;background:${selBatch?'#502424':'var(--bg-4)'};cursor:${selBatch?'pointer':'default'};border-right:var(--border-width) solid var(--border-color);`; emptyBtn.textContent='×'; emptyBtn.onclick=e=>{ e.stopPropagation(); if(!selBatch) return; selBatch.remaining=0; selBatch.confirmFinished=true; sel.id=null; const meals=rxGetMeals(); const m=meals.find(m=>m.id===selBatch.id); if(m){ m.remaining=0; m.confirmFinished=true; rxSetMeals(meals); } fill.style.width='0%'; ns.textContent=batches.length===1?'0% left':'done'; re(); }; fRow.appendChild(emptyBtn);
+    RX_FRACS.forEach(({n,d},i)=>{ const fc2=RX_FRAC_COLORS[d]||'var(--bg-2)'; const available=selBatch&&!selBatch.confirmFinished&&(n/d)<=selBatch.remaining; const isPending=fracPending.idx===i; const btn=document.createElement('div'); btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:900;color:${isPending?fc2:'#fff'};background:${available||isPending?fc2:'var(--bg-4)'};cursor:pointer;${i<RX_FRACS.length-1?'border-right:var(--border-width) solid var(--border-color);':''}`; btn.innerHTML=`<sup style="font-size:5px">${n}</sup><span style="font-size:7px">/</span><sub style="font-size:5px">${d}</sub>`; btn.onclick=e=>{ e.stopPropagation(); if(!selBatch||selBatch.confirmFinished) return; if(available){ selBatch.remaining=parseFloat((n/d).toFixed(4)); const meals=rxGetMeals(); const m=meals.find(m=>m.id===selBatch.id); if(m){ m.remaining=selBatch.remaining; rxSetMeals(meals); } if(selBatch.remaining<=0){ selBatch.remaining=0; selBatch.confirmFinished=true; if(m){ m.remaining=0; m.confirmFinished=true; rxSetMeals(meals); } sel.id=null; } const na=batches.reduce((s,b)=>s+b.remaining,0)/batches.length; fill.style.width=(na*100)+'%'; ns.textContent=batches.length===1?`${Math.round(batches[0].remaining*100)}% left · ${batches[0].cookedDate}`:`${batches.length} batches`; re(); } else { if(fracPending.idx===i){ clearTimeout(fracPending.timer); fracPending={idx:null,timer:null}; selBatch.remaining=parseFloat((n/d).toFixed(4)); selBatch.confirmFinished=false; const meals=rxGetMeals(); const m=meals.find(mm=>mm.id===selBatch.id); if(m){ m.remaining=selBatch.remaining; m.confirmFinished=false; rxSetMeals(meals); } const na=batches.reduce((s,b)=>s+b.remaining,0)/batches.length; fill.style.width=(na*100)+'%'; ns.textContent=batches.length===1?`${Math.round(batches[0].remaining*100)}% left · ${batches[0].cookedDate}`:`${batches.length} batches`; re(); } else { if(fracPending.timer) clearTimeout(fracPending.timer); fracPending.idx=i; fracPending.timer=setTimeout(()=>{ fracPending={idx:null,timer:null}; re(); },3000); re(); } } }; fRow.appendChild(btn); });
+    fCard.append(fLbl,fRow); body.appendChild(fCard); expand.appendChild(body);
+  }
+  main.addEventListener('click',()=>{ if(rxMealOpenId===first.recipeId){ rxMealOpenId=null; expand.style.maxHeight='0'; expand.style.borderTop='none'; } else { document.querySelectorAll('.rx-meal-open').forEach(e=>{ e.style.maxHeight='0'; e.style.borderTop='none'; e.classList.remove('rx-meal-open'); }); rxMealOpenId=first.recipeId; re(); expand.style.maxHeight='600px'; expand.style.borderTop='var(--border-width) solid var(--border-color)'; expand.classList.add('rx-meal-open'); } });
+  wrap.append(main,expand); return wrap;
+}
+
+function renderMealsBody(){
+  const container=document.getElementById('mealsBody'); container.innerHTML=''; const meals=rxGetMeals(); const history=rxGetHistory();
+  if(!meals.length&&!history.length){ const e=document.createElement('div'); e.style.cssText='display:flex;align-items:center;justify-content:center;padding:40px;font-size:10px;font-weight:600;color:var(--muted);font-style:italic;text-align:center;'; e.textContent='No meals yet. Cook a recipe to get started.'; container.appendChild(e); return; }
+  if(meals.length){ container.appendChild(rxDiv('Active Meals','#48a971')); const groups={}; meals.forEach(m=>{ if(!groups[m.recipeId]) groups[m.recipeId]=[]; groups[m.recipeId].push(m); }); Object.values(groups).forEach(batches=>container.appendChild(rxBuildMealGroupCard(batches))); }
+  if(history.length){ container.appendChild(rxDiv('History','var(--muted)')); history.forEach(h=>{ const row=document.createElement('div'); row.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;'; const ne=document.createElement('div'); ne.style.cssText='flex:1;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:700;color:#fff;background:var(--bg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'; ne.textContent=h.recipeName; const de=document.createElement('div'); de.style.cssText='width:56px;min-width:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg-2);border-left:var(--border-width) solid var(--border-color);gap:1px;'; const dv=document.createElement('div'); dv.style.cssText='font-size:11px;font-weight:800;color:#48a971;'; dv.textContent=h.days+'d'; const dl=document.createElement('div'); dl.style.cssText='font-size:6px;font-weight:700;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;'; dl.textContent='lasted'; de.append(dv,dl); const dte=document.createElement('div'); dte.style.cssText='width:88px;min-width:88px;display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-left:var(--border-width) solid var(--border-color);font-size:8px;font-weight:700;color:var(--muted);'; dte.textContent=h.cookedDate+'–'+h.finishedDate; row.append(ne,de,dte); container.appendChild(row); }); }
+}
+
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
     navigator.serviceWorker.register('./sw.js')
