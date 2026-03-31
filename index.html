@@ -3137,6 +3137,98 @@ function getItemPantry(id){
   if(!d[id]) d[id]={containers:[],totalCap:0,step:1};
   return d[id];
 }
+// Global liquid detection helpers
+const LIQUID_KEYWORDS=['milk','cream','oil','water','juice','broth','stock','syrup','sauce','vinegar','extract','liquid','soup','tea','coffee','wine','beer','spirits','honey','molasses','agave','buttermilk','gravy','dressing','marinade','glaze','coulis','jus','brine','concentrate','nectar','smoothie','shake','blend','puree','drizzle','dripping','fat','lard','ketchup','mustard','mayo','mayonnaise','ranch','relish','salsa','jam','jelly','marmalade','curd','paste','spread','dip','hummus','tahini','miso','pesto','aioli','hollandaise','sriracha','tabasco','worcestershire','soy','teriyaki','hoisin','oyster','fish sauce','condensed','evaporated','whey','serum'];
+function rxIsLiquid(name){ const n=(name||'').toLowerCase(); return LIQUID_KEYWORDS.some(k=>n.includes(k)); }
+const RX_LIQUID_DEFAULT=8.5;
+
+function openEditContainerWindow(msItem, pd, con, wrap, selectedCon, expandView){
+  const ov=document.createElement('div'); ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-3);z-index:300;display:flex;flex-direction:column;overflow:hidden;font-family:inherit;';
+  const hdr=document.createElement('div'); hdr.style.cssText='height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-1);';
+  const htitle=document.createElement('div'); htitle.style.cssText='flex:1;display:flex;align-items:center;padding:0 14px;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;'; htitle.textContent='Edit Container';
+  const hclose=document.createElement('button'); hclose.style.cssText='width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff;cursor:pointer;'; hclose.textContent='\u00d7'; hclose.onclick=()=>ov.remove();
+  hdr.append(htitle,hclose);
+  const body=document.createElement('div'); body.style.cssText='flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--margin);padding:var(--margin);';
+
+  const VOLUMETRIC_UNITS=new Set(['fl oz','ml','l','cups','cup','tbsp','tsp']);
+  const UNIT_EXACT_CONV={'fl oz':8,'ml':236.6,'l':0.2366,'cups':1,'cup':1,'tbsp':16,'tsp':48};
+  const isVolumetric=pd.unit&&VOLUMETRIC_UNITS.has((pd.unit||'').toLowerCase());
+  let chosenUnit=pd.unit||null;
+  let ozType=pd.ozType||(isVolumetric?'liquid':(rxIsLiquid(msItem.name)?'liquid':'dry'));
+  let convValue=pd.ozPerUnit||UNIT_EXACT_CONV[(pd.unit||'').toLowerCase()]||rxWordMatch(msItem.name)||(rxIsLiquid(msItem.name)?8.5:null);
+  let priceMode=con.free?'free':'price'; let priceVal=con.free?0:(con.price||null);
+
+  // Save button declared early so renderOzType can call it
+  const saveBtn=document.createElement('div'); saveBtn.style.cssText='height:var(--card-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;background:#1d3318;margin-top:4px;';
+  const saveLbl=document.createElement('div'); saveLbl.style.cssText='font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:#48a971;'; saveLbl.textContent='Save Changes';
+  saveBtn.appendChild(saveLbl);
+
+  // Name
+  const nameWrap=document.createElement('div'); nameWrap.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
+  const nameLSide=document.createElement('div'); nameLSide.style.cssText='width:50%;display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-right:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);flex-shrink:0;'; nameLSide.textContent='Name';
+  const nameInp=document.createElement('input'); nameInp.type='text'; nameInp.value=con.label||''; nameInp.placeholder='Container name…'; nameInp.style.cssText='width:50%;background:var(--bg-2);border:none;color:var(--color-10);font-size:11px;font-weight:600;padding:0 12px;outline:none;font-family:inherit;flex-shrink:0;';
+  nameWrap.append(nameLSide,nameInp); body.appendChild(nameWrap);
+
+  // Oz Type (weight oz only) — declared early so showEditUnit can reference it
+  const ozTypeCard=document.createElement('div'); ozTypeCard.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
+  function renderOzType(){ ozTypeCard.innerHTML=''; const dry=document.createElement('div'); dry.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;background:${ozType==='dry'?'var(--bg-4)':'var(--bg-2)'};color:${ozType==='dry'?'#fff':'var(--muted)'};`; dry.textContent='DRY'; const dv=document.createElement('div'); dv.style.cssText='width:var(--border-width);background:var(--border-color);flex-shrink:0;'; const liq=document.createElement('div'); liq.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;background:${ozType==='liquid'?'var(--bg-4)':'var(--bg-2)'};color:${ozType==='liquid'?'#fff':'var(--muted)'};`; liq.textContent='LIQUID'; dry.onclick=e=>{ e.stopPropagation(); ozType='dry'; renderOzType(); updateConvCard(); }; liq.onclick=e=>{ e.stopPropagation(); ozType='liquid'; renderOzType(); updateConvCard(); }; ozTypeCard.append(dry,dv,liq); }
+
+  // Unit
+  const unitCard=document.createElement('div'); unitCard.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
+  const unitLSide=document.createElement('div'); unitLSide.style.cssText='width:50%;display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-right:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);flex-shrink:0;'; unitLSide.textContent='Unit';
+  const unitRSide=document.createElement('div'); unitRSide.style.cssText='width:50%;display:flex;align-items:stretch;flex-shrink:0;cursor:pointer;';
+  function showEditUnit(){ unitRSide.innerHTML=''; const u=getUnit(chosenUnit||'unit'); const l=document.createElement('div'); l.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-10);background:var(--bg-2);'; l.textContent=(u.label||chosenUnit||'unit').toUpperCase(); const d=document.createElement('div'); d.style.cssText='width:var(--border-width);background:var(--border-color);flex-shrink:0;'; const r=document.createElement('div'); r.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);background:var(--bg-2);'; r.textContent=(u.abbr||chosenUnit||'').toUpperCase(); unitRSide.append(l,d,r); ozTypeCard.style.display=(chosenUnit==='oz')?'flex':'none'; }
+  unitRSide.onclick=()=>{ window._newItemUnit=chosenUnit||'unit'; window._newItemUnitCallback=(unitId)=>{ chosenUnit=unitId; const exactConv=UNIT_EXACT_CONV[(unitId||'').toLowerCase()]; if(exactConv) convValue=exactConv; showEditUnit(); updateConvCard(); }; modalCtx='new-item-unit'; modalSelPend=null; modalDelPend.clear(); document.getElementById('modalTitle').textContent='Measurement Unit'; buildModalGrid(); document.getElementById('modalOverlay').classList.add('open'); };
+  unitCard.append(unitLSide,unitRSide); showEditUnit(); body.appendChild(unitCard);
+
+  // Amount
+  const amtWrap=document.createElement('div'); amtWrap.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
+  const amtLSide=document.createElement('div'); amtLSide.style.cssText='width:50%;display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-right:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);flex-shrink:0;'; amtLSide.textContent='Amount';
+  const amtRSide=document.createElement('div'); amtRSide.style.cssText='width:50%;display:flex;align-items:stretch;flex-shrink:0;';
+  const amtInp=document.createElement('input'); amtInp.type='number'; amtInp.min='0'; amtInp.step='0.1'; amtInp.value=con.cap; amtInp.placeholder='0'; amtInp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:14px;font-weight:700;padding:0 12px;outline:none;font-family:inherit;';
+  const amtUnitLbl=document.createElement('div'); amtUnitLbl.style.cssText='padding:0 8px;display:flex;align-items:center;font-size:8px;font-weight:700;color:var(--muted);background:var(--bg-3);border-left:var(--border-width) solid var(--border-color);white-space:nowrap;'; amtUnitLbl.textContent=pd.unit||'units';
+  amtRSide.append(amtInp,amtUnitLbl); amtWrap.append(amtLSide,amtRSide); body.appendChild(amtWrap);
+
+  renderOzType(); ozTypeCard.style.display=(chosenUnit==='oz')?'flex':'none'; body.appendChild(ozTypeCard);
+
+  // Conversion
+  const convWrap=document.createElement('div'); convWrap.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
+  const convLSide=document.createElement('div'); convLSide.style.cssText='width:50%;display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-right:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);flex-shrink:0;'; convLSide.textContent='oz per cup';
+  const convRSide=document.createElement('div'); convRSide.style.cssText='width:50%;display:flex;align-items:stretch;flex-shrink:0;';
+  const convInp=document.createElement('input'); convInp.type='text'; convInp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:11px;font-weight:700;padding:0 12px;outline:none;font-family:inherit;';
+  const convUnitLbl=document.createElement('div'); convUnitLbl.style.cssText='padding:0 8px;display:flex;align-items:center;font-size:8px;font-weight:700;color:var(--muted);background:var(--bg-3);border-left:var(--border-width) solid var(--border-color);white-space:nowrap;';
+  let convAuto=!pd.ozPerUnit;
+  function updateConvCard(){ convInp.value=convValue?(convValue+(convAuto?' (auto)':'')):'' ; convUnitLbl.textContent=ozType==='liquid'?'fl oz/cup':'dry oz/cup'; }
+  convInp.onfocus=()=>{ if(convInp.value.endsWith('(auto)')) convInp.value=convValue||''; convAuto=false; };
+  convInp.oninput=e=>{ convValue=parseFloat(e.target.value)||null; };
+  updateConvCard(); convRSide.append(convInp,convUnitLbl); convWrap.append(convLSide,convRSide); body.appendChild(convWrap);
+
+  // Price
+  const priceWrap=document.createElement('div'); priceWrap.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
+  const priceLSide=document.createElement('div'); priceLSide.style.cssText='width:50%;display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-right:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);flex-shrink:0;'; priceLSide.textContent='Price';
+  const priceRSide=document.createElement('div'); priceRSide.style.cssText='width:50%;display:flex;align-items:stretch;flex-shrink:0;';
+  const priceInp=document.createElement('input'); priceInp.type='number'; priceInp.min='0'; priceInp.step='0.01'; priceInp.placeholder='$ paid'; if(!con.free&&con.price!=null) priceInp.value=con.price; priceInp.disabled=con.free; priceInp.style.cssText=`flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:13px;font-weight:700;padding:0 12px;outline:none;font-family:inherit;opacity:${con.free?'0.3':'1'};`;
+  priceInp.oninput=e=>{ priceMode='price'; priceVal=parseFloat(e.target.value)||null; };
+  const freeEl=document.createElement('div'); freeEl.style.cssText=`padding:0 14px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#48a971;background:${con.free?'#1d3318':'var(--bg-2)'};cursor:pointer;border-left:var(--border-width) solid var(--border-color);white-space:nowrap;`; freeEl.textContent='FREE';
+  freeEl.onclick=()=>{ priceMode=priceMode==='free'?'price':'free'; priceVal=priceMode==='free'?0:null; freeEl.style.background=priceMode==='free'?'#1d3318':'var(--bg-2)'; priceInp.disabled=priceMode==='free'; priceInp.style.opacity=priceMode==='free'?'0.3':'1'; if(priceMode==='free') priceInp.value=''; };
+  priceRSide.append(priceInp,freeEl); priceWrap.append(priceLSide,priceRSide); body.appendChild(priceWrap);
+
+  body.appendChild(saveBtn);
+  saveBtn.onclick=()=>{
+    const label=(nameInp.value||'').trim()||con.label;
+    const newCap=parseFloat(amtInp.value)||con.cap;
+    const price=priceMode==='free'?null:priceVal;
+    const free=priceMode==='free';
+    con.label=label; con.cap=newCap; con.price=price; con.free=free;
+    if(chosenUnit) pd.unit=chosenUnit;
+    if(ozType) pd.ozType=ozType;
+    if(convValue!=null) pd.ozPerUnit=convValue;
+    if(con.amount>newCap) con.amount=newCap;
+    saveItemPantry(msItem.id,pd); ov.remove(); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView);
+  };
+  ov.append(hdr,body); document.body.appendChild(ov);
+}
+
 function openAddContainerWindow(msItem, pd, wrap, selectedCon, expandView){
   const ov=document.createElement('div');
   ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-3);z-index:300;display:flex;flex-direction:column;overflow:hidden;font-family:inherit;';
@@ -3149,12 +3241,6 @@ function openAddContainerWindow(msItem, pd, wrap, selectedCon, expandView){
   const body=document.createElement('div'); body.style.cssText='flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--margin);padding:var(--margin);';
 
   const OZ_UNIT=new Set(['oz','fl oz']);
-
-  // Auto-detect liquid items by name
-  const LIQUID_KEYWORDS=['milk','cream','oil','water','juice','broth','stock','syrup','sauce','vinegar','extract','liquid','soup','tea','coffee','wine','beer','spirits','honey','molasses','agave','buttermilk','gravy','dressing','marinade','glaze','coulis','jus','brine','concentrate','nectar','smoothie','shake','blend','puree','drizzle','dripping','fat','lard','ketchup','mustard','mayo','mayonnaise','ranch','relish','salsa','jam','jelly','marmalade','curd','paste','spread','dip','hummus','tahini','miso','pesto','aioli','hollandaise','sriracha','tabasco','worcestershire','soy','teriyaki','hoisin','oyster','fish sauce','condensed','evaporated','buttermilk','whey','serum'];
-  function rxIsLiquid(name){ const n=(name||'').toLowerCase(); return LIQUID_KEYWORDS.some(k=>n.includes(k)); }
-  // fallback conv for unknown liquids
-  const RX_LIQUID_DEFAULT=8.5;
 
   let chosenUnit=pd.unit||null;
   let amtValue=null;
@@ -3177,21 +3263,18 @@ function openAddContainerWindow(msItem, pd, wrap, selectedCon, expandView){
     return !!chosenUnit&&ozOk&&hasAmt&&priceOk;
   }
 
-  // helper: make a tap-to-enter card that switches from prompt to input
-  function makeTapCard(prompt, buildInput){
-    const card=document.createElement('div');
-    card.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;background:var(--bg-2);';
-    const lbl=document.createElement('div'); lbl.style.cssText='font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-align:center;padding:0 10px;'; lbl.textContent=prompt;
-    card.appendChild(lbl);
-    card.onclick=()=>{ card.innerHTML=''; card.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;background:var(--bg-2);'; card.onclick=null; buildInput(card); };
-    return card;
+  // helper: make a 50/50 split card
+  function makeSplitCard(label, buildRight){
+    const card=document.createElement('div'); card.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
+    const lSide=document.createElement('div'); lSide.style.cssText='width:50%;display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-right:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);padding:0 8px;text-align:center;flex-shrink:0;'; lSide.textContent=label;
+    const rSide=document.createElement('div'); rSide.style.cssText='width:50%;display:flex;align-items:stretch;flex-shrink:0;';
+    buildRight(rSide); card.append(lSide,rSide); return card;
   }
 
   // ── Name
-  const nameCard=makeTapCard('TAP TO ADD NAME', card=>{
-    const inp=document.createElement('input'); inp.type='text'; inp.placeholder='Container name…'; inp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:13px;font-weight:600;padding:0 14px;outline:none;font-family:inherit;';
-    inp.oninput=()=>refreshSave();
-    card.appendChild(inp);
+  const nameCard=makeSplitCard('Name', rSide=>{
+    const inp=document.createElement('input'); inp.type='text'; inp.placeholder='Container name…'; inp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:11px;font-weight:600;padding:0 12px;outline:none;font-family:inherit;';
+    inp.oninput=()=>refreshSave(); rSide.appendChild(inp);
   });
   body.appendChild(nameCard);
 
@@ -3222,76 +3305,66 @@ function openAddContainerWindow(msItem, pd, wrap, selectedCon, expandView){
     ozTypeCard.style.display=(unitId==='oz')?'flex':'none'; // only for weight oz
     refreshSave();
   }
-  function openUnitPicker(card){
+  function openUnitPicker(){
     window._newItemUnit=chosenUnit||'unit';
-    window._newItemUnitCallback=(unitId)=>{ chosenUnit=unitId; showChosenUnit(card,unitId); };
+    window._newItemUnitCallback=(unitId)=>{ chosenUnit=unitId; showChosenUnitInCard(); };
     modalCtx='new-item-unit'; modalSelPend=null; modalDelPend.clear();
     document.getElementById('modalTitle').textContent='Measurement Unit';
     buildModalGrid(); document.getElementById('modalOverlay').classList.add('open');
   }
-  const unitCard=makeTapCard('TAP TO ADD MEASUREMENT UNIT', card=>openUnitPicker(card));
-  if(chosenUnit){ showChosenUnit(unitCard,chosenUnit); } // pre-fill without opening modal
+  let unitRSideRef=null;
+  const unitCard=makeSplitCard('Unit', rSide=>{ rSide.style.cursor='pointer'; rSide.style.justifyContent='center'; rSide.style.alignItems='center'; rSide.style.fontSize='10px'; rSide.style.fontWeight='800'; rSide.style.color='var(--muted)'; rSide.style.background='var(--bg-2)'; rSide.style.letterSpacing='0.06em'; rSide.style.textTransform='uppercase'; rSide.textContent='TAP TO PICK'; rSide.onclick=()=>openUnitPicker(); unitRSideRef=rSide; });
+  function showChosenUnitInCard(){ const u=getUnit(chosenUnit||'unit'); const rSide=unitRSideRef; rSide.innerHTML=''; rSide.style.cssText='width:50%;display:flex;align-items:stretch;flex-shrink:0;cursor:pointer;'; const l=document.createElement('div'); l.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-10);background:var(--bg-2);'; l.textContent=(u.label||chosenUnit||'').toUpperCase(); const d=document.createElement('div'); d.style.cssText='width:var(--border-width);background:var(--border-color);flex-shrink:0;'; const r=document.createElement('div'); r.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);background:var(--bg-2);'; r.textContent=(u.abbr||chosenUnit||'').toUpperCase(); rSide.append(l,d,r); ozTypeCard.style.display=(chosenUnit==='oz')?'flex':'none'; refreshSave(); }
+  if(chosenUnit){ showChosenUnitInCard(); }
   body.appendChild(unitCard);
 
   // ── Unit Amount
-  const amtCard=makeTapCard('TAP TO ADD UNIT AMOUNT', card=>{
-    const inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.1'; inp.placeholder='Amount…'; inp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:14px;font-weight:700;padding:0 14px;outline:none;font-family:inherit;';
-    inp.oninput=e=>{ amtValue=parseFloat(e.target.value)||0; refreshSave(); };
-    card.appendChild(inp);
+  const amtCard=makeSplitCard('Amount', rSide=>{
+    const inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.1'; inp.placeholder='0'; inp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:14px;font-weight:700;padding:0 12px;outline:none;font-family:inherit;';
+    inp.oninput=e=>{ amtValue=parseFloat(e.target.value)||0; refreshSave(); }; rSide.appendChild(inp);
   });
   body.appendChild(amtCard);
 
-  // ── Unit Type (liquid or dry) — only for oz units
+  // ── Unit Type (liquid or dry) — only for weight oz
+  let convCard;
   function renderOzTypeCard(){
     ozTypeCard.innerHTML='';
-    if(!ozType){
-      const lbl=document.createElement('div'); lbl.style.cssText='font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-align:center;padding:0 10px;'; lbl.textContent='TAP TO ADD UNIT TYPE: LIQUID OR DRY';
-      ozTypeCard.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;background:var(--bg-2);';
-      ozTypeCard.appendChild(lbl);
-      ozTypeCard.onclick=()=>{ ozType='dry'; renderOzTypeCard(); refreshSave(); };
-    } else {
-      ozTypeCard.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
-      const dry=document.createElement('div'); dry.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;background:${ozType==='dry'?'var(--bg-4)':'var(--bg-2)'};color:${ozType==='dry'?'#fff':'var(--muted)'};`; dry.textContent='DRY';
-      const divEl=document.createElement('div'); divEl.style.cssText='width:var(--border-width);background:var(--border-color);flex-shrink:0;';
-      const liq=document.createElement('div'); liq.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;background:${ozType==='liquid'?'var(--bg-4)':'var(--bg-2)'};color:${ozType==='liquid'?'#fff':'var(--muted)'};`; liq.textContent='LIQUID';
-      dry.onclick=e=>{ e.stopPropagation(); ozType='dry'; renderOzTypeCard(); if(convCard._updateLbl) convCard._updateLbl(); refreshSave(); };
-      liq.onclick=e=>{ e.stopPropagation(); ozType='liquid'; renderOzTypeCard(); if(convCard._updateLbl) convCard._updateLbl(); refreshSave(); };
-      ozTypeCard.append(dry,divEl,liq); ozTypeCard.onclick=null;
-    }
+    ozTypeCard.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
+    const lSide=document.createElement('div'); lSide.style.cssText='width:50%;display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-right:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);flex-shrink:0;'; lSide.textContent='Type';
+    const rSide=document.createElement('div'); rSide.style.cssText='width:50%;display:flex;align-items:stretch;flex-shrink:0;';
+    const dry=document.createElement('div'); dry.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;background:${ozType==='dry'?'var(--bg-4)':'var(--bg-2)'};color:${ozType==='dry'?'#fff':'var(--muted)'};`; dry.textContent='DRY';
+    const divEl=document.createElement('div'); divEl.style.cssText='width:var(--border-width);background:var(--border-color);flex-shrink:0;';
+    const liq=document.createElement('div'); liq.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;background:${ozType==='liquid'?'var(--bg-4)':'var(--bg-2)'};color:${ozType==='liquid'?'#fff':'var(--muted)'};`; liq.textContent='LIQUID';
+    dry.onclick=e=>{ e.stopPropagation(); ozType='dry'; renderOzTypeCard(); if(convCard._updateLbl) convCard._updateLbl(); refreshSave(); };
+    liq.onclick=e=>{ e.stopPropagation(); ozType='liquid'; renderOzTypeCard(); if(convCard._updateLbl) convCard._updateLbl(); refreshSave(); };
+    rSide.append(dry,divEl,liq); ozTypeCard.append(lSide,rSide);
   }
   renderOzTypeCard();
   body.appendChild(ozTypeCard);
 
   // ── Unit Conversion
-  // Conv card — show as pre-filled if auto-detected, otherwise tap-to-enter
-  let convCard;
-  function buildConvCard(card){
-    const inp=document.createElement('input'); inp.type='text'; inp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:13px;font-weight:700;padding:0 14px;outline:none;font-family:inherit;';
+  const convLblText=()=>ozType==='liquid'?'fl oz / cup':'dry oz / cup';
+  let convUnitLblRef=null;
+  convCard=makeSplitCard('oz per cup', rSide=>{
+    const inp=document.createElement('input'); inp.type='text'; inp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:11px;font-weight:700;padding:0 12px;outline:none;font-family:inherit;';
     if(convValue) inp.value=convValue+' (auto)';
-    const convLblText=()=>ozType==='liquid'?'fl oz / cup':'dry oz / cup';
-    const lbl=document.createElement('div'); lbl.style.cssText='padding:0 12px;display:flex;align-items:center;font-size:9px;font-weight:700;color:var(--muted);background:var(--bg-3);border-left:var(--border-width) solid var(--border-color);white-space:nowrap;'; lbl.textContent=convLblText();
-    inp.onfocus=e=>{ if(inp.value.endsWith('(auto)')) inp.value=convValue||''; };
-    inp.oninput=e=>{ const v=parseFloat(e.target.value); convValue=isNaN(v)?null:v; lbl.textContent=convLblText(); refreshSave(); };
-    card._updateLbl=()=>{ lbl.textContent=convLblText(); };
-    card.append(inp,lbl);
-  }
-  if(convValue){
-    // already have a value — show as an active card immediately
-    convCard=document.createElement('div'); convCard.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;background:var(--bg-2);';
-    buildConvCard(convCard);
-  } else {
-    convCard=makeTapCard('TAP TO ADD OZ PER CUP CONVERSION', card=>buildConvCard(card));
-  }
+    const unitLbl=document.createElement('div'); unitLbl.style.cssText='padding:0 8px;display:flex;align-items:center;font-size:8px;font-weight:700;color:var(--muted);background:var(--bg-3);border-left:var(--border-width) solid var(--border-color);white-space:nowrap;'; unitLbl.textContent=convLblText();
+    inp.onfocus=()=>{ if(inp.value.endsWith('(auto)')) inp.value=convValue||''; };
+    inp.oninput=e=>{ const v=parseFloat(e.target.value); convValue=isNaN(v)?null:v; unitLbl.textContent=convLblText(); refreshSave(); };
+    convUnitLblRef=unitLbl;
+    rSide.append(inp,unitLbl);
+  });
+  convCard._updateLbl=()=>{ if(convUnitLblRef) convUnitLblRef.textContent=convLblText(); };
   body.appendChild(convCard);
 
   // ── Price
-  const priceCard=makeTapCard('TAP TO ADD PRICE', card=>{
+  const priceCard=makeSplitCard('Price', rSide=>{
     priceMode='price'; refreshSave();
-    const inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.01'; inp.placeholder='$ paid'; inp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:14px;font-weight:700;padding:0 14px;outline:none;font-family:inherit;';
+    const inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.01'; inp.placeholder='$ paid'; inp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:13px;font-weight:700;padding:0 12px;outline:none;font-family:inherit;';
     inp.oninput=e=>{ const v=parseFloat(e.target.value); priceVal=isNaN(v)?null:v; refreshSave(); };
-    const freeEl=document.createElement('div'); freeEl.style.cssText='padding:0 18px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#48a971;background:var(--bg-2);cursor:pointer;border-left:var(--border-width) solid var(--border-color);white-space:nowrap;'; freeEl.textContent='FREE';
+    const freeEl=document.createElement('div'); freeEl.style.cssText='padding:0 14px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#48a971;background:var(--bg-2);cursor:pointer;border-left:var(--border-width) solid var(--border-color);white-space:nowrap;'; freeEl.textContent='FREE';
     freeEl.onclick=e=>{ e.stopPropagation(); priceMode=priceMode==='free'?'price':'free'; priceVal=priceMode==='free'?0:null; freeEl.style.background=priceMode==='free'?'#1d3318':'var(--bg-2)'; inp.disabled=priceMode==='free'; inp.style.opacity=priceMode==='free'?'0.3':'1'; if(priceMode==='free') inp.value=''; refreshSave(); };
-    card.append(inp,freeEl);
+    rSide.append(inp,freeEl);
   });
   body.appendChild(priceCard);
 
@@ -3663,12 +3736,14 @@ function ptBuildCard(msItem){
       addConBtn.onclick=e=>{ e.stopPropagation(); openAddContainerWindow(msItem,pd,wrap,selectedCon,expandView); };
       body.appendChild(addConBtn);
 
-      // DELETE only card (shown when container selected)
-      const actCard=document.createElement('div'); actCard.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#C85A5A;cursor:pointer;'; actCard._t=0; actCard._timer=null;
-      const delLbl=document.createElement('div'); delLbl.style.cssText='font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#fff;'; delLbl.textContent='Delete Container';
-      actCard.appendChild(delLbl);
-      actCard.onclick=e=>{ e.stopPropagation(); if(!selCon) return; actCard._t++; clearTimeout(actCard._timer); if(actCard._t>=2){ actCard._t=0; pd.containers=pd.containers.filter(c=>c.id!==selCon.id); selectedCon.id=null; updateBtnState(); saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); } else{ actCard.style.background='#fff'; delLbl.style.color='#C85A5A'; actCard._timer=setTimeout(()=>{ actCard._t=0; actCard.style.background='#C85A5A'; delLbl.style.color='#fff'; },3000); } };
-      body.appendChild(actCard);
+      // EDIT | DELETE card (shown when container selected)
+      const actCard=document.createElement('div'); actCard.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
+      const editSec=document.createElement('div'); editSec.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#fff;background:var(--bg-2);cursor:pointer;'; editSec.textContent='Edit';
+      editSec.onclick=e=>{ e.stopPropagation(); if(!selCon) return; openEditContainerWindow(msItem,pd,selCon,wrap,selectedCon,expandView); };
+      const editDivider=document.createElement('div'); editDivider.style.cssText='width:3px;background:#000;flex-shrink:0;';
+      const delSec=document.createElement('div'); delSec.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#fff;background:#C85A5A;cursor:pointer;'; delSec.textContent='Delete'; delSec._t=0; delSec._timer=null;
+      delSec.onclick=e=>{ e.stopPropagation(); if(!selCon) return; delSec._t++; clearTimeout(delSec._timer); if(delSec._t>=2){ delSec._t=0; pd.containers=pd.containers.filter(c=>c.id!==selCon.id); selectedCon.id=null; updateBtnState(); saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); } else{ delSec.style.background='#fff'; delSec.style.color='#C85A5A'; delSec._timer=setTimeout(()=>{ delSec._t=0; delSec.style.background='#C85A5A'; delSec.style.color='#fff'; },3000); } };
+      actCard.append(editSec,editDivider,delSec); body.appendChild(actCard);
       if(!selCon){ actCard.style.display='none'; }
 
     } else {
@@ -4198,7 +4273,28 @@ function rxOpenNewRecipeOverlay(){
         // also try word-match from RX_CUP_TO_OZ table
         if(!ings[idx].converted){ const wm=rxWordMatch(name); if(wm){ ings[idx].converted=String(wm); ci.value=wm; } }
       }
-      ni.oninput=e=>{ ings[idx].name=e.target.value; const q=e.target.value.toLowerCase(); let ac=row.querySelector('.rx-ac'); if(ac) ac.remove(); const sugg=msItemNames.filter(n=>n.toLowerCase().startsWith(q)&&q.length>1); if(sugg.length){ ac=document.createElement('div'); ac.className='rx-ac'; ac.style.cssText='background:var(--bg-2);border-top:2px solid #000;'; sugg.slice(0,3).forEach(s=>{ const si=document.createElement('div'); si.style.cssText='height:28px;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:600;color:#fff;cursor:pointer;border-bottom:1px solid rgba(0,0,0,0.3);'; si.textContent=s; si.onmousedown=ev=>{ ev.preventDefault(); ni.value=s; applyIngName(s); ac.remove(); }; ac.appendChild(si); }); row.appendChild(ac); } };
+      ni.oninput=e=>{ ings[idx].name=e.target.value; const q=e.target.value.toLowerCase(); let ac=row.querySelector('.rx-ac'); if(ac) ac.remove(); const sugg=msItemNames.filter(n=>n.toLowerCase().startsWith(q)&&q.length>1); if(sugg.length){ ac=document.createElement('div'); ac.className='rx-ac'; ac.style.cssText='background:var(--bg-2);border-top:2px solid #000;'; sugg.slice(0,3).forEach(s=>{
+        const msItem=ls('ms_items',[]).find(m=>m.name.toLowerCase()===s.toLowerCase());
+        const pd=msItem?ls('pantry_data',{})[msItem.id]:null;
+        const stock=pd?pd.containers.reduce((t,c)=>t+(c.amount||0),0):0;
+        const VOLUMETRIC_UNITS=new Set(['fl oz','ml','l','cups','cup','tbsp','tsp']);
+        const UNIT_EXACT_CONV={'fl oz':8,'ml':236.6,'l':0.2366,'cups':1,'cup':1,'tbsp':16,'tsp':48};
+        const isVol=pd&&VOLUMETRIC_UNITS.has((pd.unit||'').toLowerCase());
+        const exactConv=pd?UNIT_EXACT_CONV[(pd.unit||'').toLowerCase()]||null:null;
+        const ozPerUnit=pd?.ozPerUnit||exactConv||rxWordMatch(s)||(rxIsLiquid(s)?8.5:null);
+        const stockOz=stock>0?(isVol||ozPerUnit?parseFloat((stock*(ozPerUnit||1)).toFixed(1)):parseFloat(rxToOz(stock,pd?.unit||'oz').toFixed(1))):0;
+        const inStock=stock>0;
+        const si=document.createElement('div'); si.style.cssText='height:32px;display:flex;align-items:stretch;cursor:pointer;border-bottom:1px solid rgba(0,0,0,0.3);';
+        const nm=document.createElement('div'); nm.style.cssText='flex:1;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:600;color:#fff;background:var(--bg-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'; nm.textContent=s;
+        const d1=document.createElement('div'); d1.style.cssText='width:2px;background:#000;flex-shrink:0;';
+        const stockSec=document.createElement('div'); stockSec.style.cssText=`width:52px;min-width:52px;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;background:${inStock?'#1d3318':'#2a1010'};color:${inStock?'#48a971':'#C85A5A'};flex-shrink:0;`; stockSec.textContent=inStock?'IN STOCK':'NONE';
+        const d2=document.createElement('div'); d2.style.cssText='width:2px;background:#000;flex-shrink:0;';
+        const ozSec=document.createElement('div'); ozSec.style.cssText=`width:52px;min-width:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:${inStock?'#fff':'var(--muted)'};background:var(--bg-3);flex-shrink:0;gap:1px;`;
+        const ozVal=document.createElement('div'); ozVal.style.cssText='font-size:9px;font-weight:800;'; ozVal.textContent=inStock?stockOz+'oz':'—';
+        const ozLbl=document.createElement('div'); ozLbl.style.cssText='font-size:6px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;'; ozLbl.textContent='in pantry';
+        ozSec.append(ozVal,ozLbl);
+        si.append(nm,d1,stockSec,d2,ozSec);
+        si.onmousedown=ev=>{ ev.preventDefault(); ni.value=s; applyIngName(s); ac.remove(); }; ac.appendChild(si); }); row.appendChild(ac); } };
       const dx=document.createElement('div'); dx.style.cssText='width:32px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:#502424;color:#fff;cursor:pointer;border-left:3px solid #000;'; dx.textContent='×'; dx.onclick=()=>{ ings.splice(idx,1); renderIngs(); };
       const bot=document.createElement('div'); bot.style.cssText='height:28px;display:flex;align-items:stretch;border-top:2px solid #000;';
       const ci=document.createElement('input'); ci.type='number'; ci.step='0.01'; ci.placeholder='Converted oz (e.g. 4.4 for 1 cup flour)'; ci.value=ing.converted||''; ci.style.cssText='flex:1;background:var(--bg-3);border:none;color:var(--muted);font-size:9px;font-weight:600;padding:0 8px;outline:none;font-family:inherit;'; ci.oninput=e=>ings[idx].converted=e.target.value;
@@ -4233,6 +4329,7 @@ function rxBuildCard(r){
     if(tab==='ingredients'){
       const rc=document.createElement('div'); rc.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;position:relative;flex-shrink:0;'; const rfill=document.createElement('div'); rfill.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${r.ingredients.filter(rxIngOk).length/r.ingredients.length*100}%;background:${RX_STATUS_COLOR[status]};opacity:0.25;pointer-events:none;`; const rtxt=document.createElement('div'); rtxt.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;position:relative;z-index:2;'; rtxt.textContent=`${r.ingredients.filter(rxIngOk).length} of ${r.ingredients.length} ingredients available`; rc.append(rfill,rtxt); body.appendChild(rc);
       r.ingredients.forEach(ing=>{ const ok=rxIngOk(ing); const row=document.createElement('div'); row.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;position:relative;'; const ifill=document.createElement('div'); ifill.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${ok?100:10}%;background:${ok?'#48a971':'#C85A5A'};opacity:0.15;pointer-events:none;`; const nc=document.createElement('div'); nc.style.cssText='width:64px;min-width:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg-3);border-right:var(--border-width) solid var(--border-color);position:relative;z-index:2;gap:1px;'; const nv=document.createElement('div'); nv.style.cssText='font-size:9px;font-weight:800;color:#fff;'; nv.textContent=ing.needAmt; const nl=document.createElement('div'); nl.style.cssText='font-size:7px;font-weight:700;color:rgba(255,255,255,0.4);'; nl.textContent=ing.needConverted?rxParseNum(ing.needConverted)+'oz':''; nc.append(nv,nl); const inm=document.createElement('div'); inm.style.cssText='flex:1;display:flex;align-items:center;padding:0 8px;font-size:9px;font-weight:700;color:#fff;position:relative;z-index:2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'; inm.textContent=ing.name; const hc=document.createElement('div'); hc.style.cssText=`width:64px;min-width:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:var(--border-width) solid var(--border-color);position:relative;z-index:2;gap:1px;background:${ok?'rgba(72,169,113,0.15)':'rgba(200,90,90,0.15)'};`; const hv=document.createElement('div'); hv.style.cssText=`font-size:9px;font-weight:800;color:${ok?'#48a971':'#C85A5A'};`; hv.textContent=ing.haveAmt; const hl=document.createElement('div'); hl.style.cssText='font-size:6px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;'; hl.textContent='in pantry'; hc.append(hv,hl); row.append(ifill,nc,inm,hc); body.appendChild(row); });
+      const addIngCard=document.createElement('div'); addIngCard.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;background:#fff;'; const addIngLbl=document.createElement('div'); addIngLbl.style.cssText='font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#1d3318;'; addIngLbl.textContent='Add More Ingredients'; addIngCard.appendChild(addIngLbl); addIngCard.onclick=e=>{ e.stopPropagation(); openEditRecipeWindow(r,()=>{ renderRecipesBody(); }); }; body.appendChild(addIngCard);
       if(status!=='ready'){ const glBtn=document.createElement('div'); glBtn.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;cursor:pointer;'; const glI=document.createElement('div'); glI.style.cssText='width:32px;background:#fff;border-right:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#48a971;'; glI.textContent='+'; const glL=document.createElement('div'); glL.style.cssText='flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#fff;background:var(--bg-3);'; glL.textContent='Add Missing to Grocery List'; glBtn.append(glI,glL); glBtn.onclick=e=>{ e.stopPropagation(); const gl=ls('gl_items',[]); r.ingredients.filter(i=>!rxIngOk(i)).forEach(ing=>{ if(!gl.find(g=>g.name.toLowerCase()===ing.name.toLowerCase())){ const msItem=ls('ms_items',[]).find(m=>m.name.toLowerCase()===ing.name.toLowerCase()); if(msItem) gl.push({id:'gl_'+Date.now()+Math.random(),name:ing.name,category:msItem.category,checked:false}); } }); lsSet('gl_items',gl); glRender(); }; body.appendChild(glBtn); }
       if(status==='partial'){ const ratios=r.ingredients.map(ing=>({ing,ratio:rxGetIngRatio(ing)})).filter(x=>isFinite(x.ratio)&&x.ratio>=0); const sf=ratios.length>0?Math.max(0,Math.min(1,parseFloat(Math.min(...ratios.map(x=>x.ratio)).toFixed(4)))):1; const sp=Math.round(sf*100); const limIng=ratios.length>0?ratios.reduce((a,b)=>a.ratio<b.ratio?a:b).ing:null; if(sp>0&&sf>0){ const scCard=document.createElement('div'); scCard.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;'; const scHdr=document.createElement('div'); scHdr.style.cssText='height:32px;display:flex;align-items:stretch;position:relative;overflow:hidden;'; const scFill=document.createElement('div'); scFill.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${sp}%;background:#5A8DB8;opacity:0.25;pointer-events:none;`; const scL=document.createElement('div'); scL.style.cssText='flex:1;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:0 10px;position:relative;z-index:2;gap:1px;'; const scT=document.createElement('div'); scT.style.cssText='font-size:9px;font-weight:800;color:#fff;'; scT.textContent=`Scale to ${sp}% batch`; const scS=document.createElement('div'); scS.style.cssText='font-size:7px;font-weight:600;color:rgba(255,255,255,0.5);'; scS.textContent=limIng?`Limited by: ${limIng.name}`:''; scL.append(scT,scS); scHdr.append(scFill,scL); scCard.appendChild(scHdr); const scIW=document.createElement('div'); scIW.style.cssText='border-top:var(--border-width) solid var(--border-color);'; r.ingredients.forEach((ing,idx)=>{ const scaledOz=ing.needConverted?parseFloat((rxParseNum(ing.needConverted)*sf).toFixed(3)):null; const scRow=document.createElement('div'); scRow.style.cssText=`height:32px;display:flex;align-items:stretch;${idx<r.ingredients.length-1?'border-bottom:var(--border-width) solid var(--border-color);':''}`; const scN=document.createElement('div'); scN.style.cssText='width:72px;min-width:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg-3);border-right:var(--border-width) solid var(--border-color);gap:1px;'; const snv=document.createElement('div'); snv.style.cssText=`font-size:9px;font-weight:800;color:${ing===limIng?'#C7824A':'#fff'};`; snv.textContent=scaledOz!==null?rxOzToVolume(scaledOz):rxGetScaledDisplay(ing,sf); const snl=document.createElement('div'); snl.style.cssText='font-size:6px;font-weight:700;color:var(--muted);letter-spacing:0.06em;'; snl.textContent=scaledOz!==null?scaledOz+' oz':'—'; scN.append(snv,snl); const scNm=document.createElement('div'); scNm.style.cssText='flex:1;display:flex;align-items:center;padding:0 8px;font-size:9px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'; scNm.textContent=ing.name; const hvn=rxParseNum(ing.haveAmt); const nsn=scaledOz||rxParseNum(ing.needAmt)*sf; const ok2=hvn>=nsn; const scH=document.createElement('div'); scH.style.cssText=`width:72px;min-width:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:var(--border-width) solid var(--border-color);gap:1px;background:${ok2?'rgba(72,169,113,0.15)':'rgba(200,90,90,0.15)'};`; const shv=document.createElement('div'); shv.style.cssText=`font-size:9px;font-weight:800;color:${ok2?'#48a971':'#C85A5A'};`; shv.textContent=ing.haveAmt; const shl=document.createElement('div'); shl.style.cssText='font-size:6px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;'; shl.textContent='in pantry'; scH.append(shv,shl); scRow.append(scN,scNm,scH); scIW.appendChild(scRow); }); scCard.appendChild(scIW); body.appendChild(scCard); } }
       const canCook=status==='ready'; const isPartial=status==='partial'; const ratios2=r.ingredients.map(ing=>({ing,ratio:rxGetIngRatio(ing)})).filter(x=>isFinite(x.ratio)&&x.ratio>=0); const sf2=ratios2.length>0?Math.max(0,Math.min(1,parseFloat(Math.min(...ratios2.map(x=>x.ratio)).toFixed(4)))):0; const sp2=Math.round(sf2*100);
@@ -4273,8 +4370,53 @@ function rxBuildCard(r){
       rxSetMeals(meals); ptRender(); closeRecipesWindow(); openMealsWindow();
     }; cookCard.append(cookLbl,cookBtn); body.appendChild(cookCard);
     } else if(tab==='cost'){
-      if(!r.costBreakdown||!r.costBreakdown.length){ const e=document.createElement('div'); e.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;color:var(--muted);font-style:italic;'; e.textContent='No cost data yet'; body.appendChild(e); }
-      else { const cc=document.createElement('div'); cc.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;'; const ch=document.createElement('div'); ch.style.cssText='height:32px;display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);background:var(--bg-2);'; const ct=document.createElement('div'); ct.style.cssText='flex:1;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);'; ct.textContent='Cost Breakdown'; const ctot=document.createElement('div'); ctot.style.cssText='padding:0 14px;display:flex;align-items:center;font-size:13px;font-weight:800;color:#48a971;border-left:var(--border-width) solid var(--border-color);'; ctot.textContent='$'+r.totalCost.toFixed(2); ch.append(ct,ctot); cc.appendChild(ch); r.costBreakdown.forEach((item,idx)=>{ const row=document.createElement('div'); row.style.cssText=`height:32px;display:flex;align-items:stretch;${idx<r.costBreakdown.length-1?'border-bottom:var(--border-width) solid var(--border-color);':''}`; const ci=document.createElement('div'); ci.style.cssText='flex:1;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:600;color:#fff;background:var(--bg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'; ci.textContent=item.name; const ca=document.createElement('div'); ca.style.cssText='width:64px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#48a971;border-left:var(--border-width) solid var(--border-color);background:var(--bg-2);'; ca.textContent=item.cost; row.append(ci,ca); cc.appendChild(row); }); body.appendChild(cc); }
+      const breakdown=r.costBreakdown||[];
+      const knownCost=r.totalCost||0;
+
+      // Live estimate: calculate cost per ingredient from pantry container prices
+      function liveIngCost(ing){
+        const msItem=rxFindPantryItem(ing.name); if(!msItem) return null;
+        const pd=ls('pantry_data',{})[msItem.id]; if(!pd||!pd.containers.length) return null;
+        const needOz=rxParseNum(ing.needConverted)||null; if(!needOz) return null;
+        const ozPerUnit=pd.ozPerUnit||1;
+        // find cheapest non-free container with stock, or any priced container for price-per-oz
+        const priced=pd.containers.filter(c=>!c.free&&c.price!=null&&c.cap>0);
+        if(!priced.length) return 0; // all free
+        // weighted avg price per oz across all priced containers
+        const totalOz=priced.reduce((s,c)=>s+c.cap*ozPerUnit,0);
+        const totalCost=priced.reduce((s,c)=>s+c.price,0);
+        if(!totalOz) return null;
+        const pricePerOz=totalCost/totalOz;
+        return parseFloat((pricePerOz*needOz).toFixed(2));
+      }
+
+      // Build display rows
+      const cc=document.createElement('div'); cc.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;';
+      let liveTotal=0; let liveTotalValid=true;
+      const rows=r.ingredients.map(ing=>{
+        const cooked=breakdown.find(b=>b.name===ing.name);
+        const est=liveIngCost(ing);
+        const costVal=cooked?parseFloat(cooked.cost.replace('$','')):(est!=null?est:null);
+        if(costVal==null) liveTotalValid=false; else liveTotal+=costVal;
+        return {ing, cooked, est, costVal};
+      });
+
+      const displayTotal=knownCost>0?knownCost:(liveTotalValid?liveTotal:null);
+      const ch=document.createElement('div'); ch.style.cssText='height:32px;display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);background:var(--bg-2);';
+      const ct=document.createElement('div'); ct.style.cssText='flex:1;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);'; ct.textContent=knownCost>0?'Last Cook Cost':'Estimated Cost';
+      const ctot=document.createElement('div'); ctot.style.cssText='padding:0 14px;display:flex;align-items:center;font-size:13px;font-weight:800;color:#48a971;border-left:var(--border-width) solid var(--border-color);'; ctot.textContent=displayTotal!=null?'$'+displayTotal.toFixed(2):'—';
+      ch.append(ct,ctot); cc.appendChild(ch);
+
+      rows.forEach(({ing,cooked,est,costVal},idx)=>{
+        const row=document.createElement('div'); row.style.cssText=`height:32px;display:flex;align-items:stretch;${idx<rows.length-1?'border-bottom:var(--border-width) solid var(--border-color)':''}`;
+        const ci=document.createElement('div'); ci.style.cssText='flex:1;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:600;color:#fff;background:var(--bg-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'; ci.textContent=ing.name;
+        const ca=document.createElement('div'); ca.style.cssText=`width:72px;min-width:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:${costVal!=null?'#48a971':'var(--muted)'};border-left:var(--border-width) solid var(--border-color);background:var(--bg-2);gap:1px;`;
+        const cv=document.createElement('div'); cv.textContent=costVal!=null?'$'+costVal.toFixed(2):'—';
+        const cl=document.createElement('div'); cl.style.cssText='font-size:6px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;'; cl.textContent=cooked?'last cook':est!=null?'estimate':'no data';
+        ca.append(cv,cl); row.append(ci,ca); cc.appendChild(row);
+      });
+      body.appendChild(cc);
+      if(!liveTotalValid&&!knownCost){ const note=document.createElement('div'); note.style.cssText='font-size:8px;color:var(--muted);padding:3px 4px;font-style:italic;'; note.textContent='Some ingredients missing price or conversion data'; body.appendChild(note); }
     } else if(tab==='steps'){
       if(!r.steps) r.steps=[];
       r.steps.forEach((step,idx)=>{
@@ -4292,11 +4434,13 @@ function rxBuildCard(r){
       if(!r.cookLog||!r.cookLog.length){ const e=document.createElement('div'); e.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;color:var(--muted);font-style:italic;'; e.textContent='No cook history yet'; body.appendChild(e); }
       else r.cookLog.forEach(entry=>{ const row=document.createElement('div'); row.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;'; const ld=document.createElement('div'); ld.style.cssText='width:64px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:var(--muted);background:var(--bg-2);border-right:var(--border-width) solid var(--border-color);'; ld.textContent=entry.date; const ll=document.createElement('div'); ll.style.cssText='flex:1;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:600;color:#fff;background:var(--bg-3);'; ll.textContent=entry.note||'Cooked'; row.append(ld,ll); body.appendChild(row); });
       // delete recipe — at bottom of log tab, two-tap
-      const delCard=document.createElement('div'); delCard.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#C85A5A;flex-shrink:0;margin-top:4px;'; delCard._t=0; delCard._timer=null;
-      const delLbl=document.createElement('div'); delLbl.style.cssText='font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#fff;'; delLbl.textContent='Delete Recipe';
-      delCard.appendChild(delLbl);
-      delCard.onclick=e=>{ e.stopPropagation(); delCard._t++; clearTimeout(delCard._timer); if(delCard._t>=2){ rxSetRecipes(rxGetRecipes().filter(rx=>rx.id!==r.id)); rxOpenId=null; renderRecipesBody(); } else { delCard.style.background='#fff'; delLbl.style.color='#C85A5A'; delCard._timer=setTimeout(()=>{ delCard._t=0; delCard.style.background='#C85A5A'; delLbl.style.color='#fff'; },3000); } };
-      body.appendChild(delCard);
+      const delCard=document.createElement('div'); delCard.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;margin-top:4px;';
+      const rxEditSec=document.createElement('div'); rxEditSec.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#fff;background:var(--bg-2);cursor:pointer;'; rxEditSec.textContent='Edit';
+      rxEditSec.onclick=e=>{ e.stopPropagation(); openEditRecipeWindow(r,()=>{ renderRecipesBody(); }); };
+      const rxDelDiv=document.createElement('div'); rxDelDiv.style.cssText='width:var(--border-width);background:var(--border-color);flex-shrink:0;';
+      const rxDelSec=document.createElement('div'); rxDelSec.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#fff;background:#C85A5A;cursor:pointer;'; rxDelSec.textContent='Delete'; rxDelSec._t=0; rxDelSec._timer=null;
+      rxDelSec.onclick=e=>{ e.stopPropagation(); rxDelSec._t++; clearTimeout(rxDelSec._timer); if(rxDelSec._t>=2){ rxSetRecipes(rxGetRecipes().filter(rx=>rx.id!==r.id)); rxOpenId=null; renderRecipesBody(); } else { rxDelSec.style.background='#fff'; rxDelSec.style.color='#C85A5A'; rxDelSec._timer=setTimeout(()=>{ rxDelSec._t=0; rxDelSec.style.background='#C85A5A'; rxDelSec.style.color='#fff'; },3000); } };
+      delCard.append(rxEditSec,rxDelDiv,rxDelSec); body.appendChild(delCard);
     }
     expand.appendChild(body);
   }
@@ -4353,6 +4497,58 @@ function openAddStepWindow(r, onSave){
   renderSteps();
   ov.append(hdr,body);
   document.getElementById('recipesWindow').appendChild(ov);
+}
+
+function openEditRecipeWindow(r, onSave){
+  const ov=document.createElement('div'); ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-3);z-index:350;display:flex;flex-direction:column;overflow:hidden;font-family:inherit;';
+  const hdr=document.createElement('div'); hdr.style.cssText='height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-1);';
+  const htitle=document.createElement('div'); htitle.style.cssText='flex:1;display:flex;align-items:center;padding:0 14px;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;'; htitle.textContent='Edit Recipe';
+  const hclose=document.createElement('button'); hclose.style.cssText='width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff;cursor:pointer;'; hclose.textContent='×'; hclose.onclick=()=>ov.remove();
+  hdr.append(htitle,hclose);
+
+  const body=document.createElement('div'); body.style.cssText='flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--margin);padding:var(--margin);';
+
+  // Recipe name
+  const nameWrap=document.createElement('div'); nameWrap.style.cssText='height:var(--card-height);border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
+  const nameInp=document.createElement('input'); nameInp.type='text'; nameInp.value=r.name||''; nameInp.placeholder='Recipe name…'; nameInp.style.cssText='flex:1;background:#c8cdd4;border:none;color:#1a1a1a;font-size:13px;font-weight:700;padding:0 14px;outline:none;font-family:inherit;';
+  nameWrap.appendChild(nameInp); body.appendChild(nameWrap);
+
+  // Ingredients list — working copy
+  let ings=r.ingredients.map(i=>({name:i.name,amt:i.needAmt.replace(/[a-zA-Z\s\/]+$/,'').trim(),unit:i.needAmt.replace(/^[\d.\s¼½¾⅓⅔⅛⅜⅝⅞⅕⅖]+/,'').trim()||'oz',converted:i.needConverted||''}));
+  const ingList=document.createElement('div'); ingList.style.cssText='display:flex;flex-direction:column;gap:var(--margin);';
+  const msItemNames=ls('ms_items',[]).map(i=>i.name);
+
+  function renderIngsEdit(){
+    ingList.innerHTML='';
+    ings.forEach((ing,idx)=>{
+      const row=document.createElement('div'); row.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;';
+      const top=document.createElement('div'); top.style.cssText='height:32px;display:flex;align-items:stretch;';
+      const ai=document.createElement('input'); ai.type='number'; ai.placeholder='Amt'; ai.value=ing.amt||''; ai.style.cssText='width:52px;background:#c8cdd4;border:none;border-right:3px solid #000;color:#1a1a1a;font-size:11px;font-weight:700;padding:0 6px;outline:none;font-family:inherit;'; ai.oninput=e=>ings[idx].amt=e.target.value;
+      const us=document.createElement('select'); us.style.cssText='width:56px;background:var(--bg-2);border:none;border-right:3px solid #000;color:#fff;font-size:9px;font-weight:700;padding:0 2px;outline:none;font-family:inherit;cursor:pointer;appearance:none;text-align:center;'; RX_UNITS.forEach(u=>{ const o=document.createElement('option'); o.value=u; o.textContent=u; if(u===ing.unit) o.selected=true; us.appendChild(o); }); us.onchange=e=>ings[idx].unit=e.target.value;
+      const ni=document.createElement('input'); ni.type='text'; ni.placeholder='Ingredient name…'; ni.value=ing.name||''; ni.style.cssText='flex:1;background:var(--bg-3);border:none;color:#fff;font-size:10px;font-weight:600;padding:0 8px;outline:none;font-family:inherit;'; ni.oninput=e=>{ ings[idx].name=e.target.value; };
+      const ci=document.createElement('input'); ci.type='text'; ci.step='0.01'; ci.placeholder='oz conversion'; ci.value=ing.converted||''; ci.style.cssText='flex:1;background:var(--bg-3);border:none;color:var(--muted);font-size:9px;font-weight:600;padding:0 8px;outline:none;font-family:inherit;'; ci.oninput=e=>ings[idx].converted=e.target.value;
+      const dx=document.createElement('div'); dx.style.cssText='width:32px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:#502424;color:#fff;cursor:pointer;border-left:3px solid #000;'; dx.textContent='×'; dx.onclick=()=>{ ings.splice(idx,1); renderIngsEdit(); };
+      const bot=document.createElement('div'); bot.style.cssText='height:28px;display:flex;align-items:stretch;border-top:2px solid #000;';
+      const cl=document.createElement('div'); cl.style.cssText='padding:0 8px;display:flex;align-items:center;font-size:7px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;background:var(--bg-3);border-left:2px solid #000;white-space:nowrap;'; cl.textContent='oz conversion';
+      bot.append(ci,cl); top.append(ai,us,ni,dx); row.append(top,bot); ingList.appendChild(row);
+    });
+    const addIngBtn=document.createElement('div'); addIngBtn.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;cursor:pointer;'; const ai2=document.createElement('div'); ai2.style.cssText='width:32px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;background:var(--bg-2);color:#48a971;border-right:3px solid #000;'; ai2.textContent='+'; const al=document.createElement('div'); al.style.cssText='flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);background:var(--bg-3);'; al.textContent='Add Ingredient'; addIngBtn.append(ai2,al); addIngBtn.onclick=()=>{ ings.push({name:'',amt:'',unit:'oz',converted:''}); renderIngsEdit(); }; ingList.appendChild(addIngBtn);
+  }
+  renderIngsEdit();
+  body.appendChild(ingList);
+
+  const saveBtn=document.createElement('div'); saveBtn.style.cssText='height:var(--card-height);border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;background:#1d3318;margin-top:4px;';
+  const saveLbl=document.createElement('div'); saveLbl.style.cssText='font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:#48a971;'; saveLbl.textContent='Save Recipe';
+  saveBtn.appendChild(saveLbl);
+  saveBtn.onclick=()=>{
+    const name=nameInp.value.trim(); if(!name) return;
+    const validIngs=ings.filter(i=>i.name.trim()).map(i=>({ name:i.name.trim(), needAmt:i.amt+' '+i.unit, needConverted:i.converted||'', haveAmt:r.ingredients.find(ri=>ri.name===i.name)?.haveAmt||'—' }));
+    const recipes=rxGetRecipes(); const ri=recipes.findIndex(rx=>rx.id===r.id);
+    if(ri>=0){ recipes[ri].name=name; recipes[ri].ingredients=validIngs; rxSetRecipes(recipes); }
+    ov.remove(); if(onSave) onSave();
+  };
+  body.appendChild(saveBtn);
+  ov.append(hdr,body); document.getElementById('recipesWindow').appendChild(ov);
 }
 
 function renderRecipesBody(){
