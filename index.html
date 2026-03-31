@@ -4201,8 +4201,8 @@ function rxFindPantryItem(ingName){
   const nw=n.split(/\s+/);
   m=msItems.find(i=>{ const iw=i.name.toLowerCase().split(/\s+/); return nw.every(w=>iw.some(iword=>iword.startsWith(w)||w.startsWith(iword))); });
   if(m) return m;
-  // single key-word match (e.g. "flour" in "all-purpose flour")
-  m=msItems.find(i=>{ const iLow=i.name.toLowerCase(); return nw.some(w=>w.length>3&&iLow.includes(w)); });
+  // single key-word match — whole words only, not substrings
+  m=msItems.find(i=>{ const iWords=i.name.toLowerCase().split(/[\s\-,]+/); return nw.some(w=>w.length>3&&iWords.some(iw=>iw===w)); });
   return m||null;
 }
 
