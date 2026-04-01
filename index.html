@@ -26,7 +26,7 @@
   --border-width: 3px;
   --border-color: #000;
   --radius: 8px;
-  --bg-1: #243342;
+  --bg-1: #111920;
   --bg-2: #374151;
   --bg-3: #0f1520;
   --bg-4: #636B76;
@@ -253,7 +253,7 @@ body {
 .cat-label { flex:1; font-size:11px; font-weight:800; letter-spacing:0.1em; text-transform:uppercase; }
 .cat-count { font-size:10px; font-weight:700; color:var(--muted); flex-shrink:0; }
 .cat-arrow { font-size:8px; color:var(--muted); font-weight:900; transition:transform 0.15s; }
-.cat-body { display:flex; flex-direction:column; gap:var(--margin); padding:var(--margin); background:var(--bg-1); }
+.cat-body { display:flex; flex-direction:column; gap:var(--margin); padding:var(--margin); background:var(--bg-2); }
 
 /* ITEM ROW */
 .item-row {
@@ -285,6 +285,7 @@ body {
   min-height:80px; display:flex; align-items:center; justify-content:center;
   font-size:14px; font-weight:500; color:var(--muted); opacity:0.8;
   text-align:center; padding:24px 20px; line-height:1.7;
+  background:var(--bg-2); border-radius:var(--radius);
 }
 
 /* FOOTER */
@@ -452,7 +453,7 @@ body {
   font-size:14px; font-weight:700; color:var(--muted); cursor:pointer; flex-shrink:0;
 }
 .cs-del-sq.pending { background:var(--color-10); color:var(--color-1); }
-.cs-body { display:flex; flex-direction:column; gap:var(--margin); padding:var(--margin); background:var(--bg-1); }
+.cs-body { display:flex; flex-direction:column; gap:var(--margin); padding:var(--margin); background:var(--bg-2); }
 .cs-entry {
   display:flex; flex-direction:column;
   border:var(--border-width) solid var(--border-color);
@@ -1202,8 +1203,8 @@ function buildCatSection(cat,items,stage,onHeader,buildBody,headerHeight){
 }
 
 function showEmpty(container,msg){
-  const s=document.createElement('div'); s.className='cat-section';
-  const e=document.createElement('div'); e.className='empty-state'; e.textContent=msg;
+  const s=document.createElement('div'); s.className='cat-section'; s.style.cssText='background:var(--bg-2);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;';
+  const e=document.createElement('div'); e.className='empty-state'; e.style.background='transparent'; e.style.borderRadius='0'; e.textContent=msg;
   s.appendChild(e); container.appendChild(s);
 }
 
@@ -2815,8 +2816,8 @@ function openNewItemOverlay(prefillName, onSave){
   const body=document.createElement('div'); body.style.cssText='flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--margin);padding:var(--margin);background:var(--bg-3);';
 
   // Name
-  const nameWrap=document.createElement('div'); nameWrap.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;';
-  const nameInp=document.createElement('input'); nameInp.type='text'; nameInp.placeholder='Item name…'; nameInp.value=prefillName||''; nameInp.style.cssText='flex:1;background:#c8cdd4;border:none;color:#1a1a1a;font-size:13px;font-weight:600;padding:0 10px;outline:none;font-family:inherit;';
+  const nameWrap=document.createElement('div'); nameWrap.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;flex-shrink:0;';
+  const nameInp=document.createElement('input'); nameInp.type='text'; nameInp.placeholder='Item name…'; nameInp.value=prefillName||''; nameInp.style.cssText='flex:1;background:#c8cdd4;border:none;color:#1a1a1a;font-size:13px;font-weight:600;padding:0 10px;outline:none;font-family:inherit;text-align:center;';
   nameWrap.appendChild(nameInp); body.appendChild(nameWrap);
 
   // Category — full width, grey bg, no arrow, taps open modal
@@ -3172,6 +3173,7 @@ const LIQUID_KEYWORDS=['milk','cream','oil','water','juice','broth','stock','syr
 function rxIsLiquid(name){ const n=(name||'').toLowerCase(); return LIQUID_KEYWORDS.some(k=>n.includes(k)); }
 const RX_LIQUID_DEFAULT=8.5;
 
+function needsConvCard(u){ const unit=u.toLowerCase(); return ['cups','cup','tbsp','tsp'].includes(unit); }
 function openEditContainerWindow(msItem, pd, con, wrap, selectedCon, expandView){
   const ov=document.createElement('div'); ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-3);z-index:300;display:flex;flex-direction:column;overflow:hidden;font-family:inherit;';
   const hdr=document.createElement('div'); hdr.style.cssText='height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-1);';
@@ -3222,7 +3224,7 @@ function openEditContainerWindow(msItem, pd, con, wrap, selectedCon, expandView)
   const unitRSide=document.createElement('div'); unitRSide.style.cssText='width:50%;display:flex;align-items:stretch;flex-shrink:0;cursor:pointer;';
   let convCard=null; // declared early so showEditUnit can reference it
   let editWeightCard=null; // declared early so showEditUnit can reference it
-  function showEditUnit(){ unitRSide.innerHTML=''; const u=getUnit(chosenUnit||'unit'); const l=document.createElement('div'); l.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-10);background:var(--bg-2);'; l.textContent=(u.label||chosenUnit||'unit').toUpperCase(); const d=document.createElement('div'); d.style.cssText='width:var(--border-width);background:var(--border-color);flex-shrink:0;'; const r=document.createElement('div'); r.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);background:var(--bg-2);'; r.textContent=(u.abbr||chosenUnit||'').toUpperCase(); unitRSide.append(l,d,r); ozTypeCard.style.display=TYPE_TOGGLE_UNITS.has((chosenUnit||'').toLowerCase())?'flex':'none'; if(convCard) convCard.style.display=rxIsCountUnit(chosenUnit||'')?'none':'flex'; if(editWeightCard) editWeightCard.style.display=rxIsCountUnit(chosenUnit||'')?'flex':'none'; }
+  function showEditUnit(){ unitRSide.innerHTML=''; const u=getUnit(chosenUnit||'unit'); const l=document.createElement('div'); l.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-10);background:var(--bg-2);'; l.textContent=(u.label||chosenUnit||'unit').toUpperCase(); const d=document.createElement('div'); d.style.cssText='width:var(--border-width);background:var(--border-color);flex-shrink:0;'; const r=document.createElement('div'); r.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);background:var(--bg-2);'; r.textContent=(u.abbr||chosenUnit||'').toUpperCase(); unitRSide.append(l,d,r); ozTypeCard.style.display=TYPE_TOGGLE_UNITS.has((chosenUnit||'').toLowerCase())?'flex':'none'; if(convCard) convCard.style.display=needsConvCard(chosenUnit||'')?'flex':'none'; if(editWeightCard) editWeightCard.style.display=rxIsCountUnit(chosenUnit||'')?'flex':'none'; }
   unitRSide.onclick=()=>{ window._newItemUnit=chosenUnit||'unit'; window._newItemUnitCallback=(unitId)=>{ chosenUnit=unitId; const exact=UNIT_EXACT_CONV[(unitId||'').toLowerCase()]||null; const isVol=VOLUMETRIC_UNITS.has((unitId||'').toLowerCase()); if(isVol){ ozType='liquid'; convValue=exact; } else if((unitId||'').toLowerCase()==='oz'){ convValue=ozType==='liquid'?8:(rxWordMatch(msItem.name)||(rxIsLiquid(msItem.name)?8.5:null)); } else { convValue=exact||rxWordMatch(msItem.name)||(rxIsLiquid(msItem.name)?8.5:null); } renderOzType(); showEditUnit(); updateConvCard(); }; modalCtx='new-item-unit'; modalSelPend=null; modalDelPend.clear(); document.getElementById('modalTitle').textContent='Measurement Unit'; buildModalGrid(); document.getElementById('modalOverlay').classList.add('open'); };
   unitCard.append(unitLSide,unitRSide); showEditUnit(); body.appendChild(unitCard);
 
@@ -3267,31 +3269,36 @@ function openEditContainerWindow(msItem, pd, con, wrap, selectedCon, expandView)
   }
   amtInp.addEventListener('input',()=>updateConvCard());
   updateConvCard();
-  convCard.style.display=rxIsCountUnit(chosenUnit||'')?'none':'flex';
+  convCard.style.display=needsConvCard(chosenUnit||'')?'flex':'none';
   body.appendChild(convWrap);
 
   // Price
   const priceWrap=document.createElement('div'); priceWrap.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
   const priceLSide=document.createElement('div'); priceLSide.style.cssText='width:50%;display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-right:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);flex-shrink:0;'; priceLSide.textContent='Price';
   const priceRSide=document.createElement('div'); priceRSide.style.cssText='width:50%;display:flex;align-items:stretch;flex-shrink:0;';
-  const priceInp=document.createElement('input'); priceInp.type='number'; priceInp.min='0'; priceInp.step='0.01'; priceInp.placeholder='$ paid'; if(!con.free&&con.price!=null) priceInp.value=con.price; priceInp.disabled=con.free; priceInp.style.cssText=`flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:13px;font-weight:700;padding:0 12px;outline:none;font-family:inherit;opacity:${con.free?'0.3':'1'};`;
+  const priceInpWrap=document.createElement('div'); priceInpWrap.style.cssText='width:50%;display:flex;align-items:stretch;border-right:var(--border-width) solid var(--border-color);flex-shrink:0;';
+  const priceInp=document.createElement('input'); priceInp.type='number'; priceInp.min='0'; priceInp.step='0.01'; priceInp.placeholder='$ paid'; if(!con.free&&con.price!=null) priceInp.value=con.price; priceInp.disabled=con.free; priceInp.style.cssText=`flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:11px;font-weight:700;padding:0 8px;outline:none;font-family:inherit;opacity:${con.free?'0.3':'1'};`;
   priceInp.oninput=e=>{ priceMode='price'; priceVal=parseFloat(e.target.value)||null; };
-  const freeEl=document.createElement('div'); freeEl.style.cssText=`padding:0 14px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#48a971;background:${con.free?'#1d3318':'var(--bg-2)'};cursor:pointer;border-left:var(--border-width) solid var(--border-color);white-space:nowrap;`; freeEl.textContent='FREE';
-  freeEl.onclick=()=>{ priceMode=priceMode==='free'?'price':'free'; priceVal=priceMode==='free'?0:null; freeEl.style.background=priceMode==='free'?'#1d3318':'var(--bg-2)'; priceInp.disabled=priceMode==='free'; priceInp.style.opacity=priceMode==='free'?'0.3':'1'; if(priceMode==='free') priceInp.value=''; };
-  priceRSide.append(priceInp,freeEl); priceWrap.append(priceLSide,priceRSide); body.appendChild(priceWrap);
+  priceInpWrap.appendChild(priceInp);
+  const freeEl=document.createElement('div'); freeEl.style.cssText=`width:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#48a971;background:${con.free?'#1d3318':'var(--bg-3)'};cursor:pointer;flex-shrink:0;border-left:var(--border-width) solid var(--border-color);`; freeEl.textContent='FREE';
+  freeEl.onclick=()=>{ priceMode=priceMode==='free'?'price':'free'; priceVal=priceMode==='free'?0:null; freeEl.style.background=priceMode==='free'?'#1d3318':'var(--bg-3)'; priceInp.disabled=priceMode==='free'; priceInp.style.opacity=priceMode==='free'?'0.3':'1'; if(priceMode==='free') priceInp.value=''; };
+  priceRSide.append(priceInpWrap,freeEl); priceWrap.append(priceLSide,priceRSide); body.appendChild(priceWrap);
 
   // Optional weight card for countable units
   editWeightCard=document.createElement('div'); editWeightCard.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
   const ewLS=document.createElement('div'); ewLS.style.cssText='width:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg-3);border-right:var(--border-width) solid var(--border-color);flex-shrink:0;gap:1px;';
-  const ewLT=document.createElement('div'); ewLT.style.cssText='font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);'; ewLT.textContent='Total Weight';
+  const ewLT=document.createElement('div'); ewLT.style.cssText='font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-align:center;'; ewLT.textContent='Total Weight or Volume';
   const ewLS2=document.createElement('div'); ewLS2.style.cssText='font-size:7px;font-weight:600;color:rgba(255,255,255,0.3);'; ewLS2.textContent='(optional)';
   ewLS.append(ewLT,ewLS2);
   const ewRS=document.createElement('div'); ewRS.style.cssText='width:50%;display:flex;align-items:stretch;flex-shrink:0;';
-  const ewInp=document.createElement('input'); ewInp.type='number'; ewInp.min='0'; ewInp.step='0.01'; ewInp.placeholder='0'; ewInp.value=con.totalWeightOz||''; ewInp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:13px;font-weight:700;padding:0 10px;outline:none;font-family:inherit;';
-  const ewDiv=document.createElement('div'); ewDiv.style.cssText='width:var(--border-width);background:var(--border-color);flex-shrink:0;';
-  const ewUnitSel=document.createElement('select'); ewUnitSel.style.cssText='width:42px;min-width:42px;background:var(--bg-3);border:none;color:var(--muted);font-size:8px;font-weight:700;padding:0 2px;outline:none;font-family:inherit;cursor:pointer;appearance:none;text-align:center;flex-shrink:0;';
-  ['oz','lbs','g','kg'].forEach(u=>{ const o=document.createElement('option'); o.value=u; o.textContent=u; ewUnitSel.appendChild(o); });
-  ewRS.append(ewInp,ewDiv,ewUnitSel); editWeightCard.append(ewLS,ewRS);
+  const ewNumSide=document.createElement('div'); ewNumSide.style.cssText='width:50%;display:flex;align-items:stretch;border-right:var(--border-width) solid var(--border-color);flex-shrink:0;';
+  const ewInp=document.createElement('input'); ewInp.type='number'; ewInp.min='0'; ewInp.step='0.01'; ewInp.placeholder='0'; ewInp.value=con.totalWeightOz||''; ewInp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:11px;font-weight:700;padding:0 8px;outline:none;font-family:inherit;';
+  ewNumSide.appendChild(ewInp);
+  const ewUnitSide=document.createElement('div'); ewUnitSide.style.cssText='width:50%;display:flex;align-items:stretch;flex-shrink:0;border-left:var(--border-width) solid var(--border-color);';
+  const ewUnitSel=document.createElement('select'); ewUnitSel.style.cssText='flex:1;background:var(--bg-3);border:none;color:var(--muted);font-size:8px;font-weight:700;padding:0 2px;outline:none;font-family:inherit;cursor:pointer;appearance:none;text-align:center;';
+  ['oz','lbs','g','kg','ml','l','fl oz','cups'].forEach(u=>{ const o=document.createElement('option'); o.value=u; o.textContent=u; if(u==='oz') o.selected=true; ewUnitSel.appendChild(o); });
+  ewUnitSide.appendChild(ewUnitSel);
+  ewRS.append(ewNumSide,ewUnitSide); editWeightCard.append(ewLS,ewRS);
   editWeightCard.style.display=rxIsCountUnit(chosenUnit||'')?'flex':'none';
   body.appendChild(editWeightCard);
 
@@ -3399,13 +3406,13 @@ function openAddContainerWindow(msItem, pd, wrap, selectedCon, expandView){
   let convCard; // declared early — referenced in showChosenUnitInCard
   let weightCard; // declared early — referenced in showChosenUnitInCard
   const unitCard=makeSplitCard('Unit', rSide=>{ rSide.style.cursor='pointer'; rSide.style.justifyContent='center'; rSide.style.alignItems='center'; rSide.style.fontSize='10px'; rSide.style.fontWeight='800'; rSide.style.color='var(--muted)'; rSide.style.background='var(--bg-2)'; rSide.style.letterSpacing='0.06em'; rSide.style.textTransform='uppercase'; rSide.textContent='TAP TO PICK'; rSide.onclick=()=>openUnitPicker(); unitRSideRef=rSide; });
-  function showChosenUnitInCard(){ const u=getUnit(chosenUnit||'unit'); const rSide=unitRSideRef; rSide.innerHTML=''; rSide.style.cssText='width:50%;display:flex;align-items:stretch;flex-shrink:0;cursor:pointer;'; const l=document.createElement('div'); l.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-10);background:var(--bg-2);'; l.textContent=(u.label||chosenUnit||'').toUpperCase(); const d=document.createElement('div'); d.style.cssText='width:var(--border-width);background:var(--border-color);flex-shrink:0;'; const r=document.createElement('div'); r.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);background:var(--bg-2);'; r.textContent=(u.abbr||chosenUnit||'').toUpperCase(); rSide.append(l,d,r); ozTypeCard.style.display=TYPE_TOGGLE_UNITS.has((chosenUnit||'').toLowerCase())?'flex':'none'; if(convCard) convCard.style.display=rxIsCountUnit(chosenUnit||'')?'none':'flex'; if(typeof weightCard!=='undefined') weightCard.style.display=rxIsCountUnit(chosenUnit||'')?'flex':'none'; refreshSave(); }
+  function showChosenUnitInCard(){ const u=getUnit(chosenUnit||'unit'); const rSide=unitRSideRef; rSide.innerHTML=''; rSide.style.cssText='width:50%;display:flex;align-items:stretch;flex-shrink:0;cursor:pointer;'; const l=document.createElement('div'); l.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-10);background:var(--bg-2);'; l.textContent=(u.label||chosenUnit||'').toUpperCase(); const d=document.createElement('div'); d.style.cssText='width:var(--border-width);background:var(--border-color);flex-shrink:0;'; const r=document.createElement('div'); r.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);background:var(--bg-2);'; r.textContent=(u.abbr||chosenUnit||'').toUpperCase(); rSide.append(l,d,r); ozTypeCard.style.display=TYPE_TOGGLE_UNITS.has((chosenUnit||'').toLowerCase())?'flex':'none'; if(convCard) convCard.style.display=needsConvCard(chosenUnit||'')?'flex':'none'; if(typeof weightCard!=='undefined') weightCard.style.display=rxIsCountUnit(chosenUnit||'')?'flex':'none'; refreshSave(); }
   if(chosenUnit){ showChosenUnitInCard(); }
   body.appendChild(unitCard);
 
   // ── Unit Amount
   const amtCard=makeSplitCard('Amount', rSide=>{
-    const inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.1'; inp.placeholder='0'; inp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:14px;font-weight:700;padding:0 12px;outline:none;font-family:inherit;';
+    const inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.1'; inp.placeholder='0'; inp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:11px;font-weight:700;padding:0 12px;outline:none;font-family:inherit;';
     inp.oninput=e=>{ amtValue=parseFloat(e.target.value)||0; if(typeof updateConvDisplay==='function') updateConvDisplay(); refreshSave(); }; rSide.appendChild(inp);
   });
   body.appendChild(amtCard);
@@ -3454,17 +3461,19 @@ function openAddContainerWindow(msItem, pd, wrap, selectedCon, expandView){
   }
   convCard._updateLbl=()=>updateConvDisplay();
   updateConvDisplay();
-  convCard.style.display=rxIsCountUnit(chosenUnit||'')?'none':'flex';
+  convCard.style.display=needsConvCard(chosenUnit||'')?'flex':'none';
   body.appendChild(convCard);
 
   // ── Price
   const priceCard=makeSplitCard('Price', rSide=>{
     priceMode='price'; refreshSave();
-    const inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.01'; inp.placeholder='$ paid'; inp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:13px;font-weight:700;padding:0 12px;outline:none;font-family:inherit;';
+    const inpWrap=document.createElement('div'); inpWrap.style.cssText='width:50%;display:flex;align-items:stretch;border-right:var(--border-width) solid var(--border-color);flex-shrink:0;';
+    const inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.01'; inp.placeholder='$ paid'; inp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:11px;font-weight:700;padding:0 8px;outline:none;font-family:inherit;';
     inp.oninput=e=>{ const v=parseFloat(e.target.value); priceVal=isNaN(v)?null:v; refreshSave(); };
-    const freeEl=document.createElement('div'); freeEl.style.cssText='padding:0 14px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#48a971;background:var(--bg-2);cursor:pointer;border-left:var(--border-width) solid var(--border-color);white-space:nowrap;'; freeEl.textContent='FREE';
-    freeEl.onclick=e=>{ e.stopPropagation(); priceMode=priceMode==='free'?'price':'free'; priceVal=priceMode==='free'?0:null; freeEl.style.background=priceMode==='free'?'#1d3318':'var(--bg-2)'; inp.disabled=priceMode==='free'; inp.style.opacity=priceMode==='free'?'0.3':'1'; if(priceMode==='free') inp.value=''; refreshSave(); };
-    rSide.append(inp,freeEl);
+    inpWrap.appendChild(inp);
+    const freeEl=document.createElement('div'); freeEl.style.cssText='width:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#48a971;background:var(--bg-3);cursor:pointer;flex-shrink:0;border-left:var(--border-width) solid var(--border-color);'; freeEl.textContent='FREE';
+    freeEl.onclick=e=>{ e.stopPropagation(); priceMode=priceMode==='free'?'price':'free'; priceVal=priceMode==='free'?0:null; freeEl.style.background=priceMode==='free'?'#1d3318':'var(--bg-3)'; inp.disabled=priceMode==='free'; inp.style.opacity=priceMode==='free'?'0.3':'1'; if(priceMode==='free') inp.value=''; refreshSave(); };
+    rSide.append(inpWrap,freeEl);
   });
   body.appendChild(priceCard);
 
@@ -3472,16 +3481,19 @@ function openAddContainerWindow(msItem, pd, wrap, selectedCon, expandView){
   // Weight card — custom layout: left has two-line label, right is split number | unit selector
   weightCard=document.createElement('div'); weightCard.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
   const wLSide=document.createElement('div'); wLSide.style.cssText='width:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg-3);border-right:var(--border-width) solid var(--border-color);flex-shrink:0;gap:1px;';
-  const wLTop=document.createElement('div'); wLTop.style.cssText='font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);'; wLTop.textContent='Total Weight';
+  const wLTop=document.createElement('div'); wLTop.style.cssText='font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);text-align:center;'; wLTop.textContent='Total Weight or Volume';
   const wLSub=document.createElement('div'); wLSub.style.cssText='font-size:7px;font-weight:600;color:rgba(255,255,255,0.3);'; wLSub.textContent='(optional)';
   wLSide.append(wLTop,wLSub);
   const wRSide=document.createElement('div'); wRSide.style.cssText='width:50%;display:flex;align-items:stretch;flex-shrink:0;';
-  const wInp=document.createElement('input'); wInp.type='number'; wInp.min='0'; wInp.step='0.01'; wInp.placeholder='0'; wInp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:13px;font-weight:700;padding:0 10px;outline:none;font-family:inherit;';
+  const wNumSide=document.createElement('div'); wNumSide.style.cssText='width:50%;display:flex;align-items:stretch;border-right:var(--border-width) solid var(--border-color);flex-shrink:0;';
+  const wInp=document.createElement('input'); wInp.type='number'; wInp.min='0'; wInp.step='0.01'; wInp.placeholder='0'; wInp.style.cssText='flex:1;background:var(--bg-2);border:none;color:var(--color-10);font-size:11px;font-weight:700;padding:0 8px;outline:none;font-family:inherit;';
   wInp.oninput=e=>{ weightValue=parseFloat(e.target.value)||null; };
-  const wDiv=document.createElement('div'); wDiv.style.cssText='width:var(--border-width);background:var(--border-color);flex-shrink:0;';
-  const wUnitSel=document.createElement('select'); wUnitSel.style.cssText='width:42px;min-width:42px;background:var(--bg-3);border:none;color:var(--muted);font-size:8px;font-weight:700;padding:0 2px;outline:none;font-family:inherit;cursor:pointer;appearance:none;text-align:center;flex-shrink:0;';
-  ['oz','lbs','g','kg'].forEach(u=>{ const o=document.createElement('option'); o.value=u; o.textContent=u; wUnitSel.appendChild(o); });
-  wRSide.append(wInp,wDiv,wUnitSel); weightCard.append(wLSide,wRSide);
+  wNumSide.appendChild(wInp);
+  const wUnitSide=document.createElement('div'); wUnitSide.style.cssText='width:50%;display:flex;align-items:stretch;flex-shrink:0;border-left:var(--border-width) solid var(--border-color);';
+  const wUnitSel=document.createElement('select'); wUnitSel.style.cssText='flex:1;background:var(--bg-3);border:none;color:var(--muted);font-size:8px;font-weight:700;padding:0 2px;outline:none;font-family:inherit;cursor:pointer;appearance:none;text-align:center;';
+  ['oz','lbs','g','kg','ml','l','fl oz','cups'].forEach(u=>{ const o=document.createElement('option'); o.value=u; o.textContent=u; wUnitSel.appendChild(o); });
+  wUnitSide.appendChild(wUnitSel);
+  wRSide.append(wNumSide,wUnitSide); weightCard.append(wLSide,wRSide);
   let weightValue=null;
   weightCard.style.display=rxIsCountUnit(chosenUnit||'')?'flex':'none';
   body.appendChild(weightCard);
@@ -3582,41 +3594,114 @@ function openAddContainerWindow(msItem, pd, wrap, selectedCon, expandView){
   document.body.appendChild(ov);
 }
 
-function saveItemPantry(id,pd){ const d=getPantryData(); d[id]=pd; setPantryData(d); }
+function saveItemPantry(id,pd,prevStock,cost){
+  ptRecordCurrent(id,pd);
+  if(prevStock!==undefined){
+    const newStock=ptGetStock(pd);
+    ptLogDelta(id,parseFloat((newStock-prevStock).toFixed(3)),cost!=null?parseFloat(cost.toFixed(4)):null);
+  }
+  const d=getPantryData(); d[id]=pd; setPantryData(d);
+}
 
 function getPtUsage(){ return ls('pantry_usage',{}); }
 function trackPtUsage(id,amount){
   if(amount<=0) return;
   const u=getPtUsage(); u[id]=(u[id]||0)+amount; lsSet('pantry_usage',u);
-  // also log timestamped event for stats graphs
-  const log=ls('pantry_usage_log',[]); log.push({id,amount,ts:Date.now()}); lsSet('pantry_usage_log',log);
 }
 
-function ptGetStatsValues(id, mode){
-  const log=ls('pantry_usage_log',[]);
-  const now=new Date();
-  const todayMidnight=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-  const values=new Array(12).fill(0);
-  log.filter(e=>e.id===id).forEach(e=>{
+// Delta log system — logs every stock change as signed delta
+// negative = consumed, positive = restocked
+// Stats = abs(sum of negative deltas) per period
+function ptDateKey(ts){ const d=ts?new Date(ts):new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function ptLogDelta(id,delta,cost){
+  if(delta===0) return;
+  const entry={id,delta:parseFloat(delta.toFixed(3)),ts:Date.now()};
+  if(cost!=null) entry.cost=cost;
+  const log=ls('pantry_delta_log',[]); log.push(entry); lsSet('pantry_delta_log',log);
+}
+function ptRecordCurrent(id,pd){
+  // kept for Used Today display — records start-of-day snapshot
+  const snaps=ptGetSnapshots(); const key=ptDateKey(); if(!snaps[key]) snaps[key]={};
+  if(snaps[key][id]===undefined){ snaps[key][id]=parseFloat(ptGetStock(pd).toFixed(2)); lsSet('pantry_snapshots',snaps); }
+}
+function ptGetSnapshots(){ return ls('pantry_snapshots',{}); }
+
+function ptGetStatsValues(id,mode,direction){
+  const dir=direction||'used'; // 'used' = negative deltas, 'added' = positive deltas
+  const log=ls('pantry_delta_log',[]).filter(e=>e.id===id&&(dir==='used'?e.delta<0:e.delta>0));
+  const now=new Date(); const values=new Array(12).fill(0);
+  log.forEach(e=>{
     const d=new Date(e.ts);
     if(mode==='daily'){
-      const eMidnight=new Date(d.getFullYear(),d.getMonth(),d.getDate());
-      const diffDays=Math.round((todayMidnight-eMidnight)/(1000*60*60*24));
-      const idx=11-diffDays;
-      if(idx>=0&&idx<=11) values[idx]+=e.amount;
+      const diffDays=Math.round((new Date(now.getFullYear(),now.getMonth(),now.getDate())-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5);
+      const idx=11-diffDays; if(idx>=0&&idx<=11) values[idx]+=Math.abs(e.delta);
     } else if(mode==='weekly'){
-      const diffWeeks=Math.floor((now-d)/(1000*60*60*24*7));
-      const idx=11-diffWeeks;
-      if(idx>=0&&idx<=11) values[idx]+=e.amount;
+      const diffWeeks=Math.floor((now-d)/(864e5*7));
+      const idx=11-diffWeeks; if(idx>=0&&idx<=11) values[idx]+=Math.abs(e.delta);
     } else {
       const diffMonths=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth());
-      const idx=11-diffMonths;
-      if(idx>=0&&idx<=11) values[idx]+=e.amount;
+      const idx=11-diffMonths; if(idx>=0&&idx<=11) values[idx]+=Math.abs(e.delta);
     }
   });
   return values.map(v=>parseFloat(v.toFixed(2)));
 }
 
+// End-of-day stock per period — current stock for today, start-of-next-day snapshot for past days
+function ptGetStockEndValues(id,mode){
+  const snaps=ptGetSnapshots(); const now=new Date();
+  const pd=ls('pantry_data',{})[id];
+  const currentStock=pd?ptGetStock(pd):0;
+  const values=new Array(12).fill(null);
+  if(mode==='daily'){
+    for(let i=0;i<12;i++){
+      const d=new Date(now); d.setDate(d.getDate()-(11-i));
+      const isToday=(11-i)===0;
+      if(isToday){ values[i]=currentStock; continue; }
+      // end of past day = start of next day snapshot
+      const nextD=new Date(d); nextD.setDate(nextD.getDate()+1);
+      const nextKey=ptDateKey(nextD);
+      const endStock=snaps[nextKey]?.[id];
+      values[i]=endStock!=null?endStock:null;
+    }
+  } else if(mode==='weekly'){
+    for(let i=0;i<12;i++){
+      const weekEnd=new Date(now); weekEnd.setDate(weekEnd.getDate()-(11-i)*7);
+      const isCurrentWeek=(11-i)===11;
+      if(isCurrentWeek){ values[i]=currentStock; continue; }
+      const dayAfter=new Date(weekEnd); dayAfter.setDate(dayAfter.getDate()+1);
+      const endStock=snaps[ptDateKey(dayAfter)]?.[id];
+      values[i]=endStock!=null?endStock:null;
+    }
+  } else {
+    for(let i=0;i<12;i++){
+      const isCurrentMonth=(11-i)===11;
+      if(isCurrentMonth){ values[i]=currentStock; continue; }
+      const monthEnd=new Date(now.getFullYear(),now.getMonth()-(11-i)+1,1);
+      const endStock=snaps[ptDateKey(monthEnd)]?.[id];
+      values[i]=endStock!=null?endStock:null;
+    }
+  }
+  return values;
+}
+
+function ptGetStatsCosts(id,mode){
+  const log=ls('pantry_delta_log',[]).filter(e=>e.id===id&&e.delta<0&&e.cost!=null);
+  const now=new Date(); const values=new Array(12).fill(0);
+  log.forEach(e=>{
+    const d=new Date(e.ts);
+    if(mode==='daily'){
+      const diffDays=Math.round((new Date(now.getFullYear(),now.getMonth(),now.getDate())-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5);
+      const idx=11-diffDays; if(idx>=0&&idx<=11) values[idx]+=e.cost;
+    } else if(mode==='weekly'){
+      const diffWeeks=Math.floor((now-d)/(864e5*7));
+      const idx=11-diffWeeks; if(idx>=0&&idx<=11) values[idx]+=e.cost;
+    } else {
+      const diffMonths=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth());
+      const idx=11-diffMonths; if(idx>=0&&idx<=11) values[idx]+=e.cost;
+    }
+  });
+  return values.map(v=>parseFloat(v.toFixed(2)));
+}
 function ptGetStock(pd){ return parseFloat(pd.containers.reduce((s,c)=>s+c.amount,0).toFixed(1)); }
 function ptGetMax(pd){ return pd.totalCap; }
 function ptGetStatus(pd){ const max=ptGetMax(pd); if(max<=0) return 'ok'; const ratio=ptGetStock(pd)/max; if(ratio<=1/6) return 'low'; if(ratio<=1/3) return 'soon'; return 'ok'; }
@@ -3697,8 +3782,8 @@ function ptBuildCard(msItem){
 
   function updateBtnState(){ const a=!!selectedCon.id; minBtn.textContent=a?'−':''; plusBtn.textContent=a?'+':''; }
 
-  minBtn.onclick=e=>{ e.stopPropagation(); if(!selectedCon.id) return; const con=pd.containers.find(c=>c.id===selectedCon.id); if(!con) return; const prev=con.amount; con.amount=Math.max(0,parseFloat((con.amount-pd.step).toFixed(1))); const used=prev-con.amount; if(used>0) trackPtUsage(msItem.id,used); saveItemPantry(msItem.id,pd); if(con.amount===0&&prev>0) con._confirmEmpty=true; ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); };
-  plusBtn.onclick=e=>{ e.stopPropagation(); if(!selectedCon.id) return; const con=pd.containers.find(c=>c.id===selectedCon.id); if(!con) return; con.amount=Math.min(con.cap,parseFloat((con.amount+pd.step).toFixed(1))); saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); };
+  minBtn.onclick=e=>{ e.stopPropagation(); if(!selectedCon.id) return; const con=pd.containers.find(c=>c.id===selectedCon.id); if(!con) return; const prevS=ptGetStock(pd); const prev=con.amount; con.amount=Math.max(0,parseFloat((con.amount-pd.step).toFixed(1))); const used=prev-con.amount; if(used>0) trackPtUsage(msItem.id,used); const conCost=(!con.free&&con.price!=null&&con.cap>0)?(used/con.cap)*con.price:null; saveItemPantry(msItem.id,pd,prevS,conCost); if(con.amount===0&&prev>0) con._confirmEmpty=true; ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); };
+  plusBtn.onclick=e=>{ e.stopPropagation(); if(!selectedCon.id) return; const con=pd.containers.find(c=>c.id===selectedCon.id); if(!con) return; const prevS=ptGetStock(pd); con.amount=Math.min(con.cap,parseFloat((con.amount+pd.step).toFixed(1))); saveItemPantry(msItem.id,pd,prevS); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); };
 
   const center=document.createElement('div');
   center.style.cssText='flex:1;height:32px;min-height:32px;max-height:32px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;background:#374151;';
@@ -3732,23 +3817,20 @@ function ptBuildCard(msItem){
   main.append(minBtn, center, plusBtn);
 
   const expand=document.createElement('div');
-  expand.style.cssText=`background:var(--bg-3);overflow:hidden;max-height:0;`;
+  expand.style.cssText=`background:var(--bg-2);overflow:hidden;max-height:0;`;
 
   function renderExpand(){
     expand.innerHTML='';
-    const body=document.createElement('div'); body.style.cssText='display:flex;flex-direction:column;gap:4px;padding:4px;background:var(--bg-1);';
+    const body=document.createElement('div'); body.style.cssText='display:flex;flex-direction:column;gap:4px;padding:4px;background:var(--bg-2);';
 
-    // grocery list card
+    // combined top card: [Add to Grocery List] | [Add New Container]
     const glItems=ls('gl_items',[]); const inList=glItems.some(i=>i.name.toLowerCase()===msItem.name.toLowerCase()&&!i.checked);
-    const glCard=document.createElement('div'); glCard.style.cssText=`height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:${inList?'default':'pointer'};background:${inList?'#48a971':'var(--bg-3)'};`;
-    const glLbl=document.createElement('div'); glLbl.style.cssText=`font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:${inList?'#fff':'var(--color-10)'};text-align:center;`; glLbl.textContent=inList?'Added to Grocery List':'Add to Grocery List';
-    glCard.appendChild(glLbl);
-    if(!inList){ glCard.onclick=e=>{ e.stopPropagation(); glLbl.textContent='Added to Grocery List'; glCard.style.background='#48a971'; glLbl.style.color='#fff'; glCard.style.cursor='default'; glCard.onclick=null; const gl=ls('gl_items',[]); if(!gl.some(i=>i.name.toLowerCase()===msItem.name.toLowerCase()&&!i.checked)){ gl.push({id:'gl_'+Date.now()+Math.random(),name:msItem.name,category:msItem.category,checked:false}); lsSet('gl_items',gl); trackCatUsage(msItem.category); } glRender(); }; }
-    body.appendChild(glCard);
-
-    // divider — full width, breaking out of 4px padding
-    const divider=document.createElement('div'); divider.style.cssText='height:3px;background:#000;margin:0 -4px;flex-shrink:0;';
-    body.appendChild(divider);
+    const topCard=document.createElement('div'); topCard.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
+    const glSide=document.createElement('div'); glSide.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;cursor:${inList?'default':'pointer'};background:${inList?'#48a971':'var(--bg-4)'};color:${inList?'#fff':'var(--color-10)'};border-right:3px solid #000;text-align:center;padding:0 4px;`; glSide.textContent=inList?'Added to Grocery List':'Add to Grocery List';
+    if(!inList){ glSide.onclick=e=>{ e.stopPropagation(); glSide.textContent='Added to Grocery List'; glSide.style.background='#48a971'; glSide.style.color='#fff'; glSide.style.cursor='default'; glSide.onclick=null; const gl=ls('gl_items',[]); if(!gl.some(i=>i.name.toLowerCase()===msItem.name.toLowerCase()&&!i.checked)){ gl.push({id:'gl_'+Date.now()+Math.random(),name:msItem.name,category:msItem.category,checked:false}); lsSet('gl_items',gl); trackCatUsage(msItem.category); } glRender(); }; }
+    const acSide=document.createElement('div'); acSide.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;background:var(--bg-4);color:var(--color-10);text-align:center;padding:0 4px;'; acSide.textContent='Add New Container';
+    acSide.onclick=e=>{ e.stopPropagation(); openAddContainerWindow(msItem,pd,wrap,selectedCon,expandView); };
+    topCard.append(glSide,acSide); body.appendChild(topCard);
 
     // tabs
     const tabs=document.createElement('div'); tabs.style.cssText=`height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;flex-shrink:0;`;
@@ -3770,23 +3852,50 @@ function ptBuildCard(msItem){
       else if(sv==='weekly'){ labels=['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12']; }
       else { labels=monthLabels; }
       values=ptGetStatsValues(msItem.id,sv);
-      const maxV=Math.max(...values,0.1); const curFc=ptFillColor(pd);
+      const costs=ptGetStatsCosts(msItem.id,sv);
+      const stockEndVals=ptGetStockEndValues(msItem.id,sv);
+      const statSubView=expandView.statSubView||'used'; // 'used' | 'added' | 'stock'
+      // compute all three datasets
+      const addedVals=ptGetStatsValues(msItem.id,sv,'added');
+      const displayVals=statSubView==='used'?values:statSubView==='added'?addedVals:stockEndVals.map(v=>v!=null?v:0);
+      const maxV=Math.max(...displayVals,0.1); const curFc=ptFillColor(pd);
       const gCard=document.createElement('div'); gCard.style.cssText=`border:3px solid #000;border-radius:8px;overflow:hidden;background:var(--bg-3);flex-shrink:0;`;
+      // header toggle: Used | Stock
+      const hdr=document.createElement('div'); hdr.style.cssText='height:24px;display:flex;align-items:stretch;border-bottom:3px solid #000;flex-shrink:0;';
+      [['used','Used'],['added','Added'],['stock','Stock']].forEach(([v,lbl],i)=>{ const isAct=statSubView===v; const btn=document.createElement('div'); btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-2)'};color:${isAct?'var(--color-10)':'var(--muted)'};${i<2?'border-right:3px solid #000;':''}`; btn.textContent=lbl; btn.onclick=e=>{ e.stopPropagation(); expandView.statSubView=v; renderExpand(); }; hdr.appendChild(btn); });
+      gCard.appendChild(hdr);
       const graph=document.createElement('div'); graph.className='pt-graph';
-      values.forEach((u,i)=>{
+      displayVals.forEach((u,i)=>{
         const isSel=sb===i; const bw=document.createElement('div'); bw.className='pt-bar-wrap';
         const num=document.createElement('div'); num.style.cssText=`font-size:5px;font-weight:700;color:${isSel?'#fff':'rgba(255,255,255,0.5)'};margin-bottom:1px;`; num.textContent=u>0?u:'';
-        const bar=document.createElement('div'); bar.className='pt-bar'; bar.style.cssText=`height:${Math.max(2,Math.round((u/maxV)*36))}px;background:${u>0?'#48a971':'rgba(255,255,255,0.08)'};opacity:${isSel?1:0.6};${isSel?'outline:2px solid rgba(255,255,255,0.6);outline-offset:-1px;':''}`;
+        const barColor=statSubView==='stock'?curFc:statSubView==='added'?'#5A8DB8':'#48a971';
+        const bar=document.createElement('div'); bar.className='pt-bar'; bar.style.cssText=`height:${Math.max(2,Math.round((u/maxV)*36))}px;background:${u>0?barColor:'rgba(255,255,255,0.08)'};opacity:${isSel?1:0.6};${isSel?'outline:2px solid rgba(255,255,255,0.6);outline-offset:-1px;':''}`;
         const day=document.createElement('div'); day.className='pt-day'; day.style.color=isSel?'#fff':''; day.textContent=labels[i];
         bw.append(num,bar,day); bw.onclick=e=>{ e.stopPropagation(); expandView.selBar=expandView.selBar===i?null:i; renderExpand(); }; graph.appendChild(bw);
       }); gCard.appendChild(graph);
-      const total=values.reduce((s,v)=>s+v,0); const unit=getUnit(msItem.unit||'unit').label;
+      const total=values.reduce((s,v)=>s+v,0); const totalCost=costs.reduce((s,v)=>s+v,0); const unit=getUnit(msItem.unit||'unit').label;
       const foot=document.createElement('div'); foot.style.cssText=`height:32px;border-top:3px solid #000;display:flex;align-items:stretch;`;
       const leftEl=document.createElement('div'); leftEl.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:8px;font-weight:600;color:var(--muted);border-right:3px solid #000;padding:0 8px;text-align:center;';
-      const rightEl=document.createElement('div'); rightEl.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:10px;font-weight:800;color:${curFc};padding:0 8px;`;
-      if(sb!==null&&sb!==undefined){ const u=values[sb]; const now=new Date(); let rt=''; if(sv==='daily'){ const d=new Date(now); d.setDate(d.getDate()-(11-sb)); rt=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); } else if(sv==='weekly'){ const end=new Date(now); end.setDate(end.getDate()-((11-sb)*7)); const start=new Date(end); start.setDate(start.getDate()-6); rt=start.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+end.toLocaleDateString('en-US',{month:'short',day:'numeric'}); } else { const d=new Date(now.getFullYear(),now.getMonth()-(11-sb),1); rt=d.toLocaleDateString('en-US',{month:'short',year:'numeric'}); } leftEl.textContent=rt; rightEl.textContent=parseFloat(u.toFixed(2))+' '+unit; }
-      else { leftEl.textContent=sv==='daily'?'12 Day Total':sv==='weekly'?'12 Week Total':'12 Month Total'; rightEl.textContent=parseFloat(total.toFixed(1))+' '+unit; }
-      foot.append(leftEl,rightEl); gCard.appendChild(foot); body.appendChild(gCard);
+      const midEl=document.createElement('div'); midEl.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:10px;font-weight:800;color:${curFc};padding:0 8px;${statSubView==='used'?'border-right:3px solid #000;':''}`;
+      const costEl=document.createElement('div'); costEl.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:10px;font-weight:800;color:#48a971;padding:0 8px;';
+      if(sb!==null&&sb!==undefined){
+        const u=statSubView==='used'?values[sb]:statSubView==='added'?addedVals[sb]:(stockEndVals[sb]!=null?stockEndVals[sb]:0);
+        const c=costs[sb]; const now=new Date(); let rt='';
+        if(sv==='daily'){ const d=new Date(now); d.setDate(d.getDate()-(11-sb)); rt=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); }
+        else if(sv==='weekly'){ const end=new Date(now); end.setDate(end.getDate()-((11-sb)*7)); const start=new Date(end); start.setDate(start.getDate()-6); rt=start.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+end.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+        else { const d=new Date(now.getFullYear(),now.getMonth()-(11-sb),1); rt=d.toLocaleDateString('en-US',{month:'short',year:'numeric'}); }
+        leftEl.textContent=rt;
+        midEl.textContent=parseFloat(u.toFixed(2))+' '+unit;
+        costEl.textContent=statSubView==='used'&&c>0?'$'+parseFloat(c.toFixed(2)):'';
+      } else {
+        const totalAdded=addedVals.reduce((s,v)=>s+v,0);
+        leftEl.textContent=statSubView==='stock'?(sv==='daily'?'12 Days':sv==='weekly'?'12 Weeks':'12 Months'):(sv==='daily'?'12 Day Total':sv==='weekly'?'12 Week Total':'12 Month Total');
+        const dispTotal=statSubView==='used'?total:statSubView==='added'?totalAdded:(stockEndVals[11]!=null?stockEndVals[11]:0);
+        midEl.textContent=parseFloat(dispTotal.toFixed(1))+' '+unit;
+        costEl.textContent=statSubView==='used'&&totalCost>0?'$'+parseFloat(totalCost.toFixed(2)):'';
+      }
+      if(statSubView==='stock'||statSubView==='added'){ foot.append(leftEl,midEl); } else { foot.append(leftEl,midEl,costEl); }
+      gCard.appendChild(foot); body.appendChild(gCard);
       const tog=document.createElement('div'); tog.style.cssText=`height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;flex-shrink:0;`;
       [['daily','Daily'],['weekly','Weekly'],['monthly','Monthly']].forEach(([v,lbl],i,arr)=>{ const btn=document.createElement('div'); const act=sv===v; btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${act?'var(--bg-4)':'var(--bg-3)'};color:${act?'var(--color-10)':'var(--muted)'};${i<arr.length-1?'border-right:3px solid #000;':''}`;
       btn.textContent=lbl; btn.onclick=e=>{ e.stopPropagation(); expandView.statView=v; expandView.selBar=null; renderExpand(); }; tog.appendChild(btn); }); body.appendChild(tog);
@@ -3816,13 +3925,13 @@ function ptBuildCard(msItem){
             const vM=Math.max(con.cap,con.amount)||1; const cPct=(con.amount/vM*100).toFixed(1);
             const card=document.createElement('div'); card.style.cssText=`flex:1;height:var(--card-height);border:3px solid ${isSel?'#fff':'#000'};border-radius:8px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;min-width:0;`;
             const fill=document.createElement('div'); fill.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${cPct}%;background:${ptConFillColor(con)};opacity:0.3;transition:width 0.3s;pointer-events:none;`;
-            const inner=document.createElement('div'); inner.style.cssText='position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:100%;padding:0 4px;box-sizing:border-box;';
-            const nmEl=document.createElement('div'); nmEl.style.cssText='font-size:11px;font-weight:800;color:#fff;letter-spacing:0.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center;'; nmEl.textContent=con.label||'Container';
-            const amtEl=document.createElement('div'); amtEl.style.cssText='font-size:10px;font-weight:700;color:rgba(255,255,255,0.7);text-align:center;'; amtEl.textContent=`${con.amount} / ${con.cap}`;
+            const inner=document.createElement('div'); inner.style.cssText='position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:100%;padding:0 4px;box-sizing:border-box;';
+            const nmEl=document.createElement('div'); nmEl.style.cssText='font-size:9px;font-weight:800;color:#fff;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center;line-height:1.1;'; nmEl.textContent=(con.label||'Container').toUpperCase();
+            const amtEl=document.createElement('div'); amtEl.style.cssText='font-size:8px;font-weight:700;color:rgba(255,255,255,0.7);text-align:center;letter-spacing:0.06em;line-height:1.1;'; amtEl.textContent=`${con.amount} / ${con.cap}`;
             const prEl=document.createElement('div'); prEl.style.cssText='text-align:center;';
-            if(con.free){ prEl.style.cssText+='font-size:9px;font-weight:800;color:#48a971;'; prEl.textContent='FREE'; }
-            else if(con.price!=null){ const ppu=con.cap>0?(con.price/con.cap).toFixed(2):'?'; prEl.style.cssText+='font-size:9px;font-weight:700;color:rgba(255,255,255,0.5);'; prEl.textContent='$'+ppu+'/'+(pd.unit||'unit'); }
-            else { prEl.style.cssText+='font-size:9px;font-weight:700;color:#C85A5A;'; prEl.textContent='no price'; }
+            if(con.free){ prEl.style.cssText+='font-size:9px;font-weight:800;color:#48a971;'; prEl.textContent='FREE'; prEl.style.textTransform='uppercase'; }
+            else if(con.price!=null){ const ppu=con.cap>0?(con.price/con.cap).toFixed(2):'?'; prEl.style.cssText+='font-size:9px;font-weight:700;color:rgba(255,255,255,0.5);'; prEl.textContent=('$'+ppu+'/'+(pd.unit||'unit')).toUpperCase(); }
+            else { prEl.style.cssText+='font-size:9px;font-weight:700;color:#C85A5A;'; prEl.textContent='NO PRICE'; }
             inner.append(nmEl,amtEl,prEl);
             card.append(fill,inner);
             card.onclick=e=>{ e.stopPropagation(); selectedCon.id=selectedCon.id===con.id?null:con.id; updateBtnState(); renderExpand(); };
@@ -3835,7 +3944,7 @@ function ptBuildCard(msItem){
         pd.containers.filter(c=>c._isEmptyChoice).forEach(con=>{ const ch=document.createElement('div'); ch.style.cssText=`border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;`; const bR=document.createElement('div'); bR.style.cssText='height:32px;display:flex;align-items:stretch;'; const dBtn=document.createElement('div'); dBtn.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;background:#502424;color:#fff;cursor:pointer;border-right:3px solid #000;'; dBtn.textContent='Delete Container'; dBtn.onclick=e=>{ e.stopPropagation(); pd.containers=pd.containers.filter(c=>c.id!==con.id); if(selectedCon.id===con.id) selectedCon.id=null; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; const kBtn=document.createElement('div'); kBtn.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;background:#1d3318;color:#48a971;cursor:pointer;'; kBtn.textContent='Keep Empty'; kBtn.onclick=e=>{ e.stopPropagation(); con._isEmptyChoice=false; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; bR.append(dBtn,kBtn); ch.append(bR); body.appendChild(ch); });
       }
       // fraction card
-      const fracColors={3:'#8a7ca8',4:'#5A8DB8',5:'#48a971',8:'#C7824A'};
+      const fracColors={2:'#5A8DB8',3:'#8a7ca8',4:'#5A8DB8',5:'#48a971',8:'#C7824A'};
       const fracs=[{n:1,d:8},{n:1,d:5},{n:1,d:4},{n:1,d:3},{n:3,d:8},{n:2,d:5},{n:1,d:2},{n:3,d:5},{n:5,d:8},{n:2,d:3},{n:3,d:4},{n:4,d:5},{n:7,d:8}];
       const selCon2=selectedCon.id?pd.containers.find(c=>c.id===selectedCon.id):null;
       function makeDoubleTap(label,bgDef,color,onConfirm){ const s=document.createElement('div'); s._t=0; s._timer=null; s.style.cssText=`display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:${color};background:${bgDef};cursor:${selCon?'pointer':'default'};opacity:${selCon?'1':'0.3'};`; s.textContent=label; s.onclick=e=>{ e.stopPropagation(); if(!selCon) return; s._t++; clearTimeout(s._timer); if(s._t>=2){ s._t=0; s.style.background=bgDef; s.style.color=color; onConfirm(); } else{ s.style.background='#fff'; s.style.color='#C85A5A'; s._timer=setTimeout(()=>{ s._t=0; s.style.background=bgDef; s.style.color=color; },3000); } }; return s; }
@@ -3845,23 +3954,16 @@ function ptBuildCard(msItem){
       const fLblRow=document.createElement('div'); fLblRow.style.cssText='height:20px;display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-bottom:3px solid #000;font-size:7px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.5);'; fLblRow.textContent='Set Fill To'; fCard.appendChild(fLblRow);
       const fRow=document.createElement('div'); fRow.style.cssText='height:22px;display:flex;align-items:stretch;';
       // empty button left
-      const emptyBtn=makeDoubleTap('×','#C85A5A','#fff',()=>{ selCon.amount=0; selCon._confirmEmpty=false; selCon._isEmptyChoice=false; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); });
+      const emptyBtn=makeDoubleTap('×','#C85A5A','#fff',()=>{ const prev=selCon.amount; const prevS=ptGetStock(pd); selCon.amount=0; selCon._confirmEmpty=false; selCon._isEmptyChoice=false; const eCost=(!selCon.free&&selCon.price!=null&&selCon.cap>0&&prev>0)?(prev/selCon.cap)*selCon.price:null; saveItemPantry(msItem.id,pd,prevS,eCost); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); });
       emptyBtn.style.cssText+='width:28px;min-width:28px;border-right:3px solid #000;';
       fRow.appendChild(emptyBtn);
-      fracs.forEach(({n,d},i)=>{ const btn=document.createElement('div'); const fc2=fracColors[d]||'var(--bg-2)'; const isSelFrac=selCon2&&parseFloat((selCon2.amount/selCon2.cap).toFixed(4))===parseFloat((n/d).toFixed(4)); btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${isSelFrac?fc2:'#fff'};background:${!selCon2?'var(--bg-4)':isSelFrac?'#fff':fc2};cursor:${selCon2?'pointer':'default'};${i<fracs.length-1?'border-right:3px solid #000;':''}`;  btn.innerHTML=`<sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub>`; btn.onclick=e=>{ e.stopPropagation(); if(!selCon2) return; selCon2.amount=parseFloat((selCon2.cap*(n/d)).toFixed(1)); saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; fRow.appendChild(btn); });
+      fracs.forEach(({n,d},i)=>{ const btn=document.createElement('div'); const fc2=fracColors[d]||'var(--bg-2)'; const isSelFrac=selCon2&&parseFloat((selCon2.amount/selCon2.cap).toFixed(4))===parseFloat((n/d).toFixed(4)); btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${isSelFrac?fc2:'#fff'};background:${!selCon2?'var(--bg-4)':isSelFrac?'#fff':fc2};cursor:${selCon2?'pointer':'default'};${i<fracs.length-1?'border-right:3px solid #000;':''}`;  btn.innerHTML=`<sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub>`; btn.onclick=e=>{ e.stopPropagation(); if(!selCon2) return; const prev=selCon2.amount; const prevS=ptGetStock(pd); const next=parseFloat((selCon2.cap*(n/d)).toFixed(1)); selCon2.amount=next; const fDiff=prev-next; const fCost=(fDiff>0&&!selCon2.free&&selCon2.price!=null&&selCon2.cap>0)?(fDiff/selCon2.cap)*selCon2.price:null; saveItemPantry(msItem.id,pd,prevS,fCost); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; fRow.appendChild(btn); });
       // fill button right
-      const fillBtn=makeDoubleTap('+','#C85A5A','#fff',()=>{ selCon.amount=selCon.cap; selCon._confirmEmpty=false; selCon._isEmptyChoice=false; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); });
+      const fillBtn=makeDoubleTap('+','#C85A5A','#fff',()=>{ const prevS=ptGetStock(pd); selCon.amount=selCon.cap; selCon._confirmEmpty=false; selCon._isEmptyChoice=false; saveItemPantry(msItem.id,pd,prevS); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); });
       fillBtn.style.cssText+='width:28px;min-width:28px;border-left:3px solid #000;';
       fRow.appendChild(fillBtn);
       fCard.appendChild(fRow); body.appendChild(fCard);
       if(!selCon){ fCard.style.display='none'; }
-
-      // Add New Container card
-      const addConBtn=document.createElement('div'); addConBtn.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;background:#fff;';
-      const addConLbl=document.createElement('div'); addConLbl.style.cssText='font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#1d3318;'; addConLbl.textContent='Add New Container';
-      addConBtn.appendChild(addConLbl);
-      addConBtn.onclick=e=>{ e.stopPropagation(); openAddContainerWindow(msItem,pd,wrap,selectedCon,expandView); };
-      body.appendChild(addConBtn);
 
       // EDIT | DELETE card (shown when container selected)
       const actCard=document.createElement('div'); actCard.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
@@ -3896,14 +3998,71 @@ function ptBuildCard(msItem){
         lsSet('pantry_usage',u);
       }
 
-      const adjUsageCard=makeAdjCard(
-        'Used Today',
-        ()=>getTodayUsage(),
-        v=>setTodayUsage(v),
-        0,
-        ()=>pd.step
-      );
+      function getTodayUsageSnap(){ const midnight=new Date(); midnight.setHours(0,0,0,0); return parseFloat(ls('pantry_delta_log',[]).filter(e=>e.id===msItem.id&&e.delta<0&&e.ts>=midnight.getTime()).reduce((s,e)=>s+Math.abs(e.delta),0).toFixed(2)); }
+      // Used Today — 3-way even split: [USED TODAY] | [number field] | [TAP TO RESET]
+      const adjUsageCard=document.createElement('div'); adjUsageCard.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
+      const adjLeft=document.createElement('div'); adjLeft.style.cssText='width:33.33%;display:flex;align-items:center;justify-content:center;background:#1a2a3a;border-right:3px solid #000;font-size:7px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#5A8DB8;flex-shrink:0;text-align:center;'; adjLeft.textContent='Used Today';
+      const adjMid=document.createElement('div'); adjMid.style.cssText='width:33.33%;display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-right:3px solid #000;flex-shrink:0;';
+      const adjRight=document.createElement('div'); adjRight.style.cssText='width:33.34%;display:flex;align-items:center;justify-content:center;background:#1a2a3a;font-size:7px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#5A8DB8;cursor:pointer;flex-shrink:0;text-align:center;'; adjRight.textContent='Tap to Reset';
+      function renderAdjVal(editing){
+        adjMid.innerHTML='';
+        const cur=getTodayUsageSnap();
+        if(editing){
+          const inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.1'; inp.value=cur||''; inp.placeholder='0'; inp.style.cssText='flex:1;width:100%;background:transparent;border:none;color:var(--color-10);font-size:11px;font-weight:700;text-align:center;outline:none;font-family:inherit;';
+          inp.onclick=e=>e.stopPropagation();
+          inp.onblur=e=>{
+            const target=parseFloat(inp.value)||0;
+            const midnight=new Date(); midnight.setHours(0,0,0,0);
+            const log=ls('pantry_delta_log',[]).filter(e=>!(e.id===msItem.id&&e.delta<0&&e.ts>=midnight.getTime()));
+            if(target>0) log.push({id:msItem.id,delta:-target,ts:Date.now()});
+            lsSet('pantry_delta_log',log);
+            renderAdjVal(false);
+          };
+          inp.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); inp.blur(); } };
+          adjMid.appendChild(inp); setTimeout(()=>inp.focus(),30);
+        } else {
+          const vEl=document.createElement('div'); vEl.style.cssText='font-size:11px;font-weight:700;color:var(--color-10);'; vEl.textContent=cur>0?cur:'—';
+          adjMid.appendChild(vEl);
+        }
+      }
+      adjRight.onclick=e=>{ e.stopPropagation(); const midnight=new Date(); midnight.setHours(0,0,0,0); const log=ls('pantry_delta_log',[]).filter(e=>!(e.id===msItem.id&&e.delta<0&&e.ts>=midnight.getTime())); lsSet('pantry_delta_log',log); renderAdjVal(false); };
+      renderAdjVal(false);
+      adjMid.onclick=e=>{ e.stopPropagation(); renderAdjVal(true); };
+      adjUsageCard.append(adjLeft,adjMid,adjRight);
       body.appendChild(adjUsageCard);
+
+      // Added Today — identical structure, purple, positive deltas
+      function getTodayAddedSnap(){ const midnight=new Date(); midnight.setHours(0,0,0,0); return parseFloat(ls('pantry_delta_log',[]).filter(e=>e.id===msItem.id&&e.delta>0&&e.ts>=midnight.getTime()).reduce((s,e)=>s+e.delta,0).toFixed(2)); }
+      const adjAddCard=document.createElement('div'); adjAddCard.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
+      const addLeft=document.createElement('div'); addLeft.style.cssText='width:33.33%;display:flex;align-items:center;justify-content:center;background:#221a2a;border-right:3px solid #000;font-size:7px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#8a7ca8;flex-shrink:0;text-align:center;'; addLeft.textContent='Added Today';
+      const addMid=document.createElement('div'); addMid.style.cssText='width:33.33%;display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-right:3px solid #000;flex-shrink:0;';
+      const addRight=document.createElement('div'); addRight.style.cssText='width:33.34%;display:flex;align-items:center;justify-content:center;background:#221a2a;font-size:7px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#8a7ca8;cursor:pointer;flex-shrink:0;text-align:center;'; addRight.textContent='Tap to Reset';
+      function renderAddVal(editing){
+        addMid.innerHTML='';
+        const cur=getTodayAddedSnap();
+        if(editing){
+          const inp=document.createElement('input'); inp.type='number'; inp.min='0'; inp.step='0.1'; inp.value=cur||''; inp.placeholder='0'; inp.style.cssText='flex:1;width:100%;background:transparent;border:none;color:var(--color-10);font-size:11px;font-weight:700;text-align:center;outline:none;font-family:inherit;';
+          inp.onclick=e=>e.stopPropagation();
+          inp.onblur=e=>{
+            const target=parseFloat(inp.value)||0;
+            const midnight=new Date(); midnight.setHours(0,0,0,0);
+            const log=ls('pantry_delta_log',[]).filter(e=>!(e.id===msItem.id&&e.delta>0&&e.ts>=midnight.getTime()));
+            if(target>0) log.push({id:msItem.id,delta:target,ts:Date.now()});
+            lsSet('pantry_delta_log',log);
+            renderAddVal(false);
+          };
+          inp.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); inp.blur(); } };
+          addMid.appendChild(inp); setTimeout(()=>inp.focus(),30);
+        } else {
+          const vEl=document.createElement('div'); vEl.style.cssText='font-size:11px;font-weight:700;color:var(--color-10);'; vEl.textContent=cur>0?cur:'—';
+          addMid.appendChild(vEl);
+        }
+      }
+      addRight.onclick=e=>{ e.stopPropagation(); const midnight=new Date(); midnight.setHours(0,0,0,0); const log=ls('pantry_delta_log',[]).filter(e=>!(e.id===msItem.id&&e.delta>0&&e.ts>=midnight.getTime())); lsSet('pantry_delta_log',log); renderAddVal(false); };
+      renderAddVal(false);
+      addMid.onclick=e=>{ e.stopPropagation(); renderAddVal(true); };
+      adjAddCard.append(addLeft,addMid,addRight);
+      body.appendChild(adjAddCard);
     }
     expand.appendChild(body);
   }
@@ -4084,7 +4243,7 @@ function ptRenderThinkSlot(q){
     const txt=document.createElement('div'); txt.style.cssText='flex:1;background:var(--bg-2);display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--color-10);';
     txt.textContent=`Add "${q}"?`;
     const yesBtn=document.createElement('div'); yesBtn.style.cssText='width:56px;min-width:56px;background:#1d3f5c;border-left:3px solid #000;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#fff;cursor:pointer;';
-    yesBtn.textContent='YES!'; yesBtn.onclick=e=>{ e.stopPropagation(); openNewItemOverlay(displayName||ptQuickAddName, newItem=>{ ptQuickAddState='success'; ptQuickAddName=''; ptRender(); ptShowSearchMode(true,(document.getElementById('ptSearch')?.value||'').trim()); }); };
+    yesBtn.textContent='YES!'; yesBtn.onclick=e=>{ e.stopPropagation(); openNewItemOverlay(q||ptQuickAddName, newItem=>{ ptQuickAddState='success'; ptQuickAddName=''; ptRender(); ptShowSearchMode(true,(document.getElementById('ptSearch')?.value||'').trim()); }); };
     card.append(txt,yesBtn); slot.appendChild(card); return;
   }
   if(ptQuickAddState==='pick-cat'){
@@ -4207,6 +4366,24 @@ const RX_UNITS=['oz','lbs','g','kg','ml','l','fl oz','cups','tbsp','tsp','cans',
 function rxDiv(label,color){ const d=document.createElement('div'); d.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 2px 2px;flex-shrink:0;'; const l1=document.createElement('div'); l1.style.cssText='flex:1;height:3px;background:#000;'; const sp=document.createElement('span'); sp.style.cssText=`font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:${color||'var(--muted)'};flex-shrink:0;`; sp.textContent=label; const l2=document.createElement('div'); l2.style.cssText='flex:1;height:3px;background:#000;'; d.append(l1,sp,l2); return d; }
 
 // 50-item cup→oz conversion table (word-match keys)
+// Suggested recipe unit per ingredient type — used to auto-set unit when name is selected
+const RX_UNIT_SUGGEST={
+  'salt':'tsp','pepper':'tsp','black pepper':'tsp','white pepper':'tsp','cayenne':'tsp',
+  'cinnamon':'tsp','nutmeg':'tsp','turmeric':'tsp','ginger':'tsp','cardamom':'tsp',
+  'cumin':'tsp','coriander':'tsp','paprika':'tsp','smoked paprika':'tsp',
+  'oregano':'tsp','thyme':'tsp','basil':'tsp','rosemary':'tsp','sage':'tsp',
+  'bay leaf':'each','bay leaves':'each',
+  'chili powder':'tsp','garlic powder':'tsp','onion powder':'tsp',
+  'baking powder':'tsp','baking soda':'tsp','cream of tartar':'tsp',
+  'vanilla':'tsp','vanilla extract':'tsp',
+  'oil':'tbsp','olive oil':'tbsp','vegetable oil':'tbsp','butter':'tbsp',
+  'flour':'cups','sugar':'cups','brown sugar':'cups','powdered sugar':'cups',
+  'milk':'cups','cream':'cups','water':'cups','broth':'cups','stock':'cups',
+  'eggs':'each','egg':'each',
+  'garlic':'each','clove':'each','cloves':'each',
+};
+function rxSuggestUnit(name){ const n=(name||'').toLowerCase(); for(const key of Object.keys(RX_UNIT_SUGGEST)){ if(n===key||n.includes(key)) return RX_UNIT_SUGGEST[key]; } return null; }
+
 const RX_CUP_TO_OZ={
   // ── Grains & starches
   'flour':4.4,'bread flour':4.8,'whole wheat':4.8,'almond flour':3.4,'cornstarch':4.5,
@@ -4364,33 +4541,31 @@ function rxSyncIngHave(r){
     const pd=pantryData[msItem.id];
       const stock=pd?pd.containers.reduce((s,c)=>s+(c.amount||0),0):0;
       const pantryUnit=pd?.unit||'oz';
-      // countable units — store as count, skip oz conversion and needConverted
+      // countable units — compare as count, no oz conversion
       if(rxIsCountUnit(pantryUnit)){ ing.haveAmt=stock+' '+pantryUnit; ing.needConverted=''; return; }
-      // convert stock to oz using UNIT_OZ_CONV (exact) or pd.ozPerUnit (density for dry)
-      // use pd.ozPerUnit (density) first so haveOz matches needConverted which also uses density
-      // only fall back to UNIT_OZ_CONV for pure liquid units where density == volume conversion
-      const isLiqUnit=pd?.ozType==='liquid'||VOLUMETRIC_UNITS.has((pantryUnit||'').toLowerCase())&&!pd?.ozPerUnit;
-      const unitOz=(pd?.ozPerUnit&&!isLiqUnit?pd.ozPerUnit:null)||UNIT_OZ_CONV[(pantryUnit||'').toLowerCase()]||null;
+      // ── HAVE: pantry stock → oz
+      // Weight units: exact conversion, density (ozPerUnit) is IGNORED
+      // Volumetric dry (cups/tbsp/tsp): use density (ozPerUnit) to get weight oz
+      // Volumetric liquid (fl oz/ml/l/gallon etc): use exact volume conversion
+      const WEIGHT_CONV={'oz':1,'lbs':16,'g':0.03527,'kg':35.274};
+      const VOL_EXACT={'fl oz':1,'ml':0.03381,'l':33.814,'gallon':128,'gal':128,'pint':16,'pt':16,'quart':32,'qt':32};
+      const VOL_DRY=new Set(['cups','cup','tbsp','tsp']);
+      const density=ing.ozPerUnit||pd?.ozPerUnit||rxWordMatch(ing.name)||null;
       let stockInOz;
-      if(unitOz) stockInOz=parseFloat((stock*unitOz).toFixed(2));
+      if(WEIGHT_CONV[pantryUnit]!=null) stockInOz=parseFloat((stock*WEIGHT_CONV[pantryUnit]).toFixed(2));
+      else if(VOL_EXACT[pantryUnit]!=null) stockInOz=parseFloat((stock*VOL_EXACT[pantryUnit]).toFixed(2));
+      else if(VOL_DRY.has(pantryUnit)&&density){ const mul=pantryUnit==='tbsp'?density/16:pantryUnit==='tsp'?density/48:density; stockInOz=parseFloat((stock*mul).toFixed(2)); }
       else stockInOz=parseFloat(rxToOz(stock,pantryUnit).toFixed(2));
       ing.haveAmt=stockInOz+' oz';
-      // always recompute needConverted using unit-aware conversion
+      // ── NEED: recipe amount → oz (must use same oz type as have)
       const needNum=rxParseNum(ing.needAmt);
       const needUnit=ing.needAmt.replace(/[\d.¼½¾⅓⅔⅛⅜⅝⅞⅕⅖\s]+/,'').trim().toLowerCase();
-      const density=ing.ozPerUnit||pd?.ozPerUnit||rxWordMatch(ing.name)||null;
       let calcOz=null;
-      if(needUnit==='oz') calcOz=needNum;
-      else if(needUnit==='fl oz') calcOz=needNum;
-      else if(needUnit==='lbs') calcOz=needNum*16;
-      else if(needUnit==='g') calcOz=parseFloat((needNum*0.03527).toFixed(3));
-      else if(needUnit==='kg') calcOz=parseFloat((needNum*35.27).toFixed(3));
-      else if(needUnit==='ml') calcOz=parseFloat((needNum*0.03381).toFixed(3));
-      else if(needUnit==='l') calcOz=parseFloat((needNum*33.81).toFixed(3));
-      else if((needUnit==='cup'||needUnit==='cups')&&density) calcOz=parseFloat((needNum*density).toFixed(3));
-      else if(needUnit==='tbsp'&&density) calcOz=parseFloat((needNum*(density/16)).toFixed(3));
-      else if(needUnit==='tsp'&&density) calcOz=parseFloat((needNum*(density/48)).toFixed(3));
-      else if(density) calcOz=parseFloat((needNum*density).toFixed(3));
+      if(WEIGHT_CONV[needUnit]!=null) calcOz=parseFloat((needNum*WEIGHT_CONV[needUnit]).toFixed(3));
+      else if(VOL_EXACT[needUnit]!=null) calcOz=parseFloat((needNum*VOL_EXACT[needUnit]).toFixed(3));
+      else if(needUnit==='cup'||needUnit==='cups') calcOz=density?parseFloat((needNum*density).toFixed(3)):null;
+      else if(needUnit==='tbsp') calcOz=density?parseFloat((needNum*(density/16)).toFixed(3)):null;
+      else if(needUnit==='tsp') calcOz=density?parseFloat((needNum*(density/48)).toFixed(3)):null;
       if(calcOz!=null) ing.needConverted=String(calcOz);
   });
 }
@@ -4417,7 +4592,7 @@ function rxOpenNewRecipeOverlay(){
   const ht=document.createElement('div'); ht.style.cssText='flex:1;display:flex;align-items:center;padding:0 14px;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;'; ht.textContent='New Recipe';
   const hx=document.createElement('button'); hx.style.cssText='width:45px;min-width:45px;background:#502424;border:none;border-left:3px solid #000;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff;cursor:pointer;'; hx.textContent='×'; hx.onclick=()=>ov.remove();
   hdr.append(ht,hx);
-  const body=document.createElement('div'); body.style.cssText='flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding:4px;background:var(--bg-3);';
+  const body=document.createElement('div'); body.style.cssText='flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding:4px;background:var(--bg-2);';
   const nameWrap=document.createElement('div'); nameWrap.style.cssText='height:32px;min-height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;flex-shrink:0;';
   const nameInp=document.createElement('input'); nameInp.type='text'; nameInp.placeholder='Recipe name…'; nameInp.style.cssText='flex:1;background:#c8cdd4;border:none;color:#1a1a1a;font-size:12px;font-weight:600;padding:0 10px;outline:none;font-family:inherit;';
   nameWrap.appendChild(nameInp); body.appendChild(nameWrap);
@@ -4429,19 +4604,25 @@ function rxOpenNewRecipeOverlay(){
     ings.forEach((ing,idx)=>{
       const row=document.createElement('div'); row.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;';
       const top=document.createElement('div'); top.style.cssText='height:32px;display:flex;align-items:stretch;';
-      const ai=document.createElement('input'); ai.type='number'; ai.placeholder='Amt'; ai.value=ing.amt||''; ai.style.cssText='width:52px;background:#c8cdd4;border:none;border-right:3px solid #000;color:#1a1a1a;font-size:11px;font-weight:700;padding:0 6px;outline:none;font-family:inherit;'; ai.oninput=e=>{ ings[idx].amt=e.target.value; const calcOz=rxCalcIngOz(parseFloat(e.target.value)||0, ings[idx].unit, ings[idx].ozPerUnit); ings[idx].converted=calcOz!=null?String(calcOz):''; if(totalOzEl) totalOzEl.textContent=ings[idx].converted?ings[idx].converted+' oz total':'— total oz'; };
-      const us=document.createElement('select'); us.style.cssText='width:56px;background:var(--bg-2);border:none;border-right:3px solid #000;color:#fff;font-size:9px;font-weight:700;padding:0 2px;outline:none;font-family:inherit;cursor:pointer;appearance:none;text-align:center;'; RX_UNITS.forEach(u=>{ const o=document.createElement('option'); o.value=u; o.textContent=u; if(u===ing.unit) o.selected=true; us.appendChild(o); }); us.onchange=e=>{ ings[idx].unit=e.target.value; const calcOz=rxCalcIngOz(parseFloat(ings[idx].amt)||0, e.target.value, ings[idx].ozPerUnit); ings[idx].converted=calcOz!=null?String(calcOz):''; if(totalOzEl) totalOzEl.textContent=ings[idx].converted?ings[idx].converted+' oz total':'— total oz'; };
+      const ai=document.createElement('input'); ai.type='number'; ai.placeholder='Amt'; ai.value=ing.amt||''; ai.style.cssText='width:52px;background:#c8cdd4;border:none;border-right:3px solid #000;color:#1a1a1a;font-size:11px;font-weight:700;padding:0 6px;outline:none;font-family:inherit;'; ai.oninput=e=>{ ings[idx].amt=e.target.value; const calcOz=rxCalcIngOz(parseFloat(e.target.value)||0, ings[idx].unit, ings[idx].ozPerUnit); ings[idx].converted=calcOz!=null?String(calcOz):''; if(totalOzEl) totalOzEl.textContent=calcOz!=null&&parseFloat(e.target.value)>0?(calcOz+' oz total'):'— total oz'; };
+      const us=document.createElement('select'); us.style.cssText='width:56px;background:var(--bg-2);border:none;border-right:3px solid #000;color:#fff;font-size:9px;font-weight:700;padding:0 2px;outline:none;font-family:inherit;cursor:pointer;appearance:none;text-align:center;'; RX_UNITS.forEach(u=>{ const o=document.createElement('option'); o.value=u; o.textContent=u; if(u===ing.unit) o.selected=true; us.appendChild(o); }); us.onchange=e=>{ ings[idx].unit=e.target.value; const calcOz=rxCalcIngOz(parseFloat(ings[idx].amt)||0, e.target.value, ings[idx].ozPerUnit); ings[idx].converted=calcOz!=null?String(calcOz):''; renderIngs(); };
       const ni=document.createElement('input'); ni.type='text'; ni.placeholder='Ingredient name…'; ni.value=ing.name||''; ni.style.cssText='flex:1;background:var(--bg-3);border:none;color:#fff;font-size:10px;font-weight:600;padding:0 8px;outline:none;font-family:inherit;';
       function applyIngName(name){
         ings[idx].name=name;
         const msItem=ls('ms_items',[]).find(m=>m.name.toLowerCase()===name.toLowerCase());
         if(msItem){
           const pd=ls('pantry_data',{})[msItem.id];
-          if(pd&&pd.ozPerUnit&&!ings[idx].ozPerUnit){ ings[idx].ozPerUnit=pd.ozPerUnit; ci.value=pd.ozPerUnit+' (auto)'; ci.style.color='var(--color-10)'; }
+          if(pd&&pd.ozPerUnit) ings[idx].ozPerUnit=pd.ozPerUnit;
         }
-        if(!ings[idx].ozPerUnit){ const wm=rxWordMatch(name); if(wm){ ings[idx].ozPerUnit=wm; ci.value=wm+' (auto)'; ci.style.color='var(--color-10)'; } }
-        const calcOz=rxCalcIngOz(parseFloat(ings[idx].amt)||0, ings[idx].unit, ings[idx].ozPerUnit);
-        ings[idx].converted=calcOz!=null?String(calcOz):'';
+        if(!ings[idx].ozPerUnit){ const wm=rxWordMatch(name); if(wm) ings[idx].ozPerUnit=wm; }
+        // auto-suggest unit if still at default 'oz'
+        if(ings[idx].unit==='oz'||!ings[idx].unit){
+          const suggested=rxSuggestUnit(name);
+          if(suggested) ings[idx].unit=suggested;
+        }
+        const calc=rxCalcIngOz(parseFloat(ings[idx].amt)||0, ings[idx].unit, ings[idx].ozPerUnit);
+        ings[idx].converted=calc!=null?String(calc):'';
+        renderIngs();
       }
       ni.oninput=e=>{ ings[idx].name=e.target.value; const q=e.target.value.toLowerCase(); let ac=row.querySelector('.rx-ac'); if(ac) ac.remove(); const sugg=msItemNames.filter(n=>n.toLowerCase().startsWith(q)&&q.length>1); if(sugg.length){ ac=document.createElement('div'); ac.className='rx-ac'; ac.style.cssText='background:var(--bg-2);border-top:2px solid #000;'; sugg.slice(0,3).forEach(s=>{
         const msItem=ls('ms_items',[]).find(m=>m.name.toLowerCase()===s.toLowerCase());
@@ -4463,21 +4644,20 @@ function rxOpenNewRecipeOverlay(){
         const ozLbl=document.createElement('div'); ozLbl.style.cssText='font-size:6px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;'; ozLbl.textContent='in pantry';
         ozSec.append(ozVal,ozLbl);
         si.append(nm,d1,stockSec,d2,ozSec);
-        si.onmousedown=ev=>{ ev.preventDefault(); ni.value=s; applyIngName(s); ac.remove(); }; ac.appendChild(si); });
+        si.onmousedown=ev=>{ ev.preventDefault(); ings[idx].name=s; applyIngName(s); }; ac.appendChild(si); });
         // "use as typed" if no exact match exists
         const exactMatch=sugg.some(s=>s.toLowerCase()===q);
         if(!exactMatch){ const useAs=document.createElement('div'); useAs.style.cssText='height:28px;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:700;color:var(--muted);cursor:pointer;border-top:1px solid rgba(0,0,0,0.3);font-style:italic;'; useAs.textContent='Use "'+ni.value+'" (not in store)'; useAs.onmousedown=ev=>{ ev.preventDefault(); ings[idx].name=ni.value; ac.remove(); }; ac.appendChild(useAs); }
         row.appendChild(ac); } else if(q.length>1){ ac=document.createElement('div'); ac.className='rx-ac'; ac.style.cssText='background:var(--bg-2);border-top:2px solid #000;'; const useAs=document.createElement('div'); useAs.style.cssText='height:28px;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:700;color:var(--muted);cursor:pointer;font-style:italic;'; useAs.textContent='Use "'+ni.value+'" (not in store)'; useAs.onmousedown=ev=>{ ev.preventDefault(); ings[idx].name=ni.value; ac.remove(); }; ac.appendChild(useAs); row.appendChild(ac); } };
       const dx=document.createElement('div'); dx.style.cssText='width:32px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;background:#502424;color:#fff;cursor:pointer;border-left:3px solid #000;'; dx.textContent='×'; dx.onclick=()=>{ ings.splice(idx,1); renderIngs(); };
       const bot=document.createElement('div'); bot.style.cssText='height:28px;display:flex;align-items:stretch;border-top:2px solid #000;flex-shrink:0;';
-      // left half: editable oz/cup density
-      const ci=document.createElement('input'); ci.type='number'; ci.step='0.01'; ci.placeholder='oz per cup…'; ci.value=ing.ozPerUnit||''; ci.style.cssText='width:50%;background:var(--bg-3);border:none;color:var(--muted);font-size:9px;font-weight:600;padding:0 8px;outline:none;font-family:inherit;box-sizing:border-box;'; 
-      ci.oninput=e=>{ const v=parseFloat(e.target.value)||null; ings[idx].ozPerUnit=v; ings[idx].converted=v?(parseFloat(((parseFloat(ings[idx].amt)||1)*v).toFixed(3))+''):''; totalOzEl.textContent=ings[idx].converted?ings[idx].converted+' oz':'—'; };
+      const isVolUnit=['cup','cups','tbsp','tsp'].includes((ing.unit||'').toLowerCase());
+      const ci=document.createElement('input'); ci.type='number'; ci.step='0.01'; ci.placeholder='oz per cup…'; ci.value=ing.ozPerUnit||''; ci.style.cssText='width:50%;background:var(--bg-3);border:none;color:var(--muted);font-size:9px;font-weight:600;padding:0 8px;outline:none;font-family:inherit;box-sizing:border-box;';
+      ci.oninput=e=>{ const v=parseFloat(e.target.value)||null; ings[idx].ozPerUnit=v; const calc=rxCalcIngOz(parseFloat(ings[idx].amt)||0,ings[idx].unit,v); ings[idx].converted=calc!=null?String(calc):''; if(totalOzEl) totalOzEl.textContent=calc!=null&&parseFloat(ings[idx].amt)>0?(calc+' oz total'):'— total oz'; };
       const divEl=document.createElement('div'); divEl.style.cssText='width:2px;background:#000;flex-shrink:0;';
-      // right half: uneditable calculated total oz
       const totalOzEl=document.createElement('div'); totalOzEl.style.cssText='width:50%;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;font-weight:700;color:rgba(255,255,255,0.5);box-sizing:border-box;';
-      const calcOz=ing.ozPerUnit&&ing.amt?parseFloat(((parseFloat(ing.amt)||1)*ing.ozPerUnit).toFixed(3)):null;
-      totalOzEl.textContent=calcOz?(calcOz+' oz total'):'— total oz';
+      const calcOz=rxCalcIngOz(parseFloat(ing.amt)||0,ing.unit,ing.ozPerUnit);
+      totalOzEl.textContent=calcOz!=null&&parseFloat(ing.amt)>0?(calcOz+' oz total'):'— total oz';
       bot.append(ci,divEl,totalOzEl); top.append(ai,us,ni,dx); row.append(top,bot); ingList.appendChild(row);
     });
     const addBtn=document.createElement('div'); addBtn.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;cursor:pointer;'; const ai2=document.createElement('div'); ai2.style.cssText='width:32px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;background:var(--bg-2);color:#48a971;border-right:3px solid #000;'; ai2.textContent='+'; const al=document.createElement('div'); al.style.cssText='flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);background:var(--bg-3);'; al.textContent='Add Ingredient'; addBtn.append(ai2,al); addBtn.onclick=()=>{ ings.push({name:'',amt:'',unit:'oz',converted:''}); renderIngs(); setTimeout(()=>{ const ins=ingList.querySelectorAll('input[type=text]'); if(ins.length) ins[ins.length-1].focus(); },50); }; ingList.appendChild(addBtn);
@@ -4500,11 +4680,11 @@ function rxBuildCard(r){
   const mt=document.createElement('div'); mt.style.cssText='font-size:8px;font-weight:600;color:rgba(255,255,255,0.55);line-height:1;margin-top:2px;'; mt.textContent=`${r.ingredients.filter(rxIngOk).length}/${r.ingredients.length} ready`;
   center.append(nm,mt);
   const ce=document.createElement('div'); ce.style.cssText='width:52px;min-width:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:var(--border-width) solid var(--border-color);background:var(--bg-3);z-index:2;flex-shrink:0;gap:1px;'; const cvv=document.createElement('div'); cvv.style.cssText='font-size:9px;font-weight:800;color:#48a971;'; cvv.textContent=r.totalCost>0?'$'+r.totalCost.toFixed(2):'—'; const cll=document.createElement('div'); cll.style.cssText='font-size:6px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);'; cll.textContent='batch'; ce.append(cvv,cll); main.append(fill,icon,center,ce);
-  const expand=document.createElement('div'); expand.style.cssText='background:var(--bg-1);overflow:hidden;max-height:0;';
+  const expand=document.createElement('div'); expand.style.cssText='background:var(--bg-2);overflow:hidden;max-height:0;';
   function renderExpand(){
     rxSyncIngHave(r); // always use fresh pantry data
     const status=rxComputeStatus(r); // recompute live
-    expand.innerHTML=''; const body=document.createElement('div'); body.style.cssText='display:flex;flex-direction:column;gap:4px;padding:4px;'; const tab=rxExpandTab[r.id]||'ingredients';
+    expand.innerHTML=''; const body=document.createElement('div'); body.style.cssText='display:flex;flex-direction:column;gap:4px;padding:4px;background:var(--bg-2);'; const tab=rxExpandTab[r.id]||'ingredients';
     const ts=document.createElement('div'); ts.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;flex-shrink:0;';
     [['ingredients','Ingredients'],['steps','Steps'],['cost','Cost'],['log','Log']].forEach(([t,l],i,arr)=>{ const btn=document.createElement('div'); btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;background:${tab===t?'var(--bg-4)':'var(--bg-3)'};color:${tab===t?'#fff':'var(--muted)'};${i<arr.length-1?'border-right:var(--border-width) solid var(--border-color);':''}`; btn.textContent=l; btn.onclick=e=>{ e.stopPropagation(); rxExpandTab[r.id]=t; renderExpand(); }; ts.appendChild(btn); }); body.appendChild(ts);
     if(tab==='ingredients'){
@@ -4530,8 +4710,16 @@ function rxBuildCard(r){
         // sort oldest first, then most depleted
         const sorted=[...pd.containers].sort((a,b)=>{ if((a.addedTs||0)!==(b.addedTs||0)) return (a.addedTs||0)-(b.addedTs||0); return a.amount-b.amount; });
         let remaining=needOz; let ingCost=0;
-        const isLiqDed=pd.ozType==='liquid'||VOLUMETRIC_UNITS.has((pd.unit||'').toLowerCase())&&!pd.ozPerUnit;
-        const dedUnitOz=(pd.ozPerUnit&&!isLiqDed?pd.ozPerUnit:null)||UNIT_OZ_CONV[(pd.unit||'').toLowerCase()]||1;
+        const isLiqDed=pd.ozType==='liquid'||(['fl oz','ml','l','gallon','gal','pint','pt','quart','qt'].includes((pd.unit||'').toLowerCase()));
+        const WCONV={'oz':1,'lbs':16,'g':0.03527,'kg':35.274};
+        const VCONV={'fl oz':1,'ml':0.03381,'l':33.814,'gallon':128,'gal':128,'pint':16,'pt':16,'quart':32,'qt':32};
+        const dedDry=new Set(['cups','cup','tbsp','tsp']);
+        const dedDensity=pd.ozPerUnit||rxWordMatch(msItem.name)||null;
+        let dedUnitOz;
+        if(WCONV[(pd.unit||'').toLowerCase()]!=null) dedUnitOz=WCONV[(pd.unit||'').toLowerCase()];
+        else if(VCONV[(pd.unit||'').toLowerCase()]!=null) dedUnitOz=VCONV[(pd.unit||'').toLowerCase()];
+        else if(dedDry.has((pd.unit||'').toLowerCase())&&dedDensity){ const u=(pd.unit||'').toLowerCase(); dedUnitOz=u==='tbsp'?dedDensity/16:u==='tsp'?dedDensity/48:dedDensity; }
+        else dedUnitOz=1;
         sorted.forEach(con=>{
           if(remaining<=0||con.amount<=0) return;
           const conOz=con.amount*dedUnitOz;
@@ -4754,10 +4942,10 @@ function rxBuildMealGroupCard(batches){
   const fill=document.createElement('div'); fill.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${avgRem*100}%;background:#48a971;opacity:0.4;transition:width 0.35s;pointer-events:none;z-index:0;`;
   const nm=document.createElement('div'); nm.style.cssText='flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;z-index:2;gap:1px;'; const nt=document.createElement('div'); nt.style.cssText='font-size:10px;font-weight:700;color:#fff;'; nt.textContent=first.recipeName; const ns=document.createElement('div'); ns.style.cssText='font-size:8px;font-weight:600;color:rgba(255,255,255,0.55);'; ns.textContent=batches.length===1?`${Math.round(batches[0].remaining*100)}% left · ${batches[0].cookedDate}`:`${batches.length} batches`; nm.append(nt,ns);
   const ce=document.createElement('div'); ce.style.cssText='width:52px;min-width:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:var(--border-width) solid var(--border-color);background:var(--bg-3);z-index:2;flex-shrink:0;gap:1px;'; const cvv=document.createElement('div'); cvv.style.cssText='font-size:9px;font-weight:800;color:#48a971;'; cvv.textContent=totalCost>0?'$'+totalCost.toFixed(2):'—'; const cll=document.createElement('div'); cll.style.cssText='font-size:6px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);'; cll.textContent=batches.length>1?'total':'batch'; ce.append(cvv,cll); main.append(fill,nm,ce);
-  const expand=document.createElement('div'); expand.style.cssText='background:var(--bg-1);overflow:hidden;max-height:0;';
+  const expand=document.createElement('div'); expand.style.cssText='background:var(--bg-2);overflow:hidden;max-height:0;';
   const activeBatchesInit=batches.filter(b=>!b.confirmFinished); const sel={id:activeBatchesInit.length===1?activeBatchesInit[0].id:null}; let fracPending={idx:null,timer:null};
   function re(){
-    expand.innerHTML=''; const body=document.createElement('div'); body.style.cssText='display:flex;flex-direction:column;gap:4px;padding:4px;'; const selBatch=sel.id?batches.find(b=>b.id===sel.id):null;
+    expand.innerHTML=''; const body=document.createElement('div'); body.style.cssText='display:flex;flex-direction:column;gap:4px;padding:4px;background:var(--bg-2);'; const selBatch=sel.id?batches.find(b=>b.id===sel.id):null;
     batches.filter(b=>b.confirmFinished).forEach(batch=>{
       const conf=document.createElement('div'); conf.style.cssText='height:32px;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;'; const msg=document.createElement('div'); msg.style.cssText='flex:1;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:700;color:#e08080;background:#2a1010;'; msg.textContent=batches.length>1?`"${batch.cookedDate}" all finished?`:'All finished?'; const yBtn=document.createElement('div'); yBtn.style.cssText='width:48px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;background:#502424;color:#fff;cursor:pointer;border-left:var(--border-width) solid var(--border-color);'; yBtn.textContent='YES'; yBtn.onclick=e=>{ e.stopPropagation(); const days=Math.max(1,Math.round((Date.now()-batch.cookedTs)/86400000)); const hist=rxGetHistory(); hist.unshift({id:'h_'+Date.now(),recipeName:batch.recipeName,cookedDate:batch.cookedDate,finishedDate:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),days,cost:batch.cost}); rxSetHistory(hist); rxSetMeals(rxGetMeals().filter(m=>m.id!==batch.id)); if(sel.id===batch.id) sel.id=null; renderMealsBody(); }; const nBtn=document.createElement('div'); nBtn.style.cssText='width:48px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;background:#1d442d;color:#fff;cursor:pointer;border-left:var(--border-width) solid var(--border-color);'; nBtn.textContent='NO'; nBtn.onclick=e=>{ e.stopPropagation(); batch.remaining=0.125; batch.confirmFinished=false; const meals=rxGetMeals(); const m=meals.find(m=>m.id===batch.id); if(m){ m.remaining=0.125; m.confirmFinished=false; rxSetMeals(meals); } re(); }; conf.append(msg,yBtn,nBtn); body.appendChild(conf);
     });
