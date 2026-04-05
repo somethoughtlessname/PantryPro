@@ -3718,6 +3718,11 @@ function saveItemPantry(id,pd,prevStock,cost){
     const newStock=ptGetStock(pd);
     ptLogDelta(id,parseFloat((newStock-prevStock).toFixed(3)),cost!=null?parseFloat(cost.toFixed(4)):null);
   }
+  // keep today's stock snapshot current so stats update live
+  const snaps=ptGetSnapshots(); const today=ptDateKey();
+  if(!snaps[today]) snaps[today]={};
+  snaps[today][id]=parseFloat(ptGetStock(pd).toFixed(2));
+  lsSet('pantry_snapshots',snaps);
   const d=getPantryData(); d[id]=pd; setPantryData(d);
 }
 
@@ -4435,6 +4440,38 @@ function ptRender(){
   cats.forEach(catId=>{ const catItems=ptSmartSortItems(ptFilterSnapshot.filter(i=>i.category===catId)); const cat=getCat(catId); itemsWrap.appendChild(ptDivider(cat.label,cat.color)); catItems.forEach(item=>itemsWrap.appendChild(ptBuildCard(item))); });
   page.appendChild(itemsWrap);
 }
+
+// Backfill snapshots for days missed since last open
+function ptBackfillSnapshots(){
+  const pantryData=getPantryData();
+  const snaps=ptGetSnapshots();
+  const today=ptDateKey();
+  const todayDate=new Date(); todayDate.setHours(0,0,0,0);
+  Object.entries(pantryData).forEach(([id,pd])=>{
+    if(!pd||!pd.containers) return;
+    const currentStock=ptGetStock(pd);
+    const allDates=Object.keys(snaps).sort();
+    const lastDate=allDates.filter(d=>snaps[d]&&snaps[d][id]!==undefined).pop();
+    if(!lastDate){
+      if(!snaps[today]) snaps[today]={};
+      if(snaps[today][id]===undefined) snaps[today][id]=currentStock;
+      return;
+    }
+    const lastVal=snaps[lastDate][id];
+    let d=new Date(lastDate+'T00:00:00'); d.setDate(d.getDate()+1);
+    const todayMs=todayDate.getTime();
+    while(d.getTime()<=todayMs){
+      const key=ptDateKey(d);
+      if(!snaps[key]) snaps[key]={};
+      if(snaps[key][id]===undefined) snaps[key][id]=lastVal;
+      d.setDate(d.getDate()+1);
+    }
+    if(!snaps[today]) snaps[today]={};
+    if(snaps[today][id]===undefined) snaps[today][id]=currentStock;
+  });
+  lsSet('pantry_snapshots',snaps);
+}
+ptBackfillSnapshots();
 
 glRender(); csRender(); msRender();
 
