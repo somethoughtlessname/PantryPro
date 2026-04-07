@@ -666,6 +666,10 @@ function ptApplyFilter(){
   const base=ptViewMode==='pantry' ? msItems.filter(i=>ptIsInPantry(i)) : msItems;
   ptFilterSnapshot=base.filter(item=>{
     if(ptActiveFilter==='all') return true;
+    if(ptActiveFilter==='onhand'){
+      const pd=getItemPantry(item.id);
+      return ptIsInPantry(item) && ptGetStock(pd)>0;
+    }
     const pd=getItemPantry(item.id);
     return ptGetStatus(pd)===ptActiveFilter;
   });
@@ -675,13 +679,14 @@ function ptBuildFilterBar(){
   const msItems=ls('ms_items',[]);
   const base=ptViewMode==='pantry' ? msItems.filter(i=>ptIsInPantry(i)) : msItems;
   const total=base.length;
+  const onhand=base.filter(i=>{ const pd=getItemPantry(i.id); return ptIsInPantry(i)&&ptGetStock(pd)>0; }).length;
   const ok=base.filter(i=>ptGetStatus(getItemPantry(i.id))==='ok').length;
   const soon=base.filter(i=>ptGetStatus(getItemPantry(i.id))==='soon').length;
   const low=base.filter(i=>ptGetStatus(getItemPantry(i.id))==='low').length;
   const bar=document.createElement('div');
   bar.style.cssText=`border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;display:flex;height:var(--drop-height);`;
   bar.className='pt-filter-bar';
-  [{key:'all',label:'All',count:total,color:null},{key:'ok',label:'OK',count:ok,color:'#48a971'},{key:'soon',label:'Low',count:soon,color:'#5A8DB8'},{key:'low',label:'Critical',count:low,color:'#C85A5A'}].forEach(({key,label,count,color},i,arr)=>{
+  [{key:'all',label:'All',count:total,color:null},{key:'onhand',label:'On-Hand',count:onhand,color:'#C7824A'},{key:'ok',label:'OK',count:ok,color:'#48a971'},{key:'soon',label:'Low',count:soon,color:'#5A8DB8'},{key:'low',label:'Critical',count:low,color:'#C85A5A'}].forEach(({key,label,count,color},i,arr)=>{
     const active=ptActiveFilter===key;
     const btn=document.createElement('div');
     btn.style.cssText=`flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:1px;background:${active?'var(--bg-4)':'var(--bg-2)'};${i<arr.length-1?'border-right:var(--border-width) solid var(--border-color);':''}`;
