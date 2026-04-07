@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Pantry Pro</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#243342">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pantry Pro">
+<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+
+<script src="styles.js"></script>
+</head>
+<body>
+
+<div class="header-tab">
+  <button class="header-tab-btn active" id="hGrocery" onclick="setPage('Grocery')">Grocery List</button>
+  <button class="header-tab-btn" id="hPantry" onclick="setPage('Pantry')">My Pantry</button>
+  <button class="header-tab-btn" id="hShop" onclick="setPage('Shop')">Comp Shop</button>
+  <button class="header-tab-btn" id="hMyShop" onclick="setPage('MyShop')">My Store</button>
+</div>
+
+<div class="app">
+
+  <!-- GROCERY LIST -->
+  <div class="page active" id="pageGrocery">
+    <div class="ms-search-wrap">
+      <input type="text" id="glSearch" class="ms-search" placeholder="Search... type to find or add a new list item" oninput="glSearchInput()">
+      <button class="ms-search-clear" onclick="document.getElementById('glSearch').value='';glThinkPhraseSet=false;glQuickAddState=null;glQuickAddName='';glThinkCardEl=null;glRender();">×</button>
+    </div>
+    <div id="glThinkSlot"></div>
+    <div class="add-panel" id="glAddPanel">
+      <input type="text" id="glInput" placeholder="item name…" maxlength="80">
+      <div class="add-row">
+        <button class="picker-btn" id="glCatBtn" onclick="openModal('gl')">
+          <span class="picker-label" id="glCatLabel"></span>
+          <span class="picker-arrow">▼</span>
+        </button>
+        <button class="btn-add" onclick="glAdd()">+ Add</button>
+      </div>
+    </div>
+    <div class="view-toggle">
+      <button class="view-btn active" id="vSimple" onclick="setView('simple')">Simple</button>
+      <button class="view-btn" id="vCat" onclick="setView('cat')">Category</button>
+    </div>
+    <div class="list-wrap" id="glList"></div>
+    <div class="footer">
+      <button class="btn-ghost" id="glFooterBtn" onclick="glFooterAction()">Uncheck All</button>
+    </div>
+  </div>
+
+  <!-- MY PANTRY -->
+  <div class="page" id="pagePantry">
+    <div class="ms-search-wrap">
+      <input type="text" id="ptSearch" class="ms-search" placeholder="Search... type to find or add an item" oninput="ptSearchInput()">
+      <button class="ms-search-clear" onclick="document.getElementById('ptSearch').value='';ptThinkPhraseSet=false;ptQuickAddState=null;ptQuickAddName='';ptThinkCardEl=null;ptRender();">×</button>
+    </div>
+    <div id="ptThinkSlot"></div>
+  </div>
+
+  <!-- COMP SHOP -->
+  <div class="page" id="pageShop">
+    <div class="ms-search-wrap">
+      <input type="text" id="csSearch" class="ms-search" placeholder="Search... type to find or add a new list item" oninput="csSearchInput()">
+      <button class="ms-search-clear" onclick="document.getElementById('csSearch').value='';csThinkPhraseSet=false;csQuickAddState=null;csQuickAddName='';csRender();">×</button>
+    </div>
+    <div class="view-toggle">
+      <button class="view-btn active" id="csVSimple" onclick="setCsView('simple')">Simple</button>
+      <button class="view-btn" id="csVCat" onclick="setCsView('cat')">Category</button>
+    </div>
+    <div id="csThinkSlot"></div>
+    <div class="list-wrap" id="csList"></div>
+  </div>
+
+  <!-- MY SHOP -->
+  <div class="page" id="pageMyShop">
+    <div class="ms-search-wrap">
+      <input type="text" id="msSearch" class="ms-search" placeholder="Search... type to find or add a new list item" oninput="msSearchInput()">
+      <button class="ms-search-clear" onclick="document.getElementById('msSearch').value='';msThinkPhraseSet=false;msQuickAddState=null;msQuickAddName='';msRender();">×</button>
+    </div>
+    <div class="add-panel" id="msAddPanel">
+      <input type="text" id="msInput" placeholder="item name…" maxlength="80">
+      <div class="add-row">
+        <button class="picker-btn" id="msCatBtn" onclick="openModal('ms')">
+          <span class="picker-label" id="msCatLabel"></span>
+          <span class="picker-arrow">▼</span>
+        </button>
+        <button class="btn-add" onclick="msAdd()">+ Add</button>
+      </div>
+    </div>
+    <div id="msThinkSlot"></div>
+    <div class="list-wrap" id="msList"></div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div id="focusDim"></div>
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Category</div>
+      <div class="modal-close" onclick="closeModal()">×</div>
+    </div>
+    <div class="modal-grid" id="modalGrid"></div>
+  </div>
+</div>
+
+<!-- SETTINGS DRAWER -->
+<div class="settings-overlay" id="settingsOverlay" onclick="closeSettings()"></div>
+<div class="settings-drawer" id="settingsDrawer">
+  <div class="settings-header">
+    <span style="flex:1;text-align:center;">Settings</span>
+  </div>
+  <div class="settings-body" id="settingsBody"></div>
+</div>
+
+<!-- STATS WINDOW -->
+<div id="statsWindow" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:300;background:var(--bg-1);flex-direction:column;overflow:hidden;">
+  <div style="height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-2);">
+    <div style="flex:1;display:flex;align-items:center;padding:0 14px;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;">Stats</div>
+    <button onclick="closeStatsWindow()" style="width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);font-size:22px;font-weight:900;color:#fff;cursor:pointer;">×</button>
+  </div>
+  <div id="statsWindowBody" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--margin);padding:var(--margin);"></div>
+</div>
+
+<!-- SETTINGS WINDOW -->
+<div id="settingsWindow" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:300;background:var(--bg-1);flex-direction:column;overflow:hidden;">
+  <div style="height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-2);">
+    <div style="flex:1;display:flex;align-items:center;padding:0 14px;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;">Settings</div>
+    <button onclick="closeSettingsWindow()" style="width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);font-size:22px;font-weight:900;color:#fff;cursor:pointer;">×</button>
+  </div>
+  <div id="settingsWindowBody" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--margin);padding:var(--margin);"></div>
+</div>
+
+<!-- DATA WINDOW -->
+<div class="data-window" id="dataWindow">
+  <div class="data-window-header">
+    <div class="data-window-title" id="dataWindowTitle">Data</div>
+    <button class="data-window-close" onclick="closeDataWindow()">×</button>
+  </div>
+  <div class="data-tabs">
+    <button class="data-tab active" id="dtExport" onclick="setDataTab('export')">Export</button>
+    <button class="data-tab" id="dtImport" onclick="setDataTab('import')">Import</button>
+  </div>
+  <div class="data-body" id="dataBody"></div>
+</div>
+
+<!-- CLEAR CONFIRM MODAL -->
+<div class="modal-overlay" id="clearConfirmOverlay" onclick="if(event.target===this)document.getElementById('clearConfirmOverlay').classList.remove('open')">
+  <div class="modal" style="bottom:auto;max-height:220px;">
+    <div class="modal-header">
+      <div class="modal-title">Clear All Data</div>
+      <div class="modal-close" onclick="document.getElementById('clearConfirmOverlay').classList.remove('open')">×</div>
+    </div>
+    <div style="padding:12px;display:flex;flex-direction:column;gap:var(--margin);">
+      <div style="font-size:11px;font-weight:600;letter-spacing:0.04em;color:var(--muted);line-height:1.5;">
+        This will permanently delete all grocery list items, My Store items, Comp Shop data, and all custom categories and settings. This cannot be undone.
+      </div>
+      <div style="display:flex;gap:var(--margin);">
+        <button class="data-btn" style="flex:1;" onclick="document.getElementById('clearConfirmOverlay').classList.remove('open')">Cancel</button>
+        <button class="data-btn" style="flex:1;background:var(--color-1);color:#fff;" onclick="clearAllData()">Clear Everything</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SALES WINDOW -->
+<div class="data-window" id="salesWindow">
+  <div class="data-window-header">
+    <div class="data-window-title">My Sales</div>
+    <button class="data-window-close" onclick="closeSalesWindow()">×</button>
+  </div>
+  <div class="data-body" id="salesBody"></div>
+</div>
+
+<!-- RECIPES WINDOW -->
+<div class="data-window" id="recipesWindow">
+  <div class="data-window-header">
+    <div class="data-window-title">Recipes</div>
+    <button class="data-window-close" onclick="closeRecipesWindow()">×</button>
+  </div>
+  <div class="data-body" id="recipesBody" style="padding:4px;gap:4px;display:flex;flex-direction:column;overflow-y:auto;"></div>
+</div>
+
+<!-- MEALS WINDOW -->
+<div class="data-window" id="mealsWindow">
+  <div class="data-window-header">
+    <div class="data-window-title">Meals</div>
+    <button class="data-window-close" onclick="closeMealsWindow()">×</button>
+  </div>
+  <div class="data-body" id="mealsBody" style="padding:4px;gap:4px;display:flex;flex-direction:column;overflow-y:auto;"></div>
+</div>
+
+<script src="app.js"></script>
+<script src="tabs.js"></script>
+<script src="pantry.js"></script>
+<script src="recipes.js"></script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js')
+      .then(r=>console.log('[PantryPro] SW registered', r.scope))
+      .catch(e=>console.log('[PantryPro] SW failed', e));
+  });
+}
+</script>
+</body>
+</html>
