@@ -1301,43 +1301,76 @@ function renderSettingsWindowBody(){
   (function buildThresholdSection(){
     const t=ptGetThresholds(); const en=ptGetThreshEnabled(); const snap=ptGetThreshSnap();
 
-    // Preview bar
+    // ── Preview bar — build segments only from enabled thresholds ──
     const barWrap=document.createElement('div'); barWrap.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;position:relative;flex-shrink:0;';
-    const cv=en.critical?t.critical:0, lv=en.low?t.low:0, pv=en.partial?t.partial:0;
-    [{l:0,w:cv,bg:'#C85A5A'},{l:cv,w:lv-cv,bg:'#5A8DB8'},{l:lv,w:pv-lv,bg:'#C7824A'},{l:pv,w:100-pv,bg:'#48a971'}].forEach(({l,w,bg})=>{
-      if(w<=0) return; const s=document.createElement('div'); s.style.cssText=`position:absolute;left:${l}%;top:0;bottom:0;width:${w}%;background:${bg};`; barWrap.appendChild(s);
+    let cursor=0;
+    const activeThresh=[];
+    if(en.critical) activeThresh.push({pct:t.critical,color:'#C85A5A',lbl:'CRIT'});
+    if(en.low)      activeThresh.push({pct:t.low,     color:'#5A8DB8',lbl:'LOW'});
+    if(en.partial)  activeThresh.push({pct:t.partial, color:'#C7824A',lbl:'PART'});
+    activeThresh.forEach(th=>{
+      if(th.pct>cursor){
+        const s=document.createElement('div'); s.style.cssText=`position:absolute;left:${cursor}%;top:0;bottom:0;width:${th.pct-cursor}%;background:${th.color};`; barWrap.appendChild(s);
+        // divider line
+        if(cursor>0){ const d=document.createElement('div'); d.style.cssText=`position:absolute;top:0;bottom:0;width:var(--border-width);background:var(--border-color);z-index:3;left:${cursor}%;`; barWrap.appendChild(d); }
+        cursor=th.pct;
+      }
     });
-    [[cv,cv>0&&cv<lv],[lv,lv>cv&&lv<pv],[pv,pv>lv&&pv<100]].forEach(([pos,show])=>{
-      if(!show) return; const d=document.createElement('div'); d.style.cssText=`position:absolute;top:0;bottom:0;width:var(--border-width);background:var(--border-color);z-index:3;left:${pos}%;`; barWrap.appendChild(d);
-    });
+    // OK fills the rest
+    const okSeg=document.createElement('div'); okSeg.style.cssText=`position:absolute;left:${cursor}%;top:0;bottom:0;width:${100-cursor}%;background:#48a971;`; barWrap.appendChild(okSeg);
+    if(cursor>0){ const d=document.createElement('div'); d.style.cssText=`position:absolute;top:0;bottom:0;width:var(--border-width);background:var(--border-color);z-index:3;left:${cursor}%;`; barWrap.appendChild(d); }
+    // Labels
     const barLbl=document.createElement('div'); barLbl.style.cssText='position:absolute;inset:0;display:flex;align-items:center;z-index:2;pointer-events:none;';
-    [['CRIT',cv/2,cv>4],[' LOW',cv+(lv-cv)/2,lv-cv>6],['PART',lv+(pv-lv)/2,pv-lv>6],['  OK',pv+(100-pv)/2,100-pv>4]].forEach(([txt,pos,show])=>{
-      if(!show) return; const sp=document.createElement('span'); sp.style.cssText=`position:absolute;left:${pos}%;transform:translateX(-50%);font-size:7px;font-weight:900;letter-spacing:0.1em;color:rgba(0,0,0,0.55);text-transform:uppercase;`; sp.textContent=txt.trim(); barLbl.appendChild(sp);
+    let lCursor=0;
+    activeThresh.forEach(th=>{
+      const midPct=lCursor+(th.pct-lCursor)/2; const w=th.pct-lCursor;
+      if(w>6){ const sp=document.createElement('span'); sp.style.cssText=`position:absolute;left:${midPct}%;transform:translateX(-50%);font-size:7px;font-weight:900;letter-spacing:0.1em;color:rgba(0,0,0,0.55);text-transform:uppercase;`; sp.textContent=th.lbl; barLbl.appendChild(sp); }
+      lCursor=th.pct;
     });
+    if(100-lCursor>4){ const sp=document.createElement('span'); sp.style.cssText=`position:absolute;left:${lCursor+(100-lCursor)/2}%;transform:translateX(-50%);font-size:7px;font-weight:900;letter-spacing:0.1em;color:rgba(0,0,0,0.55);text-transform:uppercase;`; sp.textContent='OK'; barLbl.appendChild(sp); }
     barWrap.appendChild(barLbl);
     body.appendChild(barWrap);
 
+    // ensure thumb CSS is injected once — sized to card height, clipped to track
+    if(!document.getElementById('pt-thresh-style')){
+      const st=document.createElement('style'); st.id='pt-thresh-style';
+      st.textContent=`
+        .pt-thresh-inp { position:absolute;left:0;top:0;width:100%;height:100%;background:transparent;outline:none;cursor:pointer;margin:0;padding:0;-webkit-appearance:none;appearance:none;z-index:3; }
+        .pt-thresh-inp::-webkit-slider-runnable-track { background:transparent;height:100%; }
+        .pt-thresh-inp::-webkit-slider-thumb { -webkit-appearance:none;width:14px;height:var(--drop-height);border-radius:4px;border:var(--border-width) solid var(--border-color);background:#fff;cursor:grab;margin-top:0; }
+        .pt-thresh-inp:active::-webkit-slider-thumb { cursor:grabbing; }
+        .pt-thresh-inp::-moz-range-thumb { width:14px;height:var(--drop-height);border-radius:4px;border:var(--border-width) solid var(--border-color);background:#fff;cursor:grab; }
+        .pt-thresh-inp::-moz-range-track { background:transparent; }
+        .pt-thresh-inp:disabled { pointer-events:none; }
+      `.replace(/\s+/g,' ');
+      document.head.appendChild(st);
+    }
+
     function addSlider(key,label,color){
+      // Section label
       const sd=document.createElement('div'); sd.style.cssText='display:flex;align-items:center;gap:8px;padding:4px 0 0;flex-shrink:0;';
       const sl1=document.createElement('div'); sl1.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);';
       const ssp=document.createElement('span'); ssp.style.cssText=`font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:${color};flex-shrink:0;`; ssp.textContent=label;
       const sl2=document.createElement('div'); sl2.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);';
       sd.append(sl1,ssp,sl2); body.appendChild(sd);
 
-      const row=document.createElement('div'); row.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
       const isOn=en[key];
+      // Row — overflow:visible so thumb isn't clipped, but border-radius clips visually via clip-path
+      const row=document.createElement('div'); row.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;position:relative;';
 
-      // Toggle dot
-      const toggleCell=document.createElement('div'); toggleCell.style.cssText=`width:var(--drop-height);min-width:var(--drop-height);display:flex;align-items:center;justify-content:center;background:${isOn?'var(--bg-2)':'var(--bg-3)'};border-right:var(--border-width) solid var(--border-color);cursor:pointer;flex-shrink:0;`;
+      // Toggle dot cell
+      const toggleCell=document.createElement('div'); toggleCell.style.cssText=`width:var(--drop-height);min-width:var(--drop-height);display:flex;align-items:center;justify-content:center;background:${isOn?'var(--bg-2)':'var(--bg-3)'};border-right:var(--border-width) solid var(--border-color);cursor:pointer;flex-shrink:0;z-index:4;`;
       const dot=document.createElement('div'); dot.style.cssText=`width:10px;height:10px;border-radius:2px;border:var(--border-width) solid var(--border-color);background:${isOn?color:'var(--bg-4)'};`;
       toggleCell.appendChild(dot);
       toggleCell.onclick=()=>{ const cur=ptGetThreshEnabled(); cur[key]=!cur[key]; lsSet('pt_thresh_enabled',cur); if(!cur[key]&&ptActiveFilter===key){ptActiveFilter='onhand';} renderSettingsWindowBody(); ptRender(); };
 
-      // Track
-      const track=document.createElement('div'); track.style.cssText=`flex:1;position:relative;background:var(--bg-3);overflow:hidden;${!isOn?'opacity:0.35;':''}`;
-      const fill=document.createElement('div'); fill.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${t[key]}%;background:${color};opacity:0.35;pointer-events:none;`;
+      // Track cell — clip the fill bar, range input sits on top
+      const track=document.createElement('div'); track.style.cssText=`flex:1;position:relative;background:var(--bg-3);overflow:hidden;`;
+      // fill bar (clipped to track)
+      const fill=document.createElement('div'); fill.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${t[key]}%;background:${color};opacity:${isOn?'0.35':'0.12'};pointer-events:none;z-index:1;`;
+      // range input — sits on top of fill, thumb overflows row height via negative margins but row clips it
       const inp=document.createElement('input'); inp.type='range'; inp.min=0; inp.max=100; inp.step=snap; inp.value=t[key]; inp.disabled=!isOn;
-      inp.style.cssText='position:absolute;left:0;top:50%;transform:translateY(-50%);width:100%;height:100%;background:transparent;outline:none;cursor:pointer;margin:0;padding:0;-webkit-appearance:none;appearance:none;';
+      inp.className='pt-thresh-inp';
       inp.oninput=()=>{
         const cur=ptGetThresholds(); const curEn=ptGetThreshEnabled(); const curSnap=ptGetThreshSnap();
         let v=parseInt(inp.value);
@@ -1345,13 +1378,43 @@ function renderSettingsWindowBody(){
         else if(key==='low'){ if(curEn.critical) v=Math.max(v,cur.critical+curSnap); if(curEn.partial) cur.partial=Math.max(cur.partial,v+curSnap); }
         else if(key==='partial'){ if(curEn.low) v=Math.max(v,cur.low+curSnap); if(curEn.critical) v=Math.max(v,cur.critical+curSnap); v=Math.min(v,100-curSnap); }
         cur[key]=v; inp.value=v; lsSet('pt_thresholds',cur);
-        renderSettingsWindowBody(); ptRender();
+        // update fill live without full re-render
+        fill.style.width=v+'%';
+        pctCell.textContent=v+'%';
+        // re-render bar and pantry
+        rebuildBar(); ptRender();
       };
+      if(!isOn) track.style.opacity='0.4';
       track.append(fill,inp);
 
-      // Pct
-      const pctCell=document.createElement('div'); pctCell.style.cssText=`width:var(--drop-height);min-width:var(--drop-height);display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-left:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;color:${isOn?color:'var(--bg-4)'};flex-shrink:0;`; pctCell.textContent=isOn?t[key]+'%':'—';
+      // Pct cell
+      const pctCell=document.createElement('div'); pctCell.style.cssText=`width:var(--drop-height);min-width:var(--drop-height);display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-left:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;color:${isOn?color:'var(--bg-4)'};flex-shrink:0;z-index:4;`; pctCell.textContent=isOn?t[key]+'%':'—';
+
       row.append(toggleCell,track,pctCell); body.appendChild(row);
+    }
+
+    // Live-update just the bar without full re-render
+    function rebuildBar(){
+      const ct=ptGetThresholds(); const cen=ptGetThreshEnabled();
+      barWrap.innerHTML='';
+      let cur2=0;
+      const at2=[];
+      if(cen.critical) at2.push({pct:ct.critical,color:'#C85A5A',lbl:'CRIT'});
+      if(cen.low)      at2.push({pct:ct.low,     color:'#5A8DB8',lbl:'LOW'});
+      if(cen.partial)  at2.push({pct:ct.partial, color:'#C7824A',lbl:'PART'});
+      at2.forEach(th=>{
+        if(th.pct>cur2){
+          const s=document.createElement('div'); s.style.cssText=`position:absolute;left:${cur2}%;top:0;bottom:0;width:${th.pct-cur2}%;background:${th.color};`; barWrap.appendChild(s);
+          if(cur2>0){ const d=document.createElement('div'); d.style.cssText=`position:absolute;top:0;bottom:0;width:var(--border-width);background:var(--border-color);z-index:3;left:${cur2}%;`; barWrap.appendChild(d); }
+          cur2=th.pct;
+        }
+      });
+      const ok2=document.createElement('div'); ok2.style.cssText=`position:absolute;left:${cur2}%;top:0;bottom:0;width:${100-cur2}%;background:#48a971;`; barWrap.appendChild(ok2);
+      if(cur2>0){ const d=document.createElement('div'); d.style.cssText=`position:absolute;top:0;bottom:0;width:var(--border-width);background:var(--border-color);z-index:3;left:${cur2}%;`; barWrap.appendChild(d); }
+      const bl=document.createElement('div'); bl.style.cssText='position:absolute;inset:0;display:flex;align-items:center;z-index:2;pointer-events:none;';
+      let lc2=0; at2.forEach(th=>{ const m=lc2+(th.pct-lc2)/2; if(th.pct-lc2>6){ const sp=document.createElement('span'); sp.style.cssText=`position:absolute;left:${m}%;transform:translateX(-50%);font-size:7px;font-weight:900;letter-spacing:0.1em;color:rgba(0,0,0,0.55);text-transform:uppercase;`; sp.textContent=th.lbl; bl.appendChild(sp); } lc2=th.pct; });
+      if(100-lc2>4){ const sp=document.createElement('span'); sp.style.cssText=`position:absolute;left:${lc2+(100-lc2)/2}%;transform:translateX(-50%);font-size:7px;font-weight:900;letter-spacing:0.1em;color:rgba(0,0,0,0.55);text-transform:uppercase;`; sp.textContent='OK'; bl.appendChild(sp); }
+      barWrap.appendChild(bl);
     }
 
     addSlider('partial','Partial','#C7824A');
@@ -1371,12 +1434,6 @@ function renderSettingsWindowBody(){
       snapRow.appendChild(btn);
     });
     body.appendChild(snapRow);
-
-    if(!document.getElementById('pt-thresh-style')){
-      const st=document.createElement('style'); st.id='pt-thresh-style';
-      st.textContent='input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:100%;border-radius:4px;border:var(--border-width) solid #000;background:#fff;cursor:grab;}input[type=range]:active::-webkit-slider-thumb{cursor:grabbing;}input[type=range]::-webkit-slider-runnable-track{background:transparent;}input[type=range]::-moz-range-thumb{width:12px;height:100%;border-radius:4px;border:var(--border-width) solid #000;background:#fff;cursor:grab;}';
-      document.head.appendChild(st);
-    }
   })();
 
   // Grocery List
