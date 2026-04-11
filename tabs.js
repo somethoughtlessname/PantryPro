@@ -5,7 +5,7 @@
 ── */
 
 let glSelectedCat='produce';
-let glViewMode=ls('gl_view','simple');
+let glActiveFilter='all';
 let glOpenState={};
 const glDelPend=new Set();
 
@@ -13,11 +13,12 @@ function updateGlBtn(){
   document.getElementById('glCatLabel').textContent=getCat(glSelectedCat).label;
 }
 
-function setView(v){
-  glViewMode=v; lsSet('gl_view',v);
-  glOpenState={};
-  document.getElementById('vCat').classList.toggle('active',v==='cat');
-  document.getElementById('vSimple').classList.toggle('active',v==='simple');
+function setGlFilter(f){
+  glActiveFilter=f;
+  ['all','unchecked','checked'].forEach(k=>{
+    const el=document.getElementById('glF'+k.charAt(0).toUpperCase()+k.slice(1));
+    if(el) el.classList.toggle('active', k===f);
+  });
   glRender();
 }
 
@@ -280,15 +281,14 @@ function glRender(){
   const items=ls('gl_items',[]);
 
   const glQuery=(document.getElementById('glSearch')?.value||'').trim().toLowerCase();
-  const viewToggle=document.querySelector('#pageGrocery .view-toggle');
+  const filterBar=document.getElementById('glFilterBar');
   const footer=document.querySelector('#pageGrocery .footer');
   updateGlFooterBtn();
   if(glQuery && footer) footer.style.display='none';
   const glThinkSlot=document.getElementById('glThinkSlot');
 
-  // hide view toggle and footer while searching
-  if(viewToggle) viewToggle.style.display=glQuery?'none':'';
-  // footer visibility always controlled by updateGlFooterBtn, not here
+  // hide filter bar while searching
+  if(filterBar) filterBar.style.display=glQuery?'none':'';
 
   // manage think slot
   if(glQuery && !glQuickAddState){
@@ -401,41 +401,28 @@ function glRender(){
   if(items.length > 0) GL_LAST_EMPTY = false;
   if(items.length===0){ showEmpty(container, glEmptyMsg()); return; }
 
-  if(glViewMode==='simple'){
-    const activeCats = getCats().filter(c=>items.some(i=>i.category===c.id));
-    activeCats.forEach(cat=>{
-      const catItems = items.filter(i=>i.category===cat.id)
-        .sort((a,b)=>a.name.localeCompare(b.name));
+  // Apply filter
+  const filteredItems = glActiveFilter==='checked' ? items.filter(i=>i.checked)
+    : glActiveFilter==='unchecked' ? items.filter(i=>!i.checked)
+    : items;
 
-      // category divider — line with label
-      const div=document.createElement('div'); div.className='simple-cat-divider';
-      const line1=document.createElement('div'); line1.className='simple-cat-divider-line';
-      const lbl=document.createElement('span'); lbl.className='simple-cat-divider-label'; lbl.textContent=cat.label; lbl.style.color=cat.color;
-      const line2=document.createElement('div'); line2.className='simple-cat-divider-line';
-      div.append(line1,lbl,line2);
-      container.appendChild(div);
-
-      // flat rows — no wrapper card
-      catItems.forEach(item=>{
-        container.appendChild(makeGlRow(item, cat.color, false));
-      });
-    });
-    return;
+  if(filteredItems.length===0){
+    const msg = glActiveFilter==='checked' ? 'Nothing checked yet' : 'Nothing unchecked — all done!';
+    showEmpty(container, msg); updateGlFooterBtn(); return;
   }
 
-  getCats().filter(c=>items.some(i=>i.category===c.id)).forEach(cat=>{
-    const catItems=items.filter(i=>i.category===cat.id);
-    const uc=catItems.filter(i=>!i.checked).sort((a,b)=>a.name.localeCompare(b.name));
-    const ch=catItems.filter(i=>i.checked).sort((a,b)=>a.name.localeCompare(b.name));
-    const rawStage=glGetStage(cat.id,uc.length,ch.length);
-    // if we're in "unchecked only" mode but none are left, collapse
-    const stage = (rawStage===1 && uc.length===0) ? 0 : rawStage;
-    if(stage===0 && rawStage===1) glOpenState[cat.id]=0;
-    const toShow=stage===1?uc:[...uc,...ch];
-    const section=buildCatSection(cat,catItems,stage,()=>glToggleCat(cat.id,uc.length,ch.length),body=>{
-      toShow.forEach(item=>body.appendChild(makeGlRow(item, cat.color, false)));
-    });
-    container.appendChild(section);
+  // Always simple view — category dividers, flat rows
+  const activeCats = getCats().filter(c=>filteredItems.some(i=>i.category===c.id));
+  activeCats.forEach(cat=>{
+    const catItems = filteredItems.filter(i=>i.category===cat.id)
+      .sort((a,b)=>a.name.localeCompare(b.name));
+    const div=document.createElement('div'); div.className='simple-cat-divider';
+    const line1=document.createElement('div'); line1.className='simple-cat-divider-line';
+    const lbl=document.createElement('span'); lbl.className='simple-cat-divider-label'; lbl.textContent=cat.label; lbl.style.color=cat.color;
+    const line2=document.createElement('div'); line2.className='simple-cat-divider-line';
+    div.append(line1,lbl,line2);
+    container.appendChild(div);
+    catItems.forEach(item=>container.appendChild(makeGlRow(item, cat.color, false)));
   });
   updateGlFooterBtn();
 }
