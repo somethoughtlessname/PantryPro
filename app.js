@@ -1133,17 +1133,20 @@ function renderStatsWindow(){
   // Graph card — frozen in header for page stats, scrollable for window
   const gCardBorderStyle=isPageStats?'background:var(--bg-2);overflow:hidden;':'border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;background:var(--bg-2);flex-shrink:0;';
   const gCard=document.createElement('div'); gCard.style.cssText=gCardBorderStyle;
-  const gHdrRow=document.createElement('div'); gHdrRow.style.cssText='height:var(--drop-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);';
-  const gHdrLbl=document.createElement('div'); gHdrLbl.style.cssText='flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#48a971;background:var(--bg-3);';
-  gHdrLbl.textContent=focusIds.size===1?(ls('ms_items',[]).find(m=>m.id===[...focusIds][0])?.name||'Item'):focusIds.size>1?`${focusIds.size} items`:(isUsed?'Total Spend':'Total Added');
-  gHdrLbl.style.color=focusIds.size>0?multiColor:'#48a971';
+  const gHdrRow=document.createElement('div'); gHdrRow.style.cssText='height:var(--drop-height);display:flex;align-items:stretch;border-top:var(--border-width) solid var(--border-color);position:relative;';
+  const hdrBg=focusIds.size===0?'#373243':focusIds.size===1?'#1d3a28':'#1d2d3f';
+  const hdrTxt=focusIds.size===0?'#fff':multiColor;
+  const gHdrLbl=document.createElement('div'); gHdrLbl.style.cssText=`position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;background:${hdrBg};color:${hdrTxt};pointer-events:none;padding:0 calc(var(--card-height) + 8px);text-align:center;`;
+  gHdrLbl.innerHTML=focusIds.size===1?(ls('ms_items',[]).find(m=>m.id===[...focusIds][0])?.name||'Item'):focusIds.size>1?`${focusIds.size} items`:'Tap an item below to see its stats<br>tap more to combine';
   if(focusIds.size>0){
-    const clrBtn=document.createElement('div'); clrBtn.style.cssText='width:var(--card-height);display:flex;align-items:center;justify-content:center;background:#502424;font-size:14px;font-weight:900;color:#fff;cursor:pointer;border-left:var(--border-width) solid var(--border-color);'; clrBtn.textContent='×';
+    const spacer=document.createElement('div'); spacer.style.cssText=`flex:1;background:${hdrBg};`;
+    const clrBtn=document.createElement('div'); clrBtn.style.cssText='width:var(--drop-height);min-width:var(--drop-height);display:flex;align-items:center;justify-content:center;background:#502424;font-size:14px;font-weight:900;color:#fff;cursor:pointer;border-left:var(--border-width) solid var(--border-color);z-index:1;'; clrBtn.textContent='×';
     clrBtn.onclick=()=>{ body._focusItemIds=new Set(); body._selBar=null; renderStatsWindow(); };
-    gHdrRow.append(gHdrLbl,clrBtn);
-  } else { gHdrRow.appendChild(gHdrLbl); }
-  gCard.appendChild(gHdrRow);
-
+    gHdrRow.append(gHdrLbl,spacer,clrBtn);
+  } else {
+    const spacer=document.createElement('div'); spacer.style.cssText=`flex:1;background:${hdrBg};`;
+    gHdrRow.append(gHdrLbl,spacer);
+  }
   const graph=document.createElement('div'); graph.className='pt-graph';
   vals.forEach((v,i)=>{
     const isToday=sw==='daily'&&i===todayWiSW; const isSel=selBar===i; const bw=document.createElement('div'); bw.className='pt-bar-wrap';
@@ -1169,7 +1172,7 @@ function renderStatsWindow(){
   }
   foot.append(leftEl,rightEl); gCard.appendChild(foot);
 
-  // Daily/Weekly/Monthly attached to bottom of graph card
+  // Daily/Weekly/Monthly
   const modeRow=document.createElement('div'); modeRow.style.cssText='height:var(--drop-height);display:flex;align-items:stretch;border-top:var(--border-width) solid var(--border-color);';
   [['daily','Daily'],['weekly','Weekly'],['monthly','Monthly']].forEach(([v,lbl],i,arr)=>{
     const isAct=sw===v; const btn=document.createElement('div');
@@ -1177,6 +1180,9 @@ function renderStatsWindow(){
     btn.textContent=lbl; btn.onclick=()=>{ body._sw=v; body._selBar=null; renderStatsWindow(); }; modeRow.appendChild(btn);
   });
   gCard.appendChild(modeRow);
+
+  // Instructions / item name — below modeRow
+  gCard.appendChild(gHdrRow);
   if(isPageStats && statsTabRowEl){ statsTabRowEl.appendChild(gCard); }
   else body.appendChild(gCard);
 
@@ -1217,14 +1223,15 @@ function renderStatsWindow(){
       const itemColor=focusIds.size>1?'#5A8DB8':'#48a971';
       const itemVals=getItemVals(item.id,sw,sv);
       const itemMax=Math.max(...itemVals,0.01);
-      const row=document.createElement('div'); row.style.cssText='height:var(--card-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
-      const spark=document.createElement('div'); spark.style.cssText=`width:52px;min-width:52px;display:flex;align-items:flex-end;justify-content:center;gap:1px;padding:5px 6px;background:${isFocused?(focusIds.size>1?'#1d2d3f':'#1d3a28'):'var(--bg-3)'};border-right:var(--border-width) solid var(--border-color);cursor:pointer;`;
-      itemVals.forEach(v=>{ const b=document.createElement('div'); const h=Math.max(2,Math.round((v/itemMax)*18)); b.style.cssText=`flex:1;height:${h}px;background:${isFocused?itemColor:'rgba(255,255,255,0.35)'};border-radius:1px 1px 0 0;max-width:4px;`; spark.appendChild(b); });
-      spark.onclick=()=>{
+      const toggle=()=>{
         if(focusIds.has(item.id)) focusIds.delete(item.id);
         else focusIds.add(item.id);
         body._selBar=null; renderStatsWindow();
       };
+      const row=document.createElement('div'); row.style.cssText='height:var(--card-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;cursor:pointer;';
+      row.onclick=toggle;
+      const spark=document.createElement('div'); spark.style.cssText=`width:52px;min-width:52px;display:flex;align-items:flex-end;justify-content:center;gap:1px;padding:5px 6px;background:${isFocused?(focusIds.size>1?'#1d2d3f':'#1d3a28'):'var(--bg-3)'};border-right:var(--border-width) solid var(--border-color);`;
+      itemVals.forEach(v=>{ const b=document.createElement('div'); const h=Math.max(2,Math.round((v/itemMax)*18)); b.style.cssText=`flex:1;height:${h}px;background:${isFocused?itemColor:'rgba(255,255,255,0.35)'};border-radius:1px 1px 0 0;max-width:4px;`; spark.appendChild(b); });
       const nm=document.createElement('div'); nm.style.cssText='flex:1;display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:700;color:var(--color-10);background:var(--bg-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'; nm.textContent=item.name;
       const costEl=document.createElement('div'); costEl.style.cssText=`width:60px;min-width:60px;display:flex;align-items:center;justify-content:center;background:var(--bg-3);font-size:10px;font-weight:800;color:${isFocused?itemColor:'#48a971'};border-left:var(--border-width) solid var(--border-color);`; costEl.textContent=costTotal>0?'$'+costTotal.toFixed(2):'—';
       const amtEl=document.createElement('div'); amtEl.style.cssText='width:52px;min-width:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--bg-3);border-left:var(--border-width) solid var(--border-color);gap:1px;';
