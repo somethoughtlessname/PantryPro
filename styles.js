@@ -26,6 +26,7 @@ html, body {
   width: 100%; min-height: 100vh;
   background: var(--bg-1); color: var(--color-10);
   font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px;
+  overscroll-behavior-y: none;
 }
 body {
   display: flex; flex-direction: column; align-items: center;

@@ -726,10 +726,10 @@ function ptBuildFilterBar(){
   const tabs=[
     {key:'all',     label:'All',     count:total,   color:null,       show:true},
     {key:'onhand',  label:'On-Hand', count:onhand,  color:'#C7824A',  show:true},
-    {key:'ok',      label:'OK',      count:ok,      color:'#48a971',  show:true},
-    {key:'partial', label:'Partial', count:partial, color:'#C7824A',  show:en.partial},
-    {key:'soon',    label:'Low',     count:soon,    color:'#5A8DB8',  show:en.low},
-    {key:'low',     label:'Critical',count:low,     color:'#C85A5A',  show:en.critical},
+    {key:'ok',      label:'OK',      count:ok,      color:'#48a971',  show:ptViewMode==='pantry'},
+    {key:'partial', label:'Partial', count:partial, color:'#C7824A',  show:ptViewMode==='pantry'&&en.partial},
+    {key:'soon',    label:'Low',     count:soon,    color:'#5A8DB8',  show:ptViewMode==='pantry'&&en.low},
+    {key:'low',     label:'Critical',count:low,     color:'#C85A5A',  show:ptViewMode==='pantry'&&en.critical},
   ].filter(t=>t.show);
   tabs.forEach(({key,label,count,color},i,arr)=>{
     const active=ptActiveFilter===key;
