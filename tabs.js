@@ -275,8 +275,6 @@ function glSearchInput(){
 }
 
 function glRender(){
-  const ap=document.getElementById('glAddPanel');
-  if(ap) ap.style.display=glShowAddPanel?'':'none';
   const container=document.getElementById('glList'); container.innerHTML='';
   const items=ls('gl_items',[]);
 
@@ -426,8 +424,6 @@ function glRender(){
   });
   updateGlFooterBtn();
 }
-
-document.getElementById('glInput').addEventListener('keydown',e=>{ if(e.key==='Enter') glAdd(); });
 
 /* ── COMP SHOP ── */
 let csSelectedUnit='unit';
@@ -844,7 +840,16 @@ function csRender(){
           const upEl=document.createElement('div'); upEl.className='cs-up'+(isTied?' tied':isBest?' best':'');
           upEl.textContent=regularUp!==null?'$'+regularUp.toFixed(2)+'/'+unit.label:'—';
           const dt=document.createElement('div'); dt.className='cs-date';
-          if(entry.updated){ const d=new Date(entry.updated); dt.textContent=(d.getMonth()+1)+'/'+d.getDate()+'/'+String(d.getFullYear()).slice(2); } else dt.textContent='—';
+          if(entry.updated){
+            const now=Date.now(); const diff=Math.floor((now-entry.updated)/60000);
+            let dtTxt;
+            if(diff<1) dtTxt='just now';
+            else if(diff<60) dtTxt=diff+'m ago';
+            else if(diff<1440) dtTxt=Math.floor(diff/60)+'h ago';
+            else if(diff<10080) dtTxt=Math.floor(diff/1440)+'d ago';
+            else { const d=new Date(entry.updated); dtTxt=(d.getMonth()+1)+'/'+d.getDate()+'/'+String(d.getFullYear()).slice(2); }
+            dt.textContent=dtTxt;
+          } else dt.textContent='—';
           const dBtn=document.createElement('button'); dBtn.className='cs-entry-del'+(csEntDelPend.has(entry.id)?' pending':''); dBtn.textContent='×';
           dBtn.onclick=()=>{ if(csEntDelPend.has(entry.id)){ csDeleteEntry(entry.id); } else { csEntDelPend.add(entry.id); dBtn.className='cs-entry-del pending'; setTimeout(()=>{ csEntDelPend.delete(entry.id); csRender(); },2000); } };
           top.append(editSq,st,upEl,dt,dBtn); row.appendChild(top);
@@ -1238,8 +1243,6 @@ function msSearchInput(){
 
 
 function msRender(){
-  const ap=document.getElementById('msAddPanel');
-  if(ap) ap.style.display=msShowAddPanel?'':'none';
   const container=document.getElementById('msList'); container.innerHTML='';
   const items=ls('ms_items',[]);
   const query=(document.getElementById('msSearch')?.value||'').trim().toLowerCase();
@@ -1354,6 +1357,5 @@ function msRender(){
   });
 }
 
-document.getElementById('msInput').addEventListener('keydown',e=>{ if(e.key==='Enter') msAdd(); });
 
 

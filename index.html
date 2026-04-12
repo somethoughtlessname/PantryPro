@@ -35,16 +35,6 @@
       <button class="ms-search-clear" onclick="document.getElementById('glSearch').value='';glThinkPhraseSet=false;glQuickAddState=null;glQuickAddName='';glThinkCardEl=null;glRender();">×</button>
     </div>
     <div id="glThinkSlot"></div>
-    <div class="add-panel" id="glAddPanel">
-      <input type="text" id="glInput" placeholder="item name…" maxlength="80">
-      <div class="add-row">
-        <button class="picker-btn" id="glCatBtn" onclick="openModal('gl')">
-          <span class="picker-label" id="glCatLabel"></span>
-          <span class="picker-arrow">▼</span>
-        </button>
-        <button class="btn-add" onclick="glAdd()">+ Add</button>
-      </div>
-    </div>
     <div class="view-toggle" id="glFilterBar">
       <button class="view-btn active" id="glFAll" onclick="setGlFilter('all')">All</button>
       <button class="view-btn" id="glFUnchecked" onclick="setGlFilter('unchecked')">Unchecked</button>
@@ -102,16 +92,6 @@
       <div class="ms-search-wrap">
         <input type="text" id="msSearch" class="ms-search" placeholder="Search... type to find or add a new list item" oninput="msSearchInput()">
         <button class="ms-search-clear" onclick="document.getElementById('msSearch').value='';msThinkPhraseSet=false;msQuickAddState=null;msQuickAddName='';msRender();">×</button>
-      </div>
-      <div class="add-panel" id="msAddPanel">
-        <input type="text" id="msInput" placeholder="item name…" maxlength="80">
-        <div class="add-row">
-          <button class="picker-btn" id="msCatBtn" onclick="openModal('ms')">
-            <span class="picker-label" id="msCatLabel"></span>
-            <span class="picker-arrow">▼</span>
-          </button>
-          <button class="btn-add" onclick="msAdd()">+ Add</button>
-        </div>
       </div>
       <div id="msThinkSlot"></div>
     </div>

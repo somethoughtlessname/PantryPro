@@ -107,26 +107,45 @@ body {
 .settings-overlay.open { display: block; }
 
 .settings-drawer {
-  position: fixed; top:0; left:0; bottom:0;
+  position: fixed; top:0; bottom:0;
   width: 66.666%;
   background: var(--bg-2);
-  border-right: var(--border-width) solid var(--border-color);
-  border-radius: 0 var(--radius) var(--radius) 0;
-  transform: translateX(-100%);
   transition: transform 0.15s ease;
   z-index: 151;
   display: flex; flex-direction: column;
   overflow: hidden;
 }
-.settings-drawer.open { transform: translateX(0); }
+/* Left variant (default) */
+.settings-drawer:not(.right) {
+  left:0;
+  border-right: var(--border-width) solid var(--border-color);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  transform: translateX(-100%);
+}
+.settings-drawer:not(.right).open { transform: translateX(0); }
+/* Right variant */
+.settings-drawer.right {
+  right:0; left:auto;
+  border-left: var(--border-width) solid var(--border-color);
+  border-radius: var(--radius) 0 0 var(--radius);
+  transform: translateX(100%);
+}
+.settings-drawer.right.open { transform: translateX(0); }
 
 @keyframes sidebarCardIn {
   from { opacity:0; transform:translateX(-18px); }
   to   { opacity:1; transform:translateX(0); }
 }
+@keyframes sidebarCardInRight {
+  from { opacity:0; transform:translateX(18px); }
+  to   { opacity:1; transform:translateX(0); }
+}
 .sidebar-card-anim {
   opacity:0;
   animation: sidebarCardIn 0.18s ease forwards;
+}
+.sidebar-card-anim.from-right {
+  animation-name: sidebarCardInRight;
 }
 
 .settings-header {
