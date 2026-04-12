@@ -163,6 +163,50 @@ function closeModal(){
 }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
 
+function _openGridWindow(ctx, title, color){
+  // Build a full-screen overlay window that reuses buildModalGrid
+  const existing=document.getElementById('_gridWindow');
+  if(existing) existing.remove();
+
+  modalCtx=ctx; modalSelPend=null; modalDelPend.clear();
+  editingColorCatId=null; selectedRootIdx=0; newCatColor=ROOT_COLORS[0].shades[2];
+
+  const ov=document.createElement('div'); ov.id='_gridWindow';
+  ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;z-index:260;background:var(--bg-1);display:flex;flex-direction:column;overflow:hidden;font-family:inherit;';
+
+  const hdr=document.createElement('div'); hdr.style.cssText='height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-2);';
+  const htitle=document.createElement('div'); htitle.style.cssText=`flex:1;display:flex;align-items:center;padding:0 14px;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:${color||'#fff'};`;
+  htitle.textContent=title;
+  const hclose=document.createElement('button'); hclose.style.cssText='width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);font-size:22px;font-weight:900;color:#fff;cursor:pointer;';
+  hclose.textContent='×';
+  hclose.onclick=()=>{ ov.remove(); modalCtx=null; modalSelPend=null; editingColorCatId=null; };
+  hdr.append(htitle,hclose); ov.appendChild(hdr);
+
+  const body=document.createElement('div'); body.style.cssText='flex:1;overflow-y:auto;padding:var(--margin);';
+
+  // Proxy grid element
+  const grid=document.createElement('div');
+  grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:var(--margin);';
+  body.appendChild(grid); ov.appendChild(body); document.body.appendChild(ov);
+
+  // Temporarily rename the real modalGrid so getElementById finds ours
+  const realGrid=document.getElementById('modalGrid');
+  if(realGrid) realGrid.id='_modalGrid_hidden';
+  grid.id='modalGrid';
+  buildModalGrid();
+
+  // Keep the swap active — restore real grid only when window closes
+  // buildModalGrid always finds our grid while window is open
+  hclose.onclick=()=>{
+    grid.id='_windowGrid';
+    if(realGrid) realGrid.id='modalGrid';
+    ov.remove(); modalCtx=null; modalSelPend=null; editingColorCatId=null;
+  };
+}
+
+function openCategoriesWindow(){ _openGridWindow('ms','Categories','#C7824A'); }
+function openUnitsWindow(){ _openGridWindow('unit','Units of Measurement','#5A8DB8'); }
+
 function getUsedColors(){ return getCats().map(c=>c.color.toLowerCase()); }
 
 function updateCatColor(catId, color){
@@ -613,6 +657,8 @@ function renderSettingsBody(){
     const sw=document.getElementById('salesWindow'); if(sw) sw.classList.remove('open');
     document.getElementById('settingsWindow').style.display='none';
     document.getElementById('dataWindow').classList.remove('open');
+    const gw=document.getElementById('_gridWindow'); if(gw){ gw.remove(); modalCtx=null; modalSelPend=null; editingColorCatId=null; }
+    const hg=document.getElementById('_modalGrid_hidden'); if(hg) hg.id='modalGrid';
   }
   function openFromSidebar(fn){ closeAllOverlayWindows(); closeSettings(); fn(); }
 
@@ -628,8 +674,8 @@ function renderSettingsBody(){
   // Manage — Orange
   body.appendChild(makeSettingDivider('Manage','#C7824A'));
   body.appendChild(makeSimpleCard('My List of Sales',       hexWithOpacity('#C7824A',1.0), '#fff', ()=>{ openFromSidebar(openSalesWindow); }));
-  body.appendChild(makeSimpleCard('Categories',             hexWithOpacity('#C7824A',0.65),'#fff', ()=>{ openFromSidebar(()=>openModal('ms')); }));
-  body.appendChild(makeSimpleCard('Units of Measurement',   hexWithOpacity('#C7824A',0.35),'#fff', ()=>{ openFromSidebar(()=>openModal('unit')); }));
+  body.appendChild(makeSimpleCard('Categories',             hexWithOpacity('#C7824A',0.65),'#fff', ()=>{ openFromSidebar(openCategoriesWindow); }));
+  body.appendChild(makeSimpleCard('Units of Measurement',   hexWithOpacity('#C7824A',0.35),'#fff', ()=>{ openFromSidebar(openUnitsWindow); }));
 
   // App — Purple
   body.appendChild(makeSettingDivider('App','#8a7ca8'));

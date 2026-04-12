@@ -1336,20 +1336,6 @@ function msRender(){
     const catItems=items.filter(i=>i.category===cat.id).sort((a,b)=>a.name.localeCompare(b.name));
     const stage=getMsStage(cat.id);
     const section=buildCatSection(cat,catItems,stage,()=>msToggleCat(cat.id),body=>{
-      if(msInlineAdd){
-        const addRow=document.createElement('div');
-        addRow.style.cssText='height:var(--drop-height);display:flex;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;';
-        const inp=document.createElement('input');
-        inp.style.cssText='flex:1;min-width:0;background:var(--bg-3);border:none;color:var(--color-10);font-size:10px;font-weight:600;padding:0 8px;outline:none;';
-        inp.placeholder='Add item…'; inp.maxLength=80;
-        const addBtn=document.createElement('button');
-        addBtn.style.cssText='width:32px;min-width:32px;background:var(--bg-2);border:none;border-left:var(--border-width) solid var(--border-color);color:var(--color-10);font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;';
-        addBtn.textContent='+';
-        const doAdd=()=>{ const name=inp.value.trim(); if(!name) return; msPopulate(name,cat.id); inp.value=''; msRender(); };
-        addBtn.onclick=doAdd;
-        inp.addEventListener('keydown',e=>{ if(e.key==='Enter') doAdd(); });
-        addRow.append(inp,addBtn); body.appendChild(addRow);
-      }
       catItems.forEach(item=>body.appendChild(msBuildRow(item)));
     }, '32px');
     section.classList.add('ms');
