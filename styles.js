@@ -2,7 +2,7 @@
 (function(){
   const s = document.createElement('style');
   s.textContent = `
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
 
 :root {
   --margin: 4px;
@@ -113,12 +113,21 @@ body {
   border-right: var(--border-width) solid var(--border-color);
   border-radius: 0 var(--radius) var(--radius) 0;
   transform: translateX(-100%);
-  transition: transform 0.25s ease;
+  transition: transform 0.15s ease;
   z-index: 151;
   display: flex; flex-direction: column;
   overflow: hidden;
 }
 .settings-drawer.open { transform: translateX(0); }
+
+@keyframes sidebarCardIn {
+  from { opacity:0; transform:translateX(-18px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+.sidebar-card-anim {
+  opacity:0;
+  animation: sidebarCardIn 0.18s ease forwards;
+}
 
 .settings-header {
   height: var(--card-height);

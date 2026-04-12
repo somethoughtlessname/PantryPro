@@ -26,7 +26,7 @@ function ptBuildViewToggle(){
     const btn=document.createElement('div');
     btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;background:${active?'var(--bg-2)':'var(--bg-3)'};color:${active?'var(--color-10)':'var(--muted)'};${i<arr.length-1?'border-right:var(--border-width) solid var(--border-color);':''}`;
     btn.textContent=lbl;
-    btn.onclick=e=>{ e.stopPropagation(); if(ptViewMode===v) return; ptViewMode=v; ptActiveFilter='all'; ptCardRegistry.forEach(c=>c.close()); ptCardRegistry=[]; ptOpenSet.clear(); ptRender(); };
+    btn.onclick=e=>{ e.stopPropagation(); if(ptViewMode===v) return; ptViewMode=v; ptActiveFilter=v==='pantry'?'onhand':'all'; ptCardRegistry.forEach(c=>c.close()); ptCardRegistry=[]; ptOpenSet.clear(); ptRender(); };
     tog.appendChild(btn);
   });
   return tog;
