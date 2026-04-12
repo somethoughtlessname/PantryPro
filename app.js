@@ -133,8 +133,7 @@ function setPage(p){
   glOpenState={}; csOpenState={}; msOpenState={};
   if(p==='Grocery'){ glActiveFilter='all'; setGlFilter('all'); glRender(); }
   if(p==='Pantry'){ ptCardRegistry.forEach(c=>c.close()); ptCardRegistry=[]; ptOpenSet.clear(); ptActiveFilter='onhand'; ptViewMode='pantry'; const pts=document.getElementById('ptSearch'); if(pts) pts.value=''; ptThinkPhraseSet=false; ptQuickAddState=null; ptQuickAddName=''; ptThinkCardEl=null; ptRender(); }
-  if(p==='Shop'){ csInvalidateSortCache(); csRender(); }
-  if(p==='MyShop'){ msInvalidateSortCache(); msRender(); }
+  if(p==='Stats'){ renderStatsPage(); }
 }
 
 /* ── MODAL ── */
@@ -604,7 +603,6 @@ function renderSettingsBody(){
 
   // Settings card — opens settings window
   body.appendChild(makeSimpleCard('Settings', '#1d2530', '#fff', ()=>{ closeSettings(); openSettingsWindow(); }));
-  body.appendChild(makeSimpleCard('Stats', '#1a2d1a', '#48a971', ()=>{ closeSettings(); openStatsWindow(); }));
   body.appendChild(makeSimpleCard('Export / Import', '#1d2030', '#8a7ca8', ()=>{ closeSettings(); openDataWindow(); }));
 
   // Recipes & Meals settings cards
@@ -617,6 +615,11 @@ function renderSettingsBody(){
   // My Sales card — charcoal orange
   const SALES_COLOR = '#4f3010';
   body.appendChild(makeSimpleCard('My List of Sales', SALES_COLOR, '#fff', openSalesWindow));
+
+  // Comp Shop & My Store
+  body.appendChild(makeSettingDivider('Shop'));
+  body.appendChild(makeSimpleCard('Comp Shop', CS_COLOR, '#fff', ()=>{ closeSettings(); csInvalidateSortCache(); document.getElementById('pageShop').style.display='flex'; csRender(); }));
+  body.appendChild(makeSimpleCard('My Store', MS_COLOR, '#fff', ()=>{ closeSettings(); msInvalidateSortCache(); document.getElementById('pageMyShop').style.display='flex'; msRender(); }));
 
   const MS_COLOR_NAV='#373243';
   body.appendChild(makeSettingDivider('Store'));
@@ -674,7 +677,7 @@ function importData(json){
 /* ── New Item Overlay (shared by all search bars) ── */
 function openNewItemOverlay(prefillName, onSave){
   const ov=document.createElement('div');
-  ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-3);z-index:150;display:flex;flex-direction:column;overflow:hidden;font-family:inherit;';
+  ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg-3);z-index:320;display:flex;flex-direction:column;overflow:hidden;font-family:inherit;';
   const hdr=document.createElement('div'); hdr.style.cssText='height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-1);';
   const htitle=document.createElement('div'); htitle.style.cssText='flex:1;display:flex;align-items:center;padding:0 14px;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;'; htitle.textContent='New Item';
   const hclose=document.createElement('button'); hclose.style.cssText='width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff;cursor:pointer;'; hclose.textContent='×'; hclose.onclick=()=>ov.remove();
@@ -953,6 +956,7 @@ function renderSalesBody(){
 }
 
 function openStatsWindow(){
+  _statsBodyId='statsWindowBody';
   const body=document.getElementById('statsWindowBody');
   body._sw='daily';
   body._sv='used';
@@ -963,10 +967,21 @@ function openStatsWindow(){
 }
 function closeStatsWindow(){
   document.getElementById('statsWindow').style.display='none';
+  _statsBodyId='statsWindowBody';
+}
+
+let _statsBodyId='statsWindowBody';
+
+function renderStatsPage(){
+  const body=document.getElementById('statsPageBody');
+  if(!body) return;
+  if(!body._sw){ body._sw='daily'; body._sv='used'; body._selBar=null; body._focusItemId=null; }
+  _statsBodyId='statsPageBody';
+  renderStatsWindow();
 }
 
 function renderStatsWindow(){
-  const body=document.getElementById('statsWindowBody'); body.innerHTML='';
+  const body=document.getElementById(_statsBodyId); if(!body) return; body.innerHTML='';
   const sw=body._sw||'daily';
   const sv=body._sv||'used';
   const selBar=body._selBar!==undefined?body._selBar:null;
