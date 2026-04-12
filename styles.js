@@ -102,7 +102,7 @@ body {
   display: none;
   position: fixed; top:0; left:0; right:0; bottom:0;
   background: rgba(0,0,0,0.8);
-  z-index: 150;
+  z-index: 270;
 }
 .settings-overlay.open { display: block; }
 
@@ -111,7 +111,7 @@ body {
   width: 66.666%;
   background: var(--bg-2);
   transition: transform 0.15s ease;
-  z-index: 151;
+  z-index: 271;
   display: flex; flex-direction: column;
   overflow: hidden;
 }

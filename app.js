@@ -605,25 +605,36 @@ function renderSettingsBody(){
   }
 
   // Shop — Blue
+  function closeAllOverlayWindows(){
+    document.getElementById('pageShop').style.display='none';
+    document.getElementById('pageMyShop').style.display='none';
+    const rw=document.getElementById('recipesWindow'); if(rw) rw.classList.remove('open');
+    const mw=document.getElementById('mealsWindow'); if(mw) mw.classList.remove('open');
+    const sw=document.getElementById('salesWindow'); if(sw) sw.classList.remove('open');
+    document.getElementById('settingsWindow').style.display='none';
+    document.getElementById('dataWindow').classList.remove('open');
+  }
+  function openFromSidebar(fn){ closeAllOverlayWindows(); closeSettings(); fn(); }
+
   body.appendChild(makeSettingDivider('Shop','#5A8DB8'));
-  body.appendChild(makeSimpleCard('Comp Shop',   hexWithOpacity('#5A8DB8',1.0), '#fff', ()=>{ closeSettings(); csInvalidateSortCache(); document.getElementById('pageShop').style.display='flex'; csRender(); }));
-  body.appendChild(makeSimpleCard('My Store',    hexWithOpacity('#5A8DB8',0.6), '#fff', ()=>{ closeSettings(); msInvalidateSortCache(); document.getElementById('pageMyShop').style.display='flex'; msRender(); }));
+  body.appendChild(makeSimpleCard('Comp Shop',   hexWithOpacity('#5A8DB8',1.0), '#fff', ()=>{ openFromSidebar(()=>{ csInvalidateSortCache(); document.getElementById('pageShop').style.display='flex'; csRender(); }); }));
+  body.appendChild(makeSimpleCard('My Store',    hexWithOpacity('#5A8DB8',0.6), '#fff', ()=>{ openFromSidebar(()=>{ msInvalidateSortCache(); document.getElementById('pageMyShop').style.display='flex'; msRender(); }); }));
 
   // Cook — Green
   body.appendChild(makeSettingDivider('Cook','#48a971'));
-  body.appendChild(makeSimpleCard('Recipes',     hexWithOpacity('#48a971',1.0), '#fff', openRecipesWindow));
-  body.appendChild(makeSimpleCard('Meals',       hexWithOpacity('#48a971',0.6), '#fff', openMealsWindow));
+  body.appendChild(makeSimpleCard('Recipes',     hexWithOpacity('#48a971',1.0), '#fff', ()=>{ openFromSidebar(openRecipesWindow); }));
+  body.appendChild(makeSimpleCard('Meals',       hexWithOpacity('#48a971',0.6), '#fff', ()=>{ openFromSidebar(openMealsWindow); }));
 
   // Manage — Orange
   body.appendChild(makeSettingDivider('Manage','#C7824A'));
-  body.appendChild(makeSimpleCard('My List of Sales',       hexWithOpacity('#C7824A',1.0), '#fff', openSalesWindow));
-  body.appendChild(makeSimpleCard('Categories',             hexWithOpacity('#C7824A',0.65),'#fff', ()=>{ closeSettings(); openModal('ms'); }));
-  body.appendChild(makeSimpleCard('Units of Measurement',   hexWithOpacity('#C7824A',0.35),'#fff', ()=>{ closeSettings(); openModal('unit'); }));
+  body.appendChild(makeSimpleCard('My List of Sales',       hexWithOpacity('#C7824A',1.0), '#fff', ()=>{ openFromSidebar(openSalesWindow); }));
+  body.appendChild(makeSimpleCard('Categories',             hexWithOpacity('#C7824A',0.65),'#fff', ()=>{ openFromSidebar(()=>openModal('ms')); }));
+  body.appendChild(makeSimpleCard('Units of Measurement',   hexWithOpacity('#C7824A',0.35),'#fff', ()=>{ openFromSidebar(()=>openModal('unit')); }));
 
   // App — Purple
   body.appendChild(makeSettingDivider('App','#8a7ca8'));
-  body.appendChild(makeSimpleCard('Settings',      hexWithOpacity('#8a7ca8',1.0), '#fff', ()=>{ closeSettings(); openSettingsWindow(); }));
-  body.appendChild(makeSimpleCard('Export / Import',hexWithOpacity('#8a7ca8',0.6),'#fff', ()=>{ closeSettings(); openDataWindow(); }));
+  body.appendChild(makeSimpleCard('Settings',      hexWithOpacity('#8a7ca8',1.0), '#fff', ()=>{ openFromSidebar(openSettingsWindow); }));
+  body.appendChild(makeSimpleCard('Export / Import',hexWithOpacity('#8a7ca8',0.6),'#fff', ()=>{ openFromSidebar(openDataWindow); }));
 }
 
 /* ── DATA WINDOW ── */
