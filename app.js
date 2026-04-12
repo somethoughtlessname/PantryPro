@@ -125,6 +125,15 @@ function setPage(p){
   document.querySelectorAll('.header-tab-btn').forEach(el=>el.classList.remove('active'));
   document.getElementById('page'+p).classList.add('active');
   document.getElementById('h'+p).classList.add('active');
+  // show/hide stats sub-row and adjust body padding
+  const statsTabRow=document.getElementById('statsTabRow');
+  if(p==='Stats'){
+    statsTabRow.classList.add('visible');
+    document.body.style.paddingTop=''; // reset first
+  } else {
+    statsTabRow.classList.remove('visible');
+    document.body.style.paddingTop='';
+  }
   // clear search bars and quick-add state
   const gl=document.getElementById('glSearch'); if(gl) gl.value='';
   glQuickAddState=null; glQuickAddName=''; glThinkPhraseSet=false; glThinkCardEl=null;
@@ -1099,13 +1108,21 @@ function renderStatsWindow(){
     return idx!==null?v[idx]||0:v.reduce((s,x)=>s+x,0);
   }
 
-  // Used | Added toggle
-  const svRow=document.createElement('div'); svRow.style.cssText='height:var(--card-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;flex-shrink:0;';
-  [['used','Used (Cost)'],['added','Purchased']].forEach(([v,lbl],i,arr)=>{
+  // Used | Purchased toggle + graph — frozen in header for page stats, in body for window
+  const isPageStats=_statsBodyId==='statsPageBody';
+  const statsTabRowEl=document.getElementById('statsTabRow');
+  if(isPageStats && statsTabRowEl) statsTabRowEl.innerHTML='';
+  const svRow=document.createElement('div');
+  svRow.style.cssText=isPageStats
+    ?`height:var(--drop-height);display:flex;border-bottom:var(--border-width) solid var(--border-color);`
+    :`height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;flex-shrink:0;`;
+  [['used','Used (Cost)'],['added','Purchased']].forEach(([v,lbl],i)=>{
     const isAct=sv===v; const btn=document.createElement('div');
-    btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-3)'};color:${isAct?'var(--color-10)':'var(--muted)'};${i<arr.length-1?'border-right:var(--border-width) solid var(--border-color);':''}`;
+    btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-3)'};color:${isAct?'var(--color-10)':'var(--muted)'};${i===0?'border-right:var(--border-width) solid var(--border-color);':''}`;
     btn.textContent=lbl; btn.onclick=()=>{ body._sv=v; body._selBar=null; body._focusItemId=null; renderStatsWindow(); }; svRow.appendChild(btn);
-  }); body.appendChild(svRow);
+  });
+  if(isPageStats && statsTabRowEl) statsTabRowEl.appendChild(svRow);
+  else body.appendChild(svRow);
 
   const isUsed=sv==='used';
   const vals=getAllTotals(sw,sv);
@@ -1113,9 +1130,10 @@ function renderStatsWindow(){
 
   const labels=sw==='daily'?WEEK_LETTERS_SW:sw==='weekly'?activeWeeks.map(w=>w.label):Array.from({length:N},(_,i)=>{ const d=new Date(now.getFullYear(),now.getMonth()-(N-1-i),1); return MONTH_LETTERS[d.getMonth()]; });
 
-  // Graph card
-  const gCard=document.createElement('div'); gCard.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;background:var(--bg-2);flex-shrink:0;';
-  const gHdrRow=document.createElement('div'); gHdrRow.style.cssText='height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);';
+  // Graph card — frozen in header for page stats, scrollable for window
+  const gCardBorderStyle=isPageStats?'background:var(--bg-2);overflow:hidden;':'border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;background:var(--bg-2);flex-shrink:0;';
+  const gCard=document.createElement('div'); gCard.style.cssText=gCardBorderStyle;
+  const gHdrRow=document.createElement('div'); gHdrRow.style.cssText='height:var(--drop-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);';
   const gHdrLbl=document.createElement('div'); gHdrLbl.style.cssText='flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#48a971;background:var(--bg-3);';
   gHdrLbl.textContent=focusIds.size===1?(ls('ms_items',[]).find(m=>m.id===[...focusIds][0])?.name||'Item'):focusIds.size>1?`${focusIds.size} items`:(isUsed?'Total Spend':'Total Added');
   gHdrLbl.style.color=focusIds.size>0?multiColor:'#48a971';
@@ -1152,14 +1170,23 @@ function renderStatsWindow(){
   foot.append(leftEl,rightEl); gCard.appendChild(foot);
 
   // Daily/Weekly/Monthly attached to bottom of graph card
-  const modeRow=document.createElement('div'); modeRow.style.cssText='height:var(--card-height);display:flex;align-items:stretch;border-top:var(--border-width) solid var(--border-color);';
+  const modeRow=document.createElement('div'); modeRow.style.cssText='height:var(--drop-height);display:flex;align-items:stretch;border-top:var(--border-width) solid var(--border-color);';
   [['daily','Daily'],['weekly','Weekly'],['monthly','Monthly']].forEach(([v,lbl],i,arr)=>{
     const isAct=sw===v; const btn=document.createElement('div');
     btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-3)'};color:${isAct?'var(--color-10)':'var(--muted)'};${i<arr.length-1?'border-right:var(--border-width) solid var(--border-color);':''}`;
     btn.textContent=lbl; btn.onclick=()=>{ body._sw=v; body._selBar=null; renderStatsWindow(); }; modeRow.appendChild(btn);
   });
   gCard.appendChild(modeRow);
-  body.appendChild(gCard);
+  if(isPageStats && statsTabRowEl){ statsTabRowEl.appendChild(gCard); }
+  else body.appendChild(gCard);
+
+  // After rendering into frozen header, measure actual height and set body padding
+  if(isPageStats){
+    requestAnimationFrame(()=>{
+      const hdr=document.querySelector('.header-tab');
+      if(hdr) document.body.style.paddingTop=(hdr.offsetHeight+parseInt(getComputedStyle(document.documentElement).getPropertyValue('--margin')||4))+'px';
+    });
+  }
 
   const msItems=ls('ms_items',[]);
   const periodLabel=selBar!==null?'This Period':'Period Total';
@@ -1185,11 +1212,6 @@ function renderStatsWindow(){
   }).filter(x=>x.costTotal>0||x.amtTotal>0).sort((a,b)=>b.costTotal-a.costTotal);
 
   if(itemTotals.length>0){
-    const divLbl=document.createElement('div'); divLbl.style.cssText='display:flex;align-items:center;gap:8px;padding:4px 2px 2px;flex-shrink:0;';
-    const la=document.createElement('div'); la.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);';
-    const sp=document.createElement('span'); sp.style.cssText='font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);flex-shrink:0;'; sp.textContent='By Item · '+periodLabel;
-    const lb=document.createElement('div'); lb.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);';
-    divLbl.append(la,sp,lb); body.appendChild(divLbl);
     itemTotals.forEach(({item,costTotal,amtTotal})=>{
       const isFocused=focusIds.has(item.id);
       const itemColor=focusIds.size>1?'#5A8DB8':'#48a971';
@@ -1215,32 +1237,6 @@ function renderStatsWindow(){
       row.append(spark,nm,costEl,amtEl); body.appendChild(row);
     });
   }
-  // Reset Stats Data — double-tap
-  const rstDiv=document.createElement('div'); rstDiv.style.cssText='display:flex;align-items:center;gap:8px;padding:4px 2px 2px;flex-shrink:0;';
-  const rstLa=document.createElement('div'); rstLa.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);';
-  const rstSp=document.createElement('span'); rstSp.style.cssText='font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);flex-shrink:0;'; rstSp.textContent='Data';
-  const rstLb=document.createElement('div'); rstLb.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);';
-  rstDiv.append(rstLa,rstSp,rstLb); body.appendChild(rstDiv);
-
-  const rstCard=document.createElement('div'); rstCard._t=0; rstCard._timer=null;
-  rstCard.style.cssText='height:var(--card-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#2a1010;font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#C85A5A;flex-shrink:0;';
-  rstCard.textContent='Reset Stats Data';
-  rstCard.onclick=()=>{
-    rstCard._t++;
-    clearTimeout(rstCard._timer);
-    if(rstCard._t>=2){
-      rstCard._t=0;
-      lsSet('pantry_delta_log',[]);
-      lsSet('pantry_snapshots',{});
-      ptBackfillSnapshots(); // re-seed today's snapshot with current live stock
-      rstCard.style.background='#502424'; rstCard.textContent='Stats Cleared';
-      setTimeout(()=>{ renderStatsWindow(); },800);
-    } else {
-      rstCard.style.background='#fff'; rstCard.style.color='#C85A5A'; rstCard.textContent='Tap again to confirm';
-      rstCard._timer=setTimeout(()=>{ rstCard._t=0; rstCard.style.background='#2a1010'; rstCard.style.color='#C85A5A'; rstCard.textContent='Reset Stats Data'; },3000);
-    }
-  };
-  body.appendChild(rstCard);
 }
 
 function openPantryHistoryWindow(msItem,pd,wrap,selectedCon,expandView){
@@ -1467,6 +1463,25 @@ function renderSettingsWindowBody(){
     const clearNm=document.createElement('div'); clearNm.className='item-name'; clearNm.style.cssText='background:#502424;color:#fff;font-weight:800;justify-content:center;letter-spacing:0.06em;'; clearNm.textContent='Clear All Data';
     clearCard.appendChild(clearNm); clearCard.onclick=()=>{ document.getElementById('clearConfirmOverlay').classList.add('open'); };
     body.appendChild(clearCard);
+
+    // Reset Stats Data
+    let rstPending=false, rstTimer=null;
+    const rstCard=document.createElement('div'); rstCard.className='item-row'; rstCard.style.cssText='cursor:pointer;border-radius:var(--radius);';
+    const rstNm=document.createElement('div'); rstNm.className='item-name'; rstNm.style.cssText='background:#2a1010;color:#C85A5A;font-weight:800;justify-content:center;letter-spacing:0.06em;'; rstNm.textContent='Reset Stats Data';
+    rstCard.appendChild(rstNm);
+    rstCard.onclick=()=>{
+      if(rstPending){
+        clearTimeout(rstTimer); rstPending=false;
+        lsSet('pantry_delta_log',[]); lsSet('pantry_snapshots',{});
+        ptBackfillSnapshots();
+        rstNm.style.background='#502424'; rstNm.textContent='Stats Cleared';
+        setTimeout(()=>{ rstNm.style.background='#2a1010'; rstNm.textContent='Reset Stats Data'; },1500);
+      } else {
+        rstPending=true; rstNm.style.background='#fff'; rstNm.style.color='#C85A5A'; rstNm.textContent='Confirm? Tap again to reset';
+        rstTimer=setTimeout(()=>{ rstPending=false; rstNm.style.background='#2a1010'; rstNm.style.color='#C85A5A'; rstNm.textContent='Reset Stats Data'; },3000);
+      }
+    };
+    body.appendChild(rstCard);
   }
 }
 

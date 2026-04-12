@@ -176,11 +176,19 @@ body {
 
 .header-tab {
   position: fixed; top:0; left:0; right:0;
+  display: flex; flex-direction: column;
+  z-index: 100;
+}
+.header-tab-row {
   height: var(--card-height);
   display: flex;
   border-bottom: var(--border-width) solid var(--border-color);
-  z-index: 100;
 }
+#statsTabRow {
+  display: none;
+  border-bottom: var(--border-width) solid var(--border-color);
+}
+#statsTabRow.visible { display: block; }
 .header-tab-btn {
   flex: 1; background: var(--bg-3); border: none;
   border-right: var(--border-width) solid var(--border-color);
