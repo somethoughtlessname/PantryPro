@@ -232,6 +232,12 @@ if('serviceWorker' in navigator){
       .catch(e=>console.log('[PantryPro] SW failed', e));
   });
 }
+
+/* ── CROSS-SCRIPT INIT (runs after all scripts loaded) ── */
+setGlFilter('all');
+const _csVS=document.getElementById('csVSimple'); if(_csVS) _csVS.classList.toggle('active',csViewMode==='simple');
+const _csVC=document.getElementById('csVCat'); if(_csVC) _csVC.classList.toggle('active',csViewMode==='cat');
+ptRender();
 </script>
 </body>
 </html>

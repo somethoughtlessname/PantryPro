@@ -1525,12 +1525,9 @@ function closeSettings(){
   },{passive:true});
 })();
 
-/* ── INIT ── */
+/* ── INIT (app.js-only) ── */
 ls('gl_items',[]).forEach(i=>msPopulate(i.name,i.category));
 updateGlBtn(); updateUnitBtn(); updateMsBtn();
-setGlFilter('all');
-document.getElementById('csVSimple').classList.toggle('active',csViewMode==='simple');
-document.getElementById('csVCat').classList.toggle('active',csViewMode==='cat');
 /* ══════════════════════════════════════
    MY PANTRY TAB
 ══════════════════════════════════════ */
