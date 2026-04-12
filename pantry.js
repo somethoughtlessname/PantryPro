@@ -676,7 +676,7 @@ function ptGetStatus(pd){
   return 'ok';
 }
 
-function ptFillColor(pd){ const st=ptGetStatus(pd); if(st==='ok') return '#48a971'; if(st==='partial') return '#C7824A'; if(st==='soon') return '#5A8DB8'; return '#C85A5A'; }
+function ptFillColor(pd){ const st=ptGetStatus(pd); if(st==='ok') return '#48a971'; if(st==='partial') return '#5A8DB8'; if(st==='soon') return '#C7824A'; return '#C85A5A'; }
 function ptConFillColor(con){ const ratio=con.cap>0?con.amount/con.cap:0; if(ratio<=1/6) return '#C85A5A'; if(ratio<=1/3) return '#5A8DB8'; return '#48a971'; }
 function ptDarken(hex,pct){ let c=hex.replace('#',''); if(c.length===3) c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2]; const r=Math.max(0,Math.round(parseInt(c.slice(0,2),16)*(1-pct))); const g=Math.max(0,Math.round(parseInt(c.slice(2,4),16)*(1-pct))); const b=Math.max(0,Math.round(parseInt(c.slice(4,6),16)*(1-pct))); return `rgb(${r},${g},${b})`; }
 
@@ -727,8 +727,8 @@ function ptBuildFilterBar(){
     {key:'all',     label:'All',     count:total,   color:null,       show:true},
     {key:'onhand',  label:'On-Hand', count:onhand,  color:'#C7824A',  show:true},
     {key:'ok',      label:'OK',      count:ok,      color:'#48a971',  show:ptViewMode==='pantry'},
-    {key:'partial', label:'Partial', count:partial, color:'#C7824A',  show:ptViewMode==='pantry'&&en.partial},
-    {key:'soon',    label:'Low',     count:soon,    color:'#5A8DB8',  show:ptViewMode==='pantry'&&en.low},
+    {key:'partial', label:'Partial', count:partial, color:'#5A8DB8',  show:ptViewMode==='pantry'&&en.partial},
+    {key:'soon',    label:'Low',     count:soon,    color:'#C7824A',  show:ptViewMode==='pantry'&&en.low},
     {key:'low',     label:'Critical',count:low,     color:'#C85A5A',  show:ptViewMode==='pantry'&&en.critical},
   ].filter(t=>t.show);
   tabs.forEach(({key,label,count,color},i,arr)=>{
