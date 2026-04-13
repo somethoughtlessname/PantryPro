@@ -1152,7 +1152,7 @@ function renderStatsWindow(){
     gHdrRow.append(gHdrLbl,spacer);
   }
   const singleItem=focusIds.size===1?[...focusIds][0]:null;
-  const aboveBarQtyVals=singleItem&&sw==='daily'?getItemUnitVals(singleItem,sw,sv==='used'?'used':'added'):null;
+  const aboveBarQtyVals=singleItem?getItemUnitVals(singleItem,sw,sv==='used'?'used':'added'):null;
 
   const graph=document.createElement('div'); graph.className='pt-graph';
   vals.forEach((v,i)=>{
@@ -1166,19 +1166,31 @@ function renderStatsWindow(){
 
     let numEl;
     if(singleItem && sw==='daily'){
-      // Only show for today and past days
       const isFutureDay = i > todayWiSW;
       const qv=aboveBarQtyVals?aboveBarQtyVals[i]:0;
       numEl=document.createElement('div'); numEl.style.cssText=`height:28px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;margin-bottom:1px;overflow:hidden;`;
       if(!isFutureDay){
         const dSpan=document.createElement('div'); dSpan.style.cssText=`font-size:${numSize};font-weight:900;color:${isSel?'#fff':'rgba(255,255,255,0.5)'};line-height:1;`; dSpan.textContent='$'+v.toFixed(2);
-        const div3=document.createElement('div'); div3.style.cssText=`width:50%;height:3px;background:${isSel?'#fff':'rgba(255,255,255,0.5)'};margin:1px 0;flex-shrink:0;`;
+        const div3=document.createElement('div'); div3.style.cssText=`width:50%;height:2px;background:${isSel?'#fff':'rgba(255,255,255,0.5)'};margin:1px 0;flex-shrink:0;`;
+        const qSpan=document.createElement('div'); qSpan.style.cssText=`font-size:${numSize};font-weight:900;color:${isSel?'#fff':'rgba(255,255,255,0.4)'};line-height:1;`; qSpan.textContent=qv.toFixed(1);
+        numEl.append(dSpan,div3,qSpan);
+      }
+    } else if(singleItem && (sw==='weekly'||sw==='monthly')){
+      // Show cost + unit for single item on weekly/monthly
+      const qv=aboveBarQtyVals?aboveBarQtyVals[i]:0;
+      numEl=document.createElement('div'); numEl.style.cssText=`height:28px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;margin-bottom:1px;overflow:hidden;`;
+      if(v>0||qv>0){
+        const dSpan=document.createElement('div'); dSpan.style.cssText=`font-size:${numSize};font-weight:900;color:${isSel?'#fff':'rgba(255,255,255,0.5)'};line-height:1;`; dSpan.textContent=v.toFixed(2);
+        const div3=document.createElement('div'); div3.style.cssText=`width:50%;height:2px;background:${isSel?'#fff':'rgba(255,255,255,0.5)'};margin:1px 0;flex-shrink:0;`;
         const qSpan=document.createElement('div'); qSpan.style.cssText=`font-size:${numSize};font-weight:900;color:${isSel?'#fff':'rgba(255,255,255,0.4)'};line-height:1;`; qSpan.textContent=qv.toFixed(1);
         numEl.append(dSpan,div3,qSpan);
       }
     } else {
       const isFutureDay=sw==='daily'&&i>todayWiSW;
-      numEl=document.createElement('div'); numEl.style.cssText=`font-size:${numSize};font-weight:900;height:14px;width:100%;display:flex;align-items:flex-end;justify-content:center;color:${isSel?'#fff':'rgba(255,255,255,0.5)'};margin-bottom:1px;overflow:hidden;white-space:nowrap;`; numEl.textContent=(showNum&&!isFutureDay)?'$'+v.toFixed(2):'';
+      // Weekly/monthly: show for bars with data (no $ symbol)
+      const showForBar=(sw==='daily')?(showNum&&!isFutureDay):(v>0&&(selBar!==null?isSel:true));
+      numEl=document.createElement('div'); numEl.style.cssText=`font-size:${numSize};font-weight:900;height:14px;width:100%;display:flex;align-items:flex-end;justify-content:center;color:${isSel?'#fff':'rgba(255,255,255,0.5)'};margin-bottom:1px;overflow:hidden;white-space:nowrap;`;
+      numEl.textContent=showForBar?(sw==='daily'?'$'+v.toFixed(2):v.toFixed(2)):'';
     }
 
     const bar=document.createElement('div'); bar.className='pt-bar'; bar.style.cssText=`height:${Math.max(2,Math.round((v/maxV)*36))}px;background:${v>0?multiColor:'rgba(255,255,255,0.08)'};opacity:${isSel?1:0.6};${isSel?'box-shadow:inset 2px 0 0 #fff,inset -2px 0 0 #fff,inset 0 -2px 0 #fff,0 -2px 0 #fff;':''}`;
