@@ -675,11 +675,11 @@ body {
 .pt-expand-animated { overflow:hidden; }
 
 .pt-graph {
-  height: 80px; display: flex; align-items: flex-end;
+  height: 96px; display: flex; align-items: flex-end;
   padding: 8px 10px 6px; gap: 4px;
 }
 .pt-bar-wrap {
-  flex: 1; display: flex; flex-direction: column;
+  flex: 1; min-width: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: flex-end; gap: 3px; cursor: pointer;
 }
 .pt-bar { width: 100%; border-radius: 2px 2px 0 0; min-height: 2px; }
