@@ -1,4 +1,4 @@
-# Pantry Pro
+Pantry Pro
 A mobile-first progressive web app for managing household food inventory, grocery shopping, price comparison, and spend tracking. Runs entirely in the browser with no backend — all data is stored locally on the device.
 Installation
 Pantry Pro is a PWA and can be installed directly from the browser.
