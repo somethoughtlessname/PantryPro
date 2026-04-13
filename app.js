@@ -1171,7 +1171,7 @@ function renderStatsWindow(){
       numEl=document.createElement('div'); numEl.style.cssText=`height:28px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;margin-bottom:1px;overflow:hidden;`;
       if(!isFutureDay){
         const dSpan=document.createElement('div'); dSpan.style.cssText=`font-size:${numSize};font-weight:900;color:${isSel?'#fff':'rgba(255,255,255,0.5)'};line-height:1;`; dSpan.textContent='$'+v.toFixed(2);
-        const div3=document.createElement('div'); div3.style.cssText=`width:50%;height:2px;background:${isSel?'#fff':'rgba(255,255,255,0.5)'};margin:1px 0;flex-shrink:0;`;
+        const div3=document.createElement('div'); div3.style.cssText=`width:50%;height:2px;background:${isSel?'#fff':'rgba(255,255,255,0.5)'};margin:1px 0;flex-shrink:0;border-radius:999px;`;
         const qSpan=document.createElement('div'); qSpan.style.cssText=`font-size:${numSize};font-weight:900;color:${isSel?'#fff':'rgba(255,255,255,0.4)'};line-height:1;`; qSpan.textContent=qv.toFixed(1);
         numEl.append(dSpan,div3,qSpan);
       }
@@ -1181,7 +1181,7 @@ function renderStatsWindow(){
       numEl=document.createElement('div'); numEl.style.cssText=`height:28px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;margin-bottom:1px;overflow:hidden;`;
       if(v>0||qv>0){
         const dSpan=document.createElement('div'); dSpan.style.cssText=`font-size:${numSize};font-weight:900;color:${isSel?'#fff':'rgba(255,255,255,0.5)'};line-height:1;`; dSpan.textContent=v.toFixed(2);
-        const div3=document.createElement('div'); div3.style.cssText=`width:50%;height:2px;background:${isSel?'#fff':'rgba(255,255,255,0.5)'};margin:1px 0;flex-shrink:0;`;
+        const div3=document.createElement('div'); div3.style.cssText=`width:50%;height:2px;background:${isSel?'#fff':'rgba(255,255,255,0.5)'};margin:1px 0;flex-shrink:0;border-radius:999px;`;
         const qSpan=document.createElement('div'); qSpan.style.cssText=`font-size:${numSize};font-weight:900;color:${isSel?'#fff':'rgba(255,255,255,0.4)'};line-height:1;`; qSpan.textContent=qv.toFixed(1);
         numEl.append(dSpan,div3,qSpan);
       }
