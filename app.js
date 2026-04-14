@@ -1542,6 +1542,7 @@ function renderSettingsWindowBody(){
     [1,2,3].forEach(n=>{ const btn=document.createElement('button'); btn.style.cssText=`flex:1;border:none;border-right:${n<3?'var(--border-width) solid var(--border-color)':'none'};font-size:11px;font-weight:800;cursor:pointer;background:${csPreviewCount===n?'var(--bg-4)':'var(--bg-3)'};color:${csPreviewCount===n?'var(--color-10)':'var(--muted)'};`; btn.textContent=String(n); btn.onclick=()=>{ csPreviewCount=n; lsSet('setting_cs_preview',n); csRender(); renderSettingsWindowBody(); }; tr.appendChild(btn); });
     pw.appendChild(tr); body.appendChild(pw);
     body.appendChild(makeSettingDivider('Display'));
+    body.appendChild(makeOnOffCard('Splash Screen on Launch',ls('setting_splash',true),v=>{ lsSet('setting_splash',v); renderSettingsWindowBody(); },'#48a971'));
     body.appendChild(makeOnOffCard('Auto-Scroll on Open',autoScrollOpen,v=>{ autoScrollOpen=v; lsSet('setting_auto_scroll',v); renderSettingsWindowBody(); },'#5A8DB8'));
     const fdCard=document.createElement('div'); fdCard.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;';
     const fdHdr=document.createElement('div'); fdHdr.style.cssText='height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);'; const fdLbl=document.createElement('div'); fdLbl.style.cssText='flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#fff;background:var(--bg-3);'; fdLbl.textContent='Focus Dim on Open'; fdHdr.appendChild(fdLbl); fdCard.appendChild(fdHdr);
@@ -1574,6 +1575,13 @@ function renderSettingsWindowBody(){
       }
     };
     body.appendChild(rstCard);
+
+    // Onboarding mode
+    const obCard=document.createElement('div'); obCard.className='item-row'; obCard.style.cssText='cursor:pointer;border-radius:var(--radius);';
+    const obNm=document.createElement('div'); obNm.className='item-name'; obNm.style.cssText='background:#1d2d3f;color:#5A8DB8;font-weight:800;justify-content:center;letter-spacing:0.06em;'; obNm.textContent='Run Setup Guide';
+    obCard.appendChild(obNm);
+    obCard.onclick=()=>{ lsSet('onboarding_mode',true); closeSettingsWindow(); setTimeout(()=>{ obInit&&obInit(); },100); };
+    body.appendChild(obCard);
   }
 }
 
