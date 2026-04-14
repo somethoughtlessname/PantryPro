@@ -5,6 +5,166 @@
    Depends on: app.js, tabs.js
 ── */
 
+// ── Delta log v2 format: { itemId: { "YYYY-MM-DD": [[delta, cost?], ...] } }
+// ── Usage log v2 format: { itemId: { "YYYY-MM-DD": totalAmount } }
+// One-time migration runs on first load if old flat-array format detected.
+(function migrateLogs(){
+  if(ls('_log_v2', false)) return; // already migrated
+
+  // Migrate pantry_delta_log
+  const oldDL = ls('pantry_delta_log', null);
+  if(Array.isArray(oldDL)){
+    const newDL = {};
+    oldDL.forEach(e=>{
+      if(!e.id) return;
+      const dateKey = ptDateKey(e.ts);
+      if(!newDL[e.id]) newDL[e.id] = {};
+      if(!newDL[e.id][dateKey]) newDL[e.id][dateKey] = [];
+      const entry = e._placeholder ? [0] : (e.cost!=null ? [e.delta, e.cost] : [e.delta]);
+      newDL[e.id][dateKey].push(entry);
+    });
+    lsSet('pantry_delta_log', newDL);
+  } else if(!oldDL){
+    lsSet('pantry_delta_log', {});
+  }
+
+  // Migrate pantry_usage_log
+  const oldUL = ls('pantry_usage_log', null);
+  if(Array.isArray(oldUL)){
+    const newUL = {};
+    oldUL.forEach(e=>{
+      if(!e.id) return;
+      const dateKey = ptDateKey(e.ts);
+      if(!newUL[e.id]) newUL[e.id] = {};
+      newUL[e.id][dateKey] = parseFloat(((newUL[e.id][dateKey]||0) + (e.amount||0)).toFixed(2));
+    });
+    lsSet('pantry_usage_log', newUL);
+  } else if(!oldUL){
+    lsSet('pantry_usage_log', {});
+  }
+
+  lsSet('_log_v2', true);
+})();
+
+// ── Delta log accessors ──
+// Returns all entries for an item as flat [{delta, cost?, ts, dateKey}] for easy iteration
+function dlGetEntries(itemId){
+  const log = ls('pantry_delta_log', {});
+  const itemLog = log[itemId] || {};
+  const out = [];
+  Object.keys(itemLog).forEach(dateKey=>{
+    itemLog[dateKey].forEach(e=>{
+      if(e[0]===0) return; // placeholder
+      const entry = {delta: e[0], dateKey};
+      if(e[1]!=null) entry.cost = e[1];
+      // reconstruct a ts from the dateKey (midnight) for backward compat
+      entry.ts = new Date(dateKey+'T00:00:00').getTime();
+      out.push(entry);
+    });
+  });
+  return out;
+}
+
+// Push a single delta entry
+function dlPush(itemId, delta, cost){
+  const log = ls('pantry_delta_log', {});
+  if(!log[itemId]) log[itemId] = {};
+  const dateKey = ptDateKey();
+  if(!log[itemId][dateKey]) log[itemId][dateKey] = [];
+  const entry = cost!=null ? [parseFloat(delta.toFixed(3)), parseFloat(cost.toFixed(4))] : [parseFloat(delta.toFixed(3))];
+  log[itemId][dateKey].push(entry);
+  lsSet('pantry_delta_log', log);
+}
+
+// Get all entries for a specific date range (ts-based)
+function dlGetEntriesInRange(itemId, fromTs, toTs){
+  return dlGetEntries(itemId).filter(e=>e.ts>=fromTs&&e.ts<=toTs);
+}
+
+// Remove all entries for an item on a specific day (today unless dateKey given)
+function dlClearDay(itemId, dir, dateKey){
+  const key = dateKey || ptDateKey();
+  const log = ls('pantry_delta_log', {});
+  if(!log[itemId]||!log[itemId][key]) return;
+  log[itemId][key] = log[itemId][key].filter(e=>{
+    if(e[0]===0) return true; // keep placeholders
+    if(dir==='used') return e[0]>=0;
+    if(dir==='added') return e[0]<=0;
+    return false;
+  });
+  if(!log[itemId][key].length) delete log[itemId][key];
+  lsSet('pantry_delta_log', log);
+}
+
+// Replace a full day's used or added entry (used by history editor)
+function dlSetDay(itemId, dateKey, dir, amount, cost){
+  const log = ls('pantry_delta_log', {});
+  if(!log[itemId]) log[itemId] = {};
+  // Remove existing entries for this day + direction
+  log[itemId][dateKey] = (log[itemId][dateKey]||[]).filter(e=>{
+    if(e[0]===0) return true;
+    if(dir==='used') return e[0]>=0;
+    return e[0]<=0;
+  });
+  if(amount>0){
+    const delta = dir==='used' ? -amount : amount;
+    const entry = cost>0 ? [parseFloat(delta.toFixed(3)), parseFloat(cost.toFixed(4))] : [parseFloat(delta.toFixed(3))];
+    log[itemId][dateKey].push(entry);
+  }
+  if(!log[itemId][dateKey].length) delete log[itemId][dateKey];
+  lsSet('pantry_delta_log', log);
+}
+
+// Add a placeholder date row (used by history "Add Date" button)
+function dlAddPlaceholder(itemId, dateKey){
+  const log = ls('pantry_delta_log', {});
+  if(!log[itemId]) log[itemId] = {};
+  if(!log[itemId][dateKey]) log[itemId][dateKey] = [[0]];
+  lsSet('pantry_delta_log', log);
+}
+
+// Get all date keys for an item (sorted newest first)
+function dlGetDays(itemId){
+  const log = ls('pantry_delta_log', {});
+  return Object.keys(log[itemId]||{}).sort((a,b)=>b.localeCompare(a));
+}
+
+// Check if item has any entry on a given date
+function dlHasDay(itemId, dateKey){
+  const log = ls('pantry_delta_log', {});
+  return !!(log[itemId]&&log[itemId][dateKey]);
+}
+
+// ── Usage log accessors ──
+function ulGet(itemId){
+  const log = ls('pantry_usage_log', {});
+  return log[itemId] || {};
+}
+
+function ulGetRecent(itemId, sinceTs){
+  const dayLog = ulGet(itemId);
+  return Object.keys(dayLog).some(dateKey=>{
+    return new Date(dateKey+'T00:00:00').getTime() >= sinceTs;
+  });
+}
+
+function ulGetTodayTotal(itemId){
+  const key = ptDateKey();
+  return ulGet(itemId)[key] || 0;
+}
+
+function ulSetToday(itemId, amount){
+  const log = ls('pantry_usage_log', {});
+  if(!log[itemId]) log[itemId] = {};
+  if(amount>0) log[itemId][ptDateKey()] = parseFloat(amount.toFixed(2));
+  else delete log[itemId][ptDateKey()];
+  lsSet('pantry_usage_log', log);
+}
+
+function ulGetTotal(itemId){
+  return Object.values(ulGet(itemId)).reduce((s,v)=>s+v,0);
+}
+
 let ptActiveFilter='all';
 let ptViewMode='pantry';
 let ptFilterSnapshot=[];
@@ -15,7 +175,7 @@ function ptIsInPantry(item){
   const pd=getItemPantry(item.id);
   if(pd.containers.length>0) return true;
   const thirtyDaysAgo=Date.now()-(30*24*60*60*1000);
-  return ls('pantry_usage_log',[]).some(e=>e.id===item.id&&e.ts>=thirtyDaysAgo);
+  return ulGetRecent(item.id, thirtyDaysAgo);
 }
 
 function ptBuildViewToggle(){
@@ -511,9 +671,7 @@ function trackPtInteraction(id){
 function ptDateKey(ts){ const d=ts?new Date(ts):new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function ptLogDelta(id,delta,cost){
   if(delta===0) return;
-  const entry={id,delta:parseFloat(delta.toFixed(3)),ts:Date.now()};
-  if(cost!=null) entry.cost=cost;
-  const log=ls('pantry_delta_log',[]); log.push(entry); lsSet('pantry_delta_log',log);
+  dlPush(id, delta, cost!=null?cost:null);
 }
 function ptRecordCurrent(id,pd,prevStock){
   // Records start-of-day snapshot ONCE using prevStock (stock before today's first change)
@@ -575,16 +733,16 @@ function ptGet12Weeks(now){
 
 function ptGetStatsValues(id,mode,direction){
   const dir=direction||'used';
-  const log=ls('pantry_delta_log',[]).filter(e=>e.id===id&&(dir==='used'?e.delta<0:e.delta>0));
+  const entries=dlGetEntries(id).filter(e=>dir==='used'?e.delta<0:e.delta>0);
   const now=new Date(); const values=new Array(12).fill(0);
   if(mode==='weekly'){
     const weeks=ptGet12Weeks(now);
-    log.forEach(e=>{
+    entries.forEach(e=>{
       const d=new Date(e.ts);
       weeks.forEach((w,i)=>{ if(d>=w.start&&d<=w.end) values[i]+=Math.abs(e.delta); });
     });
   } else {
-    log.forEach(e=>{
+    entries.forEach(e=>{
       const d=new Date(e.ts);
       if(mode==='daily'){
         const diffDays=Math.round((new Date(now.getFullYear(),now.getMonth(),now.getDate())-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5);
@@ -636,16 +794,16 @@ function ptGetStockEndValues(id,mode){
 }
 
 function ptGetStatsCosts(id,mode){
-  const log=ls('pantry_delta_log',[]).filter(e=>e.id===id&&e.delta<0&&e.cost!=null);
+  const entries=dlGetEntries(id).filter(e=>e.delta<0&&e.cost!=null);
   const now=new Date(); const values=new Array(12).fill(0);
   if(mode==='weekly'){
     const weeks=ptGet12Weeks(now);
-    log.forEach(e=>{
+    entries.forEach(e=>{
       const d=new Date(e.ts);
       weeks.forEach((w,i)=>{ if(d>=w.start&&d<=w.end) values[i]+=e.cost; });
     });
   } else {
-    log.forEach(e=>{
+    entries.forEach(e=>{
       const d=new Date(e.ts);
       if(mode==='daily'){
         const diffDays=Math.round((new Date(now.getFullYear(),now.getMonth(),now.getDate())-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5);
@@ -677,7 +835,15 @@ function ptGetStatus(pd){
 }
 
 function ptFillColor(pd){ const st=ptGetStatus(pd); if(st==='ok') return '#48a971'; if(st==='partial') return '#5A8DB8'; if(st==='soon') return '#C7824A'; return '#C85A5A'; }
-function ptConFillColor(con){ const ratio=con.cap>0?con.amount/con.cap:0; if(ratio<=1/6) return '#C85A5A'; if(ratio<=1/3) return '#5A8DB8'; return '#48a971'; }
+function ptConFillColor(con){
+  if(!con.cap||con.cap<=0) return '#48a971';
+  const ratio=con.amount/con.cap*100;
+  const t=ptGetThresholds(); const en=ptGetThreshEnabled();
+  if(en.critical && ratio<=t.critical) return '#C85A5A';
+  if(en.low      && ratio<=t.low)      return '#C7824A';
+  if(en.partial  && ratio<=t.partial)  return '#5A8DB8';
+  return '#48a971';
+}
 function ptDarken(hex,pct){ let c=hex.replace('#',''); if(c.length===3) c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2]; const r=Math.max(0,Math.round(parseInt(c.slice(0,2),16)*(1-pct))); const g=Math.max(0,Math.round(parseInt(c.slice(2,4),16)*(1-pct))); const b=Math.max(0,Math.round(parseInt(c.slice(4,6),16)*(1-pct))); return `rgb(${r},${g},${b})`; }
 
 function ptSmartSortItems(items){
@@ -761,7 +927,7 @@ function ptRefreshCard(msItem,pd,wrap,selectedCon,expandView){
   // update red tint
   if(wrap._redTint){
     const thirtyDaysAgo=Date.now()-(30*24*60*60*1000);
-    const usedRecently=ls('pantry_usage_log',[]).some(e=>e.id===msItem.id&&e.ts>=thirtyDaysAgo);
+    const usedRecently=ulGetRecent(msItem.id, thirtyDaysAgo);
     wrap._redTint.style.display=(ptGetStock(pd)===0&&(usedRecently||pd.containers.length>0))?'':'none';
   }
   const fb=document.querySelector('.pt-filter-bar'); if(fb){ const nfb=ptBuildFilterBar(); nfb.className='pt-filter-bar'; fb.replaceWith(nfb); }
@@ -789,7 +955,7 @@ function ptBuildCard(msItem){
   center.style.cssText='flex:1;height:32px;min-height:32px;max-height:32px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;background:#374151;';
   const fc=ptFillColor(pd); const vMax=Math.max(ptGetMax(pd),ptGetStock(pd))||1;
   const thirtyDaysAgo=Date.now()-(30*24*60*60*1000);
-  const usedRecently=ls('pantry_usage_log',[]).some(e=>e.id===msItem.id&&e.ts>=thirtyDaysAgo);
+  const usedRecently=ulGetRecent(msItem.id, thirtyDaysAgo);
   const emptyAndUsed=ptGetStock(pd)===0&&(usedRecently||pd.containers.length>0);
   const fillBase=document.createElement('div'); fillBase.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${(ptGetStock(pd)/vMax*100).toFixed(1)}%;background:${fc};opacity:0.5;transition:width 0.35s cubic-bezier(0.4,0,0.2,1);z-index:0;pointer-events:none;`;
   const fillOver=document.createElement('div'); fillOver.style.cssText=`position:absolute;right:0;top:0;bottom:0;width:${(ptGetStock(pd)>ptGetMax(pd)?(ptGetStock(pd)-ptGetMax(pd))/vMax:0)*100}%;background:${ptDarken(fc,0.5)};opacity:0.7;transition:width 0.35s;z-index:1;pointer-events:none;`;
@@ -854,7 +1020,7 @@ function ptBuildCard(msItem){
       const _ptUnitId=(ls('pantry_data',{})[msItem.id]?.unit)||msItem.unit||'unit';
 
       function calcAddedCosts(id,mode){
-        const lg=ls('pantry_delta_log',[]).filter(e=>e.id===id&&e.delta>0&&e.cost!=null);
+        const lg=dlGetEntries(id).filter(e=>e.delta>0&&e.cost!=null);
         const v=new Array(12).fill(0);
         if(mode==='weekly'){ const wks=ptGet12Weeks(now2); lg.forEach(e=>{ const d=new Date(e.ts); wks.forEach((w,i)=>{ if(d>=w.start&&d<=w.end) v[i]+=e.cost; }); }); }
         else { lg.forEach(e=>{ const d=new Date(e.ts); const diff=(now2.getFullYear()-d.getFullYear())*12+(now2.getMonth()-d.getMonth()); const idx=11-diff; if(idx>=0&&idx<=11) v[idx]+=e.cost; }); }
@@ -1050,23 +1216,14 @@ function ptBuildCard(msItem){
 
       // today's usage adjuster — reads/writes pantry_usage_log for today only
       const todayMidnight=new Date(); todayMidnight.setHours(0,0,0,0);
-      function getTodayUsage(){
-        const log=ls('pantry_usage_log',[]);
-        return parseFloat(log.filter(e=>e.id===msItem.id&&new Date(e.ts)>=todayMidnight).reduce((s,e)=>s+e.amount,0).toFixed(2));
-      }
+      function getTodayUsage(){ return ulGetTodayTotal(msItem.id); }
       function setTodayUsage(newVal){
-        const log=ls('pantry_usage_log',[]);
-        // remove all today's entries for this item and replace with one entry
-        const filtered=log.filter(e=>!(e.id===msItem.id&&new Date(e.ts)>=todayMidnight));
-        if(newVal>0) filtered.push({id:msItem.id,amount:newVal,ts:Date.now()});
-        lsSet('pantry_usage_log',filtered);
-        // sync pantry_usage total
-        const u=getPtUsage();
-        u[msItem.id]=parseFloat(ls('pantry_usage_log',[]).filter(e=>e.id===msItem.id).reduce((s,e)=>s+e.amount,0).toFixed(2));
+        ulSetToday(msItem.id, newVal);
+        const u=getPtUsage(); u[msItem.id]=parseFloat(ulGetTotal(msItem.id).toFixed(2));
         lsSet('pantry_usage',u);
       }
 
-      function getTodayUsageSnap(){ const midnight=new Date(); midnight.setHours(0,0,0,0); return parseFloat(ls('pantry_delta_log',[]).filter(e=>e.id===msItem.id&&e.delta<0&&e.ts>=midnight.getTime()).reduce((s,e)=>s+Math.abs(e.delta),0).toFixed(2)); }
+      function getTodayUsageSnap(){ const midnight=new Date(); midnight.setHours(0,0,0,0); return parseFloat(dlGetEntriesInRange(msItem.id,midnight.getTime(),Date.now()).filter(e=>e.delta<0).reduce((s,e)=>s+Math.abs(e.delta),0).toFixed(2)); }
       // Used Today — 3-way even split: [USED TODAY] | [number field] | [TAP TO RESET]
       const adjUsageCard=document.createElement('div'); adjUsageCard.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
       const adjLeft=document.createElement('div'); adjLeft.style.cssText='width:33.33%;display:flex;align-items:center;justify-content:center;background:#1a2a3a;border-right:3px solid #000;font-size:7px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#5A8DB8;flex-shrink:0;text-align:center;'; adjLeft.textContent='Used Today';
@@ -1080,10 +1237,8 @@ function ptBuildCard(msItem){
           inp.onclick=e=>e.stopPropagation();
           inp.onblur=e=>{
             const target=parseFloat(inp.value)||0;
-            const midnight=new Date(); midnight.setHours(0,0,0,0);
-            const log=ls('pantry_delta_log',[]).filter(e=>!(e.id===msItem.id&&e.delta<0&&e.ts>=midnight.getTime()));
-            if(target>0){ const cpuArr=pd.containers.filter(c=>!c.free&&c.price!=null&&c.cap>0); const cpu=cpuArr.length?cpuArr.reduce((s,c)=>s+c.price/c.cap,0)/cpuArr.length:null; const adjCost=cpu!=null?parseFloat((target*cpu).toFixed(4)):null; log.push({id:msItem.id,delta:-target,ts:Date.now(),cost:adjCost!=null?adjCost:undefined}); }
-            lsSet('pantry_delta_log',log);
+            dlClearDay(msItem.id,'used');
+            if(target>0){ const cpuArr=pd.containers.filter(c=>!c.free&&c.price!=null&&c.cap>0); const cpu=cpuArr.length?cpuArr.reduce((s,c)=>s+c.price/c.cap,0)/cpuArr.length:null; const adjCost=cpu!=null?parseFloat((target*cpu).toFixed(4)):null; dlPush(msItem.id,-target,adjCost); }
             const swEl=document.getElementById('statsWindow'); if(swEl&&swEl.style.display!=='none') renderStatsWindow();
             renderAdjVal(false);
           };
@@ -1094,14 +1249,14 @@ function ptBuildCard(msItem){
           adjMid.appendChild(vEl);
         }
       }
-      adjRight.onclick=e=>{ e.stopPropagation(); const midnight=new Date(); midnight.setHours(0,0,0,0); const log=ls('pantry_delta_log',[]).filter(e=>!(e.id===msItem.id&&e.delta<0&&e.ts>=midnight.getTime())); lsSet('pantry_delta_log',log); const swEl=document.getElementById('statsWindow'); if(swEl&&swEl.style.display!=='none') renderStatsWindow(); renderAdjVal(false); };
+      adjRight.onclick=e=>{ e.stopPropagation(); dlClearDay(msItem.id,'used'); const swEl=document.getElementById('statsWindow'); if(swEl&&swEl.style.display!=='none') renderStatsWindow(); renderAdjVal(false); };
       renderAdjVal(false);
       adjMid.onclick=e=>{ e.stopPropagation(); renderAdjVal(true); };
       adjUsageCard.append(adjLeft,adjMid,adjRight);
       body.appendChild(adjUsageCard);
 
       // Added Today — identical structure, purple, positive deltas
-      function getTodayAddedSnap(){ const midnight=new Date(); midnight.setHours(0,0,0,0); return parseFloat(ls('pantry_delta_log',[]).filter(e=>e.id===msItem.id&&e.delta>0&&e.ts>=midnight.getTime()).reduce((s,e)=>s+e.delta,0).toFixed(2)); }
+      function getTodayAddedSnap(){ const midnight=new Date(); midnight.setHours(0,0,0,0); return parseFloat(dlGetEntriesInRange(msItem.id,midnight.getTime(),Date.now()).filter(e=>e.delta>0).reduce((s,e)=>s+e.delta,0).toFixed(2)); }
       const adjAddCard=document.createElement('div'); adjAddCard.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
       const addLeft=document.createElement('div'); addLeft.style.cssText='width:33.33%;display:flex;align-items:center;justify-content:center;background:#221a2a;border-right:3px solid #000;font-size:7px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#8a7ca8;flex-shrink:0;text-align:center;'; addLeft.textContent='Added Today';
       const addMid=document.createElement('div'); addMid.style.cssText='width:33.33%;display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-right:3px solid #000;flex-shrink:0;';
@@ -1114,10 +1269,8 @@ function ptBuildCard(msItem){
           inp.onclick=e=>e.stopPropagation();
           inp.onblur=e=>{
             const target=parseFloat(inp.value)||0;
-            const midnight=new Date(); midnight.setHours(0,0,0,0);
-            const log=ls('pantry_delta_log',[]).filter(e=>!(e.id===msItem.id&&e.delta>0&&e.ts>=midnight.getTime()));
-            if(target>0){ const cpuArr2=pd.containers.filter(c=>!c.free&&c.price!=null&&c.cap>0); const cpu2=cpuArr2.length?cpuArr2.reduce((s,c)=>s+c.price/c.cap,0)/cpuArr2.length:null; const adjCost2=cpu2!=null?parseFloat((target*cpu2).toFixed(4)):null; log.push({id:msItem.id,delta:target,ts:Date.now(),cost:adjCost2!=null?adjCost2:undefined}); }
-            lsSet('pantry_delta_log',log);
+            dlClearDay(msItem.id,'added');
+            if(target>0){ const cpuArr2=pd.containers.filter(c=>!c.free&&c.price!=null&&c.cap>0); const cpu2=cpuArr2.length?cpuArr2.reduce((s,c)=>s+c.price/c.cap,0)/cpuArr2.length:null; const adjCost2=cpu2!=null?parseFloat((target*cpu2).toFixed(4)):null; dlPush(msItem.id,target,adjCost2); }
             const swEl2=document.getElementById('statsWindow'); if(swEl2&&swEl2.style.display!=='none') renderStatsWindow();
             renderAddVal(false);
           };
@@ -1128,7 +1281,7 @@ function ptBuildCard(msItem){
           addMid.appendChild(vEl);
         }
       }
-      addRight.onclick=e=>{ e.stopPropagation(); const midnight=new Date(); midnight.setHours(0,0,0,0); const log=ls('pantry_delta_log',[]).filter(e=>!(e.id===msItem.id&&e.delta>0&&e.ts>=midnight.getTime())); lsSet('pantry_delta_log',log); const swEl3=document.getElementById('statsWindow'); if(swEl3&&swEl3.style.display!=='none') renderStatsWindow(); renderAddVal(false); };
+      addRight.onclick=e=>{ e.stopPropagation(); dlClearDay(msItem.id,'added'); const swEl3=document.getElementById('statsWindow'); if(swEl3&&swEl3.style.display!=='none') renderStatsWindow(); renderAddVal(false); };
       renderAddVal(false);
       addMid.onclick=e=>{ e.stopPropagation(); renderAddVal(true); };
       adjAddCard.append(addLeft,addMid,addRight);
