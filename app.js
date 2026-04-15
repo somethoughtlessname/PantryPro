@@ -1096,7 +1096,7 @@ let _statsBodyId='statsWindowBody';
 function renderStatsPage(){
   const body=document.getElementById('statsPageBody');
   if(!body) return;
-  if(!body._sw){ body._sw='daily'; body._sv='used'; body._selBar=null; body._focusItemId=null; body._focusItemIds=new Set(); }
+  body._sw='daily'; body._sv='used'; body._selBar=null; body._focusItemId=null; body._focusItemIds=new Set();
   _statsBodyId='statsPageBody';
   renderStatsWindow();
 }
@@ -1211,7 +1211,7 @@ function renderStatsWindow(){
 
   const graph=document.createElement('div'); graph.className='pt-graph';
   vals.forEach((v,i)=>{
-    const isToday=sw==='daily'&&i===todayWiSW; const isSel=selBar===i; const bw=document.createElement('div'); bw.className='pt-bar-wrap';
+    const isSel=selBar===i; const bw=document.createElement('div'); bw.className='pt-bar-wrap';
     // Determine current period index for weekly/monthly default highlight
     const isCurWeek=sw==='weekly'&&i===N-1;
     const isCurMonth=sw==='monthly'&&i===N-1;
@@ -1248,8 +1248,9 @@ function renderStatsWindow(){
       numEl.textContent=showForBar?(sw==='daily'?'$'+v.toFixed(2):v.toFixed(2)):'';
     }
 
+    const isCurrentPeriod=(sw==='daily'&&i===todayWiSW)||isCurWeek||isCurMonth;
     const bar=document.createElement('div'); bar.className='pt-bar'; bar.style.cssText=`height:${Math.max(2,Math.round((v/maxV)*36))}px;background:${v>0?multiColor:'rgba(255,255,255,0.08)'};opacity:${isSel?1:0.6};${isSel?'box-shadow:inset 2px 0 0 #fff,inset -2px 0 0 #fff,inset 0 -2px 0 #fff,0 -2px 0 #fff;':''}`;
-    const lbl=document.createElement('div'); lbl.className='pt-day'; lbl.style.cssText=`color:${isToday?'#48a971':(isSel?'#fff':'')};font-weight:${isToday?'900':'600'};`; lbl.textContent=labels[i];
+    const lbl=document.createElement('div'); lbl.className='pt-day'; lbl.style.cssText=`color:${isCurrentPeriod?'#48a971':(isSel?'#fff':'')};font-weight:${isCurrentPeriod?'900':'600'};font-size:${isCurrentPeriod?'11px':'7px'};`; lbl.textContent=labels[i];
     bw.append(numEl,bar,lbl); bw.onclick=()=>{ body._selBar=body._selBar===i?null:i; renderStatsWindow(); }; graph.appendChild(bw);
   }); gCard.appendChild(graph);
   const foot=document.createElement('div');

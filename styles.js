@@ -683,7 +683,7 @@ body {
   align-items: center; justify-content: flex-end; gap: 3px; cursor: pointer;
 }
 .pt-bar { width: 100%; border-radius: 2px 2px 0 0; min-height: 2px; }
-.pt-day { font-size: 6px; font-weight: 600; color: var(--muted); }
+.pt-day { font-size: 6px; font-weight: 600; color: var(--muted); height: 13px; display: flex; align-items: flex-end; justify-content: center; overflow: visible; }
   `;
   document.head.appendChild(s);
 })();
