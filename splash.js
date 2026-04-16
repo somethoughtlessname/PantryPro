@@ -1,4 +1,3 @@
-
 /* ── PANTRY PRO · splash.js ──────────────────────────────────────────
    Splash screen — shown once on every load if enabled in settings.
    Renders on a canvas overlay, dismisses after one full loop.
@@ -118,10 +117,26 @@ function drawJar(ctx,cx,cy,jW,jH,letter,fillPct,col,metal,alpha,letterAlpha){
   ctx.restore();
 }
 
+// Block app from showing immediately — insert dark overlay synchronously
+(function(){
+  try { const v=localStorage.getItem('setting_splash'); if(v==='false') return; } catch(e){}
+  function insertBlocker(){
+    if(document.getElementById('splashBlocker')) return;
+    const b = document.createElement('div');
+    b.id = 'splashBlocker';
+    b.style.cssText = 'position:fixed;inset:0;z-index:1000;background:#0c1117;';
+    document.body.appendChild(b);
+  }
+  if(document.body) insertBlocker();
+  else document.addEventListener('DOMContentLoaded', insertBlocker);
+})();
+
 window.splashShow = function(){
   if(!splashEnabled()) return;
 
-  const overlay = document.createElement('div');
+  // Remove the plain blocker if present
+  const blocker = document.getElementById('splashBlocker');
+  if(blocker) blocker.remove();
   overlay.id = 'splashOverlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;background:#0c1117;';
 
@@ -244,4 +259,3 @@ document.addEventListener('DOMContentLoaded', ()=>{
 });
 
 })();
-
