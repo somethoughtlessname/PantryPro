@@ -1111,6 +1111,7 @@ function renderStatsWindow(){
   if(!body._focusItemIds) body._focusItemIds=new Set();
   const focusIds=body._focusItemIds;
   const multiColor=focusIds.size>1?'#5A8DB8':'#48a971';
+  const barColor=sv==='waste'?'#C85A5A':multiColor;
   const MONTH_LETTERS=['J','F','M','A','M','J','J','A','S','O','N','D'];
   const now=new Date();
 
@@ -1125,7 +1126,8 @@ function renderStatsWindow(){
   const weekDaysSW=Array.from({length:7},(_,i)=>{ const d=new Date(weekStartSW); d.setDate(weekStartSW.getDate()+i); return d; });
 
   function getItemVals(itemId,mode,dir){
-    const entries=dlGetEntries(itemId).filter(e=>dir==='used'?e.delta<0&&e.cost!=null:e.delta>0&&e.cost!=null);
+    const isWaste=dir==='waste';
+    const entries=dlGetEntries(itemId).filter(e=>isWaste?(e.waste&&e.delta<0&&e.cost!=null):(dir==='used'?e.delta<0&&e.cost!=null&&!e.waste:e.delta>0&&e.cost!=null));
     const vals=new Array(N).fill(0);
     if(mode==='weekly'){
       entries.forEach(e=>{ const d=new Date(e.ts); activeWeeks.forEach((w,i)=>{ if(d>=w.start&&d<=w.end) vals[i]+=e.cost; }); });
@@ -1138,7 +1140,8 @@ function renderStatsWindow(){
   }
 
   function getItemUnitVals(itemId,mode,dir){
-    const entries=dlGetEntries(itemId).filter(e=>dir==='used'?e.delta<0:e.delta>0);
+    const isWaste=dir==='waste';
+    const entries=dlGetEntries(itemId).filter(e=>isWaste?(e.waste&&e.delta<0):(dir==='used'?e.delta<0&&!e.waste:e.delta>0));
     const vals=new Array(N).fill(0);
     if(mode==='weekly'){
       entries.forEach(e=>{ const d=new Date(e.ts); activeWeeks.forEach((w,i)=>{ if(d>=w.start&&d<=w.end) vals[i]+=Math.abs(e.delta); }); });
@@ -1175,15 +1178,15 @@ function renderStatsWindow(){
   svRow.style.cssText=isPageStats
     ?`height:var(--drop-height);display:flex;border-bottom:var(--border-width) solid var(--border-color);`
     :`height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;flex-shrink:0;`;
-  [['used','Used (Cost)'],['added','Purchased']].forEach(([v,lbl],i)=>{
-    const isAct=sv===v; const btn=document.createElement('div');
-    btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-3)'};color:${isAct?'var(--color-10)':'var(--muted)'};${i===0?'border-right:var(--border-width) solid var(--border-color);':''}`;
+  [['used','Used (Cost)'],['added','Purchased'],['waste','Wasted']].forEach(([v,lbl],i)=>{
+    const isWaste=v==='waste'; const isAct=sv===v; const btn=document.createElement('div');
+    btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${isAct?(isWaste?'#2a1010':'var(--bg-4)'):'var(--bg-3)'};color:${isAct?(isWaste?'#C85A5A':'var(--color-10)'):'var(--muted)'};${i<2?'border-right:var(--border-width) solid var(--border-color);':''}`;
     btn.textContent=lbl; btn.onclick=()=>{ body._sv=v; body._selBar=null; body._focusItemId=null; renderStatsWindow(); }; svRow.appendChild(btn);
   });
   if(isPageStats && statsTabRowEl) statsTabRowEl.appendChild(svRow);
   else body.appendChild(svRow);
 
-  const isUsed=sv==='used';
+  const isUsed=sv==='used'||sv==='waste';
   const vals=getAllTotals(sw,sv);
   const maxV=Math.max(...vals,0.01);
 
@@ -1249,7 +1252,7 @@ function renderStatsWindow(){
     }
 
     const isCurrentPeriod=(sw==='daily'&&i===todayWiSW)||isCurWeek||isCurMonth;
-    const bar=document.createElement('div'); bar.className='pt-bar'; bar.style.cssText=`height:${Math.max(2,Math.round((v/maxV)*36))}px;background:${v>0?multiColor:'rgba(255,255,255,0.08)'};opacity:${isSel?1:0.6};${isSel?'box-shadow:inset 2px 0 0 #fff,inset -2px 0 0 #fff,inset 0 -2px 0 #fff,0 -2px 0 #fff;':''}`;
+    const bar=document.createElement('div'); bar.className='pt-bar'; bar.style.cssText=`height:${Math.max(2,Math.round((v/maxV)*36))}px;background:${v>0?barColor:'rgba(255,255,255,0.08)'};opacity:${isSel?1:0.6};${isSel?'box-shadow:inset 2px 0 0 #fff,inset -2px 0 0 #fff,inset 0 -2px 0 #fff,0 -2px 0 #fff;':''}`;
     const lbl=document.createElement('div'); lbl.className='pt-day'; lbl.style.cssText=`color:${isCurrentPeriod?'#48a971':(isSel?'#fff':'')};font-weight:${isCurrentPeriod?'900':'600'};font-size:${isCurrentPeriod?'11px':'7px'};`; lbl.textContent=labels[i];
     bw.append(numEl,bar,lbl); bw.onclick=()=>{ body._selBar=body._selBar===i?null:i; renderStatsWindow(); }; graph.appendChild(bw);
   }); gCard.appendChild(graph);
@@ -1335,15 +1338,18 @@ function renderStatsWindow(){
     });
   }
 
+  const isWasteView=sv==='waste';
   const msItems=ls('ms_items',[]);
   const periodLabel=selBar!==null?'This Period':'Period Total';
   const itemTotals=msItems.map(item=>{
     const usedCost=parseFloat(getItemPeriodTotal(item.id,sw,'used',selBar).toFixed(2));
     const purchasedCost=parseFloat(getItemPeriodTotal(item.id,sw,'added',selBar).toFixed(2));
-    const costTotal=isUsed?usedCost:purchasedCost;
+    const wasteCost=parseFloat(getItemPeriodTotal(item.id,sw,'waste',selBar).toFixed(2));
+    const costTotal=isWasteView?wasteCost:isUsed?usedCost:purchasedCost;
 
     function getItemQty(itemId,mode,dir,idx){
-      const entries=dlGetEntries(itemId).filter(e=>dir==='used'?e.delta<0:e.delta>0);
+      const isWaste=dir==='waste';
+      const entries=dlGetEntries(itemId).filter(e=>isWaste?(e.waste&&e.delta<0):dir==='used'?e.delta<0&&!e.waste:e.delta>0);
       const v2=new Array(N).fill(0);
       if(mode==='weekly'){
         const weeks=ptGet12Weeks(now); entries.forEach(e=>{ const d=new Date(e.ts); weeks.forEach((w,ii)=>{ if(d>=w.start&&d<=w.end) v2[ii]+=Math.abs(e.delta); }); });
@@ -1356,7 +1362,7 @@ function renderStatsWindow(){
     }
     const amtTotal=getItemQty(item.id,sw,sv,selBar);
     return {item,costTotal,amtTotal};
-  }).filter(x=>x.costTotal>0||x.amtTotal>0).sort((a,b)=>b.costTotal-a.costTotal);
+  }).filter(x=>(x.costTotal>0||x.amtTotal>0)).sort((a,b)=>b.costTotal-a.costTotal);
 
   if(itemTotals.length>0){
     itemTotals.forEach(({item,costTotal,amtTotal})=>{
