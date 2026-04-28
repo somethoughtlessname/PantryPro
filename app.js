@@ -75,20 +75,15 @@ const DEFAULT_UNITS=[
 
 // Returns the appropriate display form — abbr for metrics, singular/plural label for countables
 function getUnitDisplay(unitId, qty){
-  const u=getUnit(unitId);
+  const found=getUnits().find(u=>u.id===unitId);
+  if(!found && unitId && unitId.startsWith('cu_')) return 'unit*';
+  const u=found||DEFAULT_UNITS[0];
   const n=parseFloat(qty)||0;
   const abbrSelfPlural=new Set(['oz','fl oz','lbs','g','kg','ml','l','tbsp','tsp','cups']);
   if(abbrSelfPlural.has(unitId)) return u.abbr||unitId;
   if(n===1) return u.label||u.abbr||unitId;
   return u.plural||(u.label+'s')||u.abbr||unitId;
 }
-function getUnitLabel(unitId, qty){
-  const u=getUnit(unitId);
-  const n=parseFloat(qty)||0;
-  if(n===1) return u.label||u.abbr||unitId;
-  return u.plural||(u.label+'s')||u.abbr||unitId;
-}
-function getUnitAbbr(unitId){ return getUnit(unitId).abbr||unitId; }
 
 function getCats(){
   const del=ls('cat_deleted',[]), custom=ls('cat_custom',[]);
@@ -116,6 +111,21 @@ function getUnits(){
 // Units that should show the dry/liquid type toggle
 const TYPE_TOGGLE_UNITS=new Set(['oz','fl oz','lbs','g','kg','ml','l','cups','cup','tbsp','tsp','each','cans','cartons','gallon','gallons','pint','pints','quart','quarts','dozen','unit']);
 function getUnit(id){ return getUnits().find(u=>u.id===id)||DEFAULT_UNITS[0]; }
+
+// Returns display label for a unit id. If a custom unit has been deleted, returns 'unit*'.
+function getUnitLabel(unitId, qty){
+  const found=getUnits().find(u=>u.id===unitId);
+  if(!found && unitId && unitId.startsWith('cu_')) return 'unit*';
+  const u=found||DEFAULT_UNITS[0];
+  const n=parseFloat(qty)||0;
+  if(n===1||!qty) return u.label||u.abbr||unitId;
+  return u.plural||(u.label+'s')||u.abbr||unitId;
+}
+function getUnitAbbr(unitId){
+  const found=getUnits().find(u=>u.id===unitId);
+  if(!found && unitId && unitId.startsWith('cu_')) return 'unit*';
+  return (found||DEFAULT_UNITS[0]).abbr||unitId;
+}
 
 /* ── PAGE SWITCHING ── */
 function setPage(p){
@@ -1115,7 +1125,8 @@ function renderStatsWindow(){
   const MONTH_LETTERS=['J','F','M','A','M','J','J','A','S','O','N','D'];
   const now=new Date();
 
-  const N=sw==='daily'?7:12; // daily=7 (Mon-Sun), weekly/monthly=12
+  const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  const N=sw==='daily'?7:sw==='thismonth'?daysInMonth:12;
 
   const activeWeeks=ptGet12Weeks(now);
 
@@ -1133,6 +1144,8 @@ function renderStatsWindow(){
       entries.forEach(e=>{ const d=new Date(e.ts); activeWeeks.forEach((w,i)=>{ if(d>=w.start&&d<=w.end) vals[i]+=e.cost; }); });
     } else if(mode==='daily'){
       entries.forEach(e=>{ const d=new Date(e.ts); const diff=Math.round((new Date(now.getFullYear(),now.getMonth(),now.getDate())-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5); const dayWi=todayWiSW-diff; if(dayWi>=0&&dayWi<7) vals[dayWi]+=e.cost; });
+    } else if(mode==='thismonth'){
+      entries.forEach(e=>{ const d=new Date(e.ts); if(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()){ const idx=d.getDate()-1; if(idx>=0&&idx<N) vals[idx]+=e.cost; } });
     } else {
       entries.forEach(e=>{ const d=new Date(e.ts); const diff=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth()); const idx=(N-1)-diff; if(idx>=0&&idx<N) vals[idx]+=e.cost; });
     }
@@ -1147,6 +1160,8 @@ function renderStatsWindow(){
       entries.forEach(e=>{ const d=new Date(e.ts); activeWeeks.forEach((w,i)=>{ if(d>=w.start&&d<=w.end) vals[i]+=Math.abs(e.delta); }); });
     } else if(mode==='daily'){
       entries.forEach(e=>{ const d=new Date(e.ts); const diff=Math.round((new Date(now.getFullYear(),now.getMonth(),now.getDate())-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5); const dayWi=todayWiSW-diff; if(dayWi>=0&&dayWi<7) vals[dayWi]+=Math.abs(e.delta); });
+    } else if(mode==='thismonth'){
+      entries.forEach(e=>{ const d=new Date(e.ts); if(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()){ const idx=d.getDate()-1; if(idx>=0&&idx<N) vals[idx]+=Math.abs(e.delta); } });
     } else {
       entries.forEach(e=>{ const d=new Date(e.ts); const diff=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth()); const idx=(N-1)-diff; if(idx>=0&&idx<N) vals[idx]+=Math.abs(e.delta); });
     }
@@ -1170,17 +1185,16 @@ function renderStatsWindow(){
     return idx!==null?v[idx]||0:v.reduce((s,x)=>s+x,0);
   }
 
-  // Used | Purchased toggle + graph — frozen in header for page stats, in body for window
   const isPageStats=_statsBodyId==='statsPageBody';
   const statsTabRowEl=document.getElementById('statsTabRow');
   if(isPageStats && statsTabRowEl) statsTabRowEl.innerHTML='';
   const svRow=document.createElement('div');
   svRow.style.cssText=isPageStats
-    ?`height:var(--drop-height);display:flex;border-bottom:var(--border-width) solid var(--border-color);`
-    :`height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;flex-shrink:0;`;
+    ?`display:flex;border-bottom:3px solid #000;height:var(--drop-height);flex-shrink:0;`
+    :`border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;flex-shrink:0;height:var(--drop-height);`;
   [['used','Used (Cost)'],['added','Purchased'],['waste','Wasted']].forEach(([v,lbl],i)=>{
     const isWaste=v==='waste'; const isAct=sv===v; const btn=document.createElement('div');
-    btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${isAct?(isWaste?'#2a1010':'var(--bg-4)'):'var(--bg-3)'};color:${isAct?(isWaste?'#C85A5A':'var(--color-10)'):'var(--muted)'};${i<2?'border-right:var(--border-width) solid var(--border-color);':''}`;
+    btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${isAct?(isWaste?'#2a1010':'var(--bg-4)'):'var(--bg-3)'};color:${isAct?(isWaste?'#C85A5A':'var(--color-10)'):'var(--muted)'};${i<2?'border-right:3px solid #000;':''}`;
     btn.textContent=lbl; btn.onclick=()=>{ body._sv=v; body._selBar=null; body._focusItemId=null; renderStatsWindow(); }; svRow.appendChild(btn);
   });
   if(isPageStats && statsTabRowEl) statsTabRowEl.appendChild(svRow);
@@ -1190,7 +1204,10 @@ function renderStatsWindow(){
   const vals=getAllTotals(sw,sv);
   const maxV=Math.max(...vals,0.01);
 
-  const labels=sw==='daily'?WEEK_LETTERS_SW:sw==='weekly'?activeWeeks.map(w=>w.label):Array.from({length:N},(_,i)=>{ const d=new Date(now.getFullYear(),now.getMonth()-(N-1-i),1); return MONTH_LETTERS[d.getMonth()]; });
+  const labels=sw==='daily'?WEEK_LETTERS_SW
+    :sw==='thismonth'?Array.from({length:N},(_,i)=>'') // no labels; shown on select
+    :sw==='weekly'?activeWeeks.map(w=>w.label)
+    :Array.from({length:N},(_,i)=>{ const d=new Date(now.getFullYear(),now.getMonth()-(N-1-i),1); return MONTH_LETTERS[d.getMonth()]; });
 
   // Graph card — frozen in header for page stats, scrollable for window
   const gCardBorderStyle=isPageStats?'background:var(--bg-2);overflow:hidden;':'border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;background:var(--bg-2);flex-shrink:0;';
@@ -1218,9 +1235,10 @@ function renderStatsWindow(){
     // Determine current period index for weekly/monthly default highlight
     const isCurWeek=sw==='weekly'&&i===N-1;
     const isCurMonth=sw==='monthly'&&i===N-1;
-    const isDefaultShow=sw==='daily'||(selBar===null&&(isCurWeek||isCurMonth));
-    const showNum=sw==='daily'?true:(selBar!==null?isSel:isDefaultShow);
-    const numSize=sw==='daily'?'10px':'8px';
+    const isCurDay=sw==='thismonth'&&i===now.getDate()-1;
+    const isDefaultShow=sw==='daily'||sw==='thismonth'||(selBar===null&&(isCurWeek||isCurMonth));
+    const showNum=(sw==='daily'||sw==='thismonth')?true:(selBar!==null?isSel:isDefaultShow);
+    const numSize=(sw==='daily'||sw==='thismonth')?'10px':'8px';
 
     let numEl;
     if(singleItem && sw==='daily'){
@@ -1233,8 +1251,16 @@ function renderStatsWindow(){
         const qSpan=document.createElement('div'); qSpan.style.cssText=`font-size:${numSize};font-weight:900;color:${isSel?'#fff':'rgba(255,255,255,0.4)'};line-height:1;`; qSpan.textContent=qv.toFixed(1);
         numEl.append(dSpan,div3,qSpan);
       }
+    } else if(singleItem && sw==='thismonth'){
+      const qv=aboveBarQtyVals?aboveBarQtyVals[i]:0;
+      numEl=document.createElement('div'); numEl.style.cssText=`height:28px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;margin-bottom:1px;overflow:visible;position:relative;z-index:2;`;
+      if(isSel && v>0){
+        const dSpan=document.createElement('div'); dSpan.style.cssText=`font-size:${numSize};font-weight:900;color:#fff;line-height:1;white-space:nowrap;`; dSpan.textContent='$'+v.toFixed(2);
+        const div3=document.createElement('div'); div3.style.cssText=`width:50%;height:2px;background:#fff;margin:1px 0;flex-shrink:0;border-radius:999px;`;
+        const qSpan=document.createElement('div'); qSpan.style.cssText=`font-size:${numSize};font-weight:900;color:rgba(255,255,255,0.7);line-height:1;white-space:nowrap;`; qSpan.textContent=qv.toFixed(1);
+        numEl.append(dSpan,div3,qSpan);
+      }
     } else if(singleItem && (sw==='weekly'||sw==='monthly')){
-      // Show cost + unit for single item on weekly/monthly
       const qv=aboveBarQtyVals?aboveBarQtyVals[i]:0;
       numEl=document.createElement('div'); numEl.style.cssText=`height:28px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;margin-bottom:1px;overflow:hidden;`;
       if(v>0||qv>0){
@@ -1244,16 +1270,17 @@ function renderStatsWindow(){
         numEl.append(dSpan,div3,qSpan);
       }
     } else {
-      const isFutureDay=sw==='daily'&&i>todayWiSW;
-      // Weekly/monthly: show for bars with data (no $ symbol)
-      const showForBar=(sw==='daily')?(showNum&&!isFutureDay):(v>0&&(selBar!==null?isSel:true));
+      const isFutureDay=(sw==='daily'&&i>todayWiSW)||(sw==='thismonth'&&i>now.getDate()-1);
+      const showForBar=sw==='thismonth'?isSel&&v>0:sw==='daily'?(showNum&&!isFutureDay):(v>0&&(selBar!==null?isSel:true));
       numEl=document.createElement('div'); numEl.style.cssText=`font-size:${numSize};font-weight:900;height:14px;width:100%;display:flex;align-items:flex-end;justify-content:center;color:${isSel?'#fff':'rgba(255,255,255,0.5)'};margin-bottom:1px;overflow:hidden;white-space:nowrap;`;
-      numEl.textContent=showForBar?(sw==='daily'?'$'+v.toFixed(2):v.toFixed(2)):'';
+      numEl.textContent=showForBar?((sw==='daily'||sw==='thismonth')?'$'+v.toFixed(2):v.toFixed(2)):'';
     }
 
-    const isCurrentPeriod=(sw==='daily'&&i===todayWiSW)||isCurWeek||isCurMonth;
+    const isCurrentPeriod=(sw==='daily'&&i===todayWiSW)||isCurWeek||isCurMonth||isCurDay;
     const bar=document.createElement('div'); bar.className='pt-bar'; bar.style.cssText=`height:${Math.max(2,Math.round((v/maxV)*36))}px;background:${v>0?barColor:'rgba(255,255,255,0.08)'};opacity:${isSel?1:0.6};${isSel?'box-shadow:inset 2px 0 0 #fff,inset -2px 0 0 #fff,inset 0 -2px 0 #fff,0 -2px 0 #fff;':''}`;
-    const lbl=document.createElement('div'); lbl.className='pt-day'; lbl.style.cssText=`color:${isCurrentPeriod?'#48a971':(isSel?'#fff':'')};font-weight:${isCurrentPeriod?'900':'600'};font-size:${isCurrentPeriod?'11px':'7px'};`; lbl.textContent=labels[i];
+    // thismonth: only show label on selected or current day
+    const showLbl=sw==='thismonth'?(isSel||isCurDay):true;
+    const lbl=document.createElement('div'); lbl.className='pt-day'; lbl.style.cssText=`color:${isCurrentPeriod?'#48a971':(isSel?'#fff':'')};font-weight:${isCurrentPeriod?'900':'600'};font-size:${isCurrentPeriod?'11px':'7px'};`; lbl.textContent=showLbl?(sw==='thismonth'?(isSel||isCurDay?String(i+1):''):(labels[i])):'';
     bw.append(numEl,bar,lbl); bw.onclick=()=>{ body._selBar=body._selBar===i?null:i; renderStatsWindow(); }; graph.appendChild(bw);
   }); gCard.appendChild(graph);
   const foot=document.createElement('div');
@@ -1263,10 +1290,11 @@ function renderStatsWindow(){
     let rt='';
     if(selBar!==null){
       if(sw==='daily'){ const wd=weekDaysSW[selBar]; rt=wd?wd.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}):''; }
+      else if(sw==='thismonth'){ const d=new Date(now.getFullYear(),now.getMonth(),selBar+1); rt=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); }
       else if(sw==='weekly'){ const w=ptGet12Weeks(now)[selBar]; rt=w.start.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+new Date(w.end.getFullYear(),w.end.getMonth(),w.end.getDate()).toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
       else { const d=new Date(now.getFullYear(),now.getMonth()-(11-selBar),1); rt=d.toLocaleDateString('en-US',{month:'long',year:'numeric'}); }
     } else {
-      rt=sw==='daily'?'This Week':sw==='weekly'?'12 Week Total':'12 Month Total';
+      rt=sw==='daily'?'This Week':sw==='thismonth'?new Date(now.getFullYear(),now.getMonth(),1).toLocaleDateString('en-US',{month:'long',year:'numeric'}):sw==='weekly'?'12 Week Total':'12 Month Total';
     }
     const costVal=selBar!==null?vals[selBar]:vals.reduce((s,v)=>s+v,0);
     const qtyVals=getItemUnitVals(singleItem,sw,sv==='used'?'used':'added');
@@ -1275,7 +1303,7 @@ function renderStatsWindow(){
     const ptDataF=ls('pantry_data',{})[singleItem];
     const unitF=(ptDataF?.unit)||msItmF?.unit||'unit';
 
-    if(sw==='daily'){
+    if(sw==='daily'||sw==='thismonth'){
       const periodEl=document.createElement('div'); periodEl.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;font-weight:800;color:var(--muted);border-right:var(--border-width) solid var(--border-color);padding:0 4px;text-align:center;overflow:hidden;';
       periodEl.textContent=rt;
       const costEl=document.createElement('div'); costEl.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;font-weight:800;color:${multiColor};border-right:var(--border-width) solid var(--border-color);padding:0 4px;`;
@@ -1304,11 +1332,12 @@ function renderStatsWindow(){
     if(selBar!==null){
       let rt='';
       if(sw==='daily'){ const wd=weekDaysSW[selBar]; rt=wd?wd.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}):''; }
+      else if(sw==='thismonth'){ const d=new Date(now.getFullYear(),now.getMonth(),selBar+1); rt=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); }
       else if(sw==='weekly'){ const w=ptGet12Weeks(now)[selBar]; rt=w.start.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+new Date(w.end.getFullYear(),w.end.getMonth(),w.end.getDate()).toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
       else { const d=new Date(now.getFullYear(),now.getMonth()-(11-selBar),1); rt=d.toLocaleDateString('en-US',{month:'long',year:'numeric'}); }
       leftEl.textContent=rt; rightEl.textContent=vals[selBar]>0?'$'+vals[selBar].toFixed(2):'—';
     } else {
-      leftEl.textContent=sw==='daily'?'This Week':sw==='weekly'?'12 Week Total':'12 Month Total';
+      leftEl.textContent=sw==='daily'?'This Week':sw==='thismonth'?new Date(now.getFullYear(),now.getMonth(),1).toLocaleDateString('en-US',{month:'long',year:'numeric'}):sw==='weekly'?'12 Week Total':'12 Month Total';
       const total=vals.reduce((s,v)=>s+v,0);
       rightEl.textContent=total>0?'$'+total.toFixed(2):'—';
     }
@@ -1316,11 +1345,11 @@ function renderStatsWindow(){
   }
   gCard.appendChild(foot);
 
-  // Daily/Weekly/Monthly
+  // This Week / This Month / Weekly / Monthly
   const modeRow=document.createElement('div'); modeRow.style.cssText='height:var(--drop-height);display:flex;align-items:stretch;border-top:var(--border-width) solid var(--border-color);';
-  [['daily','Daily'],['weekly','Weekly'],['monthly','Monthly']].forEach(([v,lbl],i,arr)=>{
+  [['daily','This Week'],['thismonth','This Month'],['weekly','Weekly'],['monthly','Monthly']].forEach(([v,lbl],i,arr)=>{
     const isAct=sw===v; const btn=document.createElement('div');
-    btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-3)'};color:${isAct?'var(--color-10)':'var(--muted)'};${i<arr.length-1?'border-right:var(--border-width) solid var(--border-color);':''}`;
+    btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-3)'};color:${isAct?'var(--color-10)':'var(--muted)'};${i<arr.length-1?'border-right:var(--border-width) solid var(--border-color);':''}`;
     btn.textContent=lbl; btn.onclick=()=>{ body._sw=v; body._selBar=null; renderStatsWindow(); }; modeRow.appendChild(btn);
   });
   gCard.appendChild(modeRow);
@@ -1355,6 +1384,8 @@ function renderStatsWindow(){
         const weeks=ptGet12Weeks(now); entries.forEach(e=>{ const d=new Date(e.ts); weeks.forEach((w,ii)=>{ if(d>=w.start&&d<=w.end) v2[ii]+=Math.abs(e.delta); }); });
       } else if(mode==='daily'){
         entries.forEach(e=>{ const d=new Date(e.ts); const diff=Math.round((new Date(now.getFullYear(),now.getMonth(),now.getDate())-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5); const ii=todayWiSW-diff; if(ii>=0&&ii<7) v2[ii]+=Math.abs(e.delta); });
+      } else if(mode==='thismonth'){
+        entries.forEach(e=>{ const d=new Date(e.ts); if(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()){ const ii=d.getDate()-1; if(ii>=0&&ii<N) v2[ii]+=Math.abs(e.delta); } });
       } else {
         entries.forEach(e=>{ const d=new Date(e.ts); const diff=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth()); const ii=(N-1)-diff; if(ii>=0&&ii<N) v2[ii]+=Math.abs(e.delta); });
       }
