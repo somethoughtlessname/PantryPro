@@ -704,6 +704,13 @@ function renderSettingsBody(){
 
 /* ── DATA WINDOW ── */
 let dataTab = 'export';
+let exportScope = 'all'; // 'all' | 'stats' | 'store'
+
+const EXPORT_SCOPE_KEYS = {
+  all: null, // uses full DATA_KEYS
+  stats: ['ms_items','pantry_data','pantry_delta_log','pantry_snapshots','pantry_usage_log','pt_thresholds','pt_thresh_enabled','_log_v2'],
+  store: ['ms_items','cat_custom','cat_deleted','cat_color_overrides','unit_custom','unit_deleted','unit_overrides'],
+};
 
 const DATA_KEYS = [
   // Grocery List
@@ -738,8 +745,20 @@ const DATA_KEYS = [
   'my_sales',
 ];
 
-// Key shortener map for compressed export
-// Full key → short alias
+// ── Readable stats export ──────────────────────────────────────────────
+const _UNIT_CODE = {
+  'unit':'un','oz':'oz','fl oz':'fl','lbs':'lb','g':'gm','kg':'kg',
+  'ml':'ml','l':'li','cups':'cp','tbsp':'tb','tsp':'ts','each':'ea',
+  'dozen':'dz','cans':'cn','cartons':'ct','gallon':'gl','pint':'pt','quart':'qt',
+};
+const _CAT_CODE = {
+  'other':'ot','produce':'pr','dairy':'dy','meat':'mt','seafood':'sf',
+  'deli':'dl','bakery':'bk','pasta':'pa','grains':'gr','pantry':'pn',
+  'canned':'ca','condiments':'co','spices':'sp','frozen':'fz','snacks':'sn',
+  'cereal':'ce','drinks':'dk','alcohol':'al','health':'hl','baby':'by',
+  'pets':'pt','cleaning':'cl','personal':'pe',
+};
+
 const _EK = {
   gl_items:'gi', gl_view:'gv',
   ms_items:'mi',
@@ -774,16 +793,81 @@ function _pruneDeltaLog(log){
 }
 
 function exportData(){
+  if(exportScope==='stats') return exportStatsReadable();
+  const keys = EXPORT_SCOPE_KEYS[exportScope] || DATA_KEYS;
   const obj = {};
-  DATA_KEYS.forEach(k=>{
+  keys.forEach(k=>{
     const v = localStorage.getItem(k);
     if(v===null) return;
     let val = JSON.parse(v);
     if(k==='pantry_delta_log') val = _pruneDeltaLog(val);
     obj[_EK[k]||k] = val;
   });
-  obj['_v'] = 2; // format version
+  obj['_v'] = 2;
+  obj['_scope'] = exportScope;
   return JSON.stringify(obj);
+}
+
+function exportStatsReadable(){
+  const msItems = ls('ms_items',[]);
+  const deltaLog = _pruneDeltaLog(ls('pantry_delta_log',{}));
+  const pantryData = ls('pantry_data',{});
+  const customUnits = ls('unit_custom',[]);
+  const customCats = ls('cat_custom',[]);
+
+  const customUnitCodes={}, customCatCodes={};
+  const _ALPHA='aabbccddeeffffgghhiijjkkllmmnnooqqrrssttuuvvwwxxyyzz'.match(/../g);
+  customUnits.forEach((u,i)=>{ customUnitCodes[u.id]=_ALPHA[i]||`u${i}`; });
+  customCats.forEach((c,i)=>{ customCatCodes[c.id]=_ALPHA[i]||`c${i}`; });
+
+  function unitCode(id){ return _UNIT_CODE[id]||customUnitCodes[id]||'un'; }
+  function catCode(id){ return _CAT_CODE[id]||customCatCodes[id]||'ot'; }
+
+  const lines=[];
+  lines.push('KEY: b=bought u=used w=wasted c=cost/unit');
+  lines.push('MEASURE: #gm #kg #ml #li #oz #lb #cp #tb #ts #ea #cn #pk #dz #ct #gl #pt #qt #un #aa #bb...');
+
+  const stdCats=Object.entries(_CAT_CODE);
+  lines.push('CATS: '+stdCats.slice(0,11).map(([id,code])=>`*${code}=${id}`).join(' '));
+  if(stdCats.slice(11).length) lines.push('CATS: '+stdCats.slice(11).map(([id,code])=>`*${code}=${id}`).join(' '));
+  if(customUnits.length) lines.push('CUSTOM MEASURE: '+customUnits.map((u,i)=>`#${_ALPHA[i]}=${u.label}`).join(' '));
+  if(customCats.length) lines.push('CUSTOM CATS: '+customCats.map((c,i)=>`*${_ALPHA[i]}=${c.label}`).join(' '));
+
+  msItems.forEach(item=>{
+    const pd=pantryData[item.id]||{};
+    const log=deltaLog[item.id]||{};
+    const days=Object.keys(log).sort();
+    if(!days.length) return;
+
+    const uCode=unitCode(pd.unit||item.unit||'unit');
+    const cCode=catCode(item.category||'other');
+    const cons=(pd.containers||[]).filter(c=>!c.free&&c.price!=null&&c.cap>0);
+    const ppu=cons.length?cons.reduce((s,c)=>s+c.price/c.cap,0)/cons.length:null;
+
+    lines.push('');
+    lines.push(`${item.name} #${uCode} *${cCode}`);
+
+    days.forEach(dateKey=>{
+      const entries=log[dateKey];
+      let bought=0, used=0, wasted=0;
+      entries.forEach(e=>{
+        const delta=e[0]; const isWaste=e[2]==='w'||e[1]==='w';
+        if(delta>0) bought+=delta;
+        else if(isWaste) wasted+=Math.abs(delta);
+        else used+=Math.abs(delta);
+      });
+      if(!bought&&!used&&!wasted) return;
+      const d=dateKey.replace(/-/g,'');
+      const parts=[d+':'];
+      if(bought) parts.push(`b${+bought.toFixed(2)}`);
+      if(bought&&ppu) parts.push(`c${ppu.toFixed(2)}`);
+      if(used) parts.push(`u${+used.toFixed(2)}`);
+      if(wasted) parts.push(`w${+wasted.toFixed(2)}`);
+      lines.push(parts.join(' '));
+    });
+  });
+
+  return lines.join('\n');
 }
 
 function importData(json){
@@ -910,7 +994,19 @@ function renderDataBody(){
 
   if(dataTab==='export'){
     const ta = document.createElement('textarea'); ta.className='data-textarea'; ta.readOnly=true;
-    const exported = exportData();
+
+    // Scope selector card — All Data | Stats | My Store
+    const scopeCard=document.createElement('div'); scopeCard.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;flex-shrink:0;height:var(--drop-height);';
+    [['all','All Data'],['stats','Stats'],['store','My Store']].forEach(([v,lbl],i)=>{
+      const isAct=exportScope===v; const btn=document.createElement('div');
+      btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-3)'};color:${isAct?'var(--color-10)':'var(--muted)'};${i<2?'border-right:3px solid #000;':''}`;
+      btn.textContent=lbl;
+      btn.onclick=()=>{ exportScope=v; renderDataBody(); };
+      scopeCard.appendChild(btn);
+    });
+    body.appendChild(scopeCard);
+
+    const exported = exportScope==='stats' ? exportStatsReadable() : exportData();
     ta.value = exported;
     body.appendChild(ta);
 
