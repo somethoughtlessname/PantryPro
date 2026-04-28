@@ -824,7 +824,7 @@ function exportStatsReadable(){
   function catCode(id){ return _CAT_CODE[id]||customCatCodes[id]||'ot'; }
 
   const lines=[];
-  lines.push('KEY: b=bought u=used w=wasted c=cost/unit');
+  lines.push('KEY: b=bought u=used w=wasted c=total cost of purchase');
   lines.push('MEASURE: #gm #kg #ml #li #oz #lb #cp #tb #ts #ea #cn #pk #dz #ct #gl #pt #qt #un #aa #bb...');
 
   const stdCats=Object.entries(_CAT_CODE);
@@ -860,7 +860,7 @@ function exportStatsReadable(){
       const d=dateKey.replace(/-/g,'');
       const parts=[d+':'];
       if(bought) parts.push(`b${+bought.toFixed(2)}`);
-      if(bought&&ppu) parts.push(`c${ppu.toFixed(2)}`);
+      if(bought&&ppu) parts.push(`c${(bought*ppu).toFixed(2)}`);
       if(used) parts.push(`u${+used.toFixed(2)}`);
       if(wasted) parts.push(`w${+wasted.toFixed(2)}`);
       lines.push(parts.join(' '));
