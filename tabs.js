@@ -994,8 +994,19 @@ function msAddToGrocery(id){
     trackCatUsage(item.category);
     glRender();
   }
-  msAddedSet.add(id); msRender();
-  setTimeout(()=>{ msAddedSet.delete(id); msRender(); },1500);
+  msAddedSet.add(id); msRender(); reapplyMsFocusActive();
+  setTimeout(()=>{ msAddedSet.delete(id); msRender(); reapplyMsFocusActive(); },1500);
+}
+
+function reapplyMsFocusActive(){
+  const openCatId=Object.keys(msOpenState).find(k=>k!=='_savedScrollY'&&msOpenState[k]===1);
+  if(!openCatId) return;
+  ['#msList','#msListTab'].forEach(sel=>{
+    const container=document.querySelector(sel); if(!container) return;
+    container.querySelectorAll('.cs-section,.cat-section').forEach(e=>e.classList.remove('focus-active','pt-card-wrap'));
+    const activeEl=container.querySelector('.cat-section[data-id="'+openCatId+'"],.cs-section[data-id="'+openCatId+'"]');
+    if(activeEl){ activeEl.classList.add('pt-card-wrap','focus-active'); }
+  });
 }
 
 function getMsStage(catId){ return msOpenState[catId]!==undefined?msOpenState[catId]:0; }
@@ -1004,7 +1015,9 @@ function msToggleCat(catId){
   const cur=getMsStage(catId);
   if(cur===0){ Object.keys(msOpenState).forEach(k=>msOpenState[k]=0); msOpenState[catId]=1;
     msOpenState._savedScrollY=window.scrollY;
-    msRender(); focusDimShowById(catId,'#msList');
+    msRender();
+    const msListSel=document.getElementById('pageMyStore')?.classList.contains('active')?'#msListTab':'#msList';
+    focusDimShowById(catId, msListSel);
   } else { msOpenState[catId]=0; focusDimHide();
     document.querySelectorAll('.cs-section,.cat-section').forEach(e=>{e.classList.remove('focus-active','pt-card-wrap');});
     ptScrollBack(msOpenState._savedScrollY); msOpenState._savedScrollY=undefined;
@@ -1242,12 +1255,12 @@ function msSearchInput(){
 }
 
 
-function msRender(){
-  const container=document.getElementById('msList'); container.innerHTML='';
+function msRenderTo(sfx){
+  const container=document.getElementById('msList'+(sfx||'')); if(!container) return; container.innerHTML='';
   const items=ls('ms_items',[]);
-  const query=(document.getElementById('msSearch')?.value||'').trim().toLowerCase();
+  const query=(document.getElementById('msSearch'+(sfx||''))?.value||'').trim().toLowerCase();
 
-  const thinkSlot = document.getElementById('msThinkSlot');
+  const thinkSlot = document.getElementById('msThinkSlot'+(sfx||''));
   if(thinkSlot && !query) thinkSlot.innerHTML = '';
   if(query){
     const results=items.filter(i=>{
@@ -1264,7 +1277,7 @@ function msRender(){
       const nameWords=i.name.toLowerCase().split(/\s+/);
       return queryWords.every(qw=>nameWords.includes(qw));
     });
-    const displayName=document.getElementById('msSearch')?.value.trim()||query;
+    const displayName=document.getElementById('msSearch'+(sfx||''))?.value.trim()||query;
 
     // show card always while query active
     const qaCard=document.createElement('div');
@@ -1272,12 +1285,12 @@ function msRender(){
 
     if(!msQuickAddState){
       // put think card in slot outside list so innerHTML='' never destroys it
-      const slot = document.getElementById('msThinkSlot');
+      const slot = document.getElementById('msThinkSlot'+(sfx||''));
       const card = msGetOrCreateThinkCard();
       if(slot && !slot.contains(card)) slot.appendChild(card);
     } else {
       // clear think slot
-      const slot = document.getElementById('msThinkSlot');
+      const slot = document.getElementById('msThinkSlot'+(sfx||''));
       if(slot) slot.innerHTML = '';
       if(msQuickAddState==='success'){
         const ph=MS_SUCCESS_PHRASES[Math.floor(Math.random()*MS_SUCCESS_PHRASES.length)];
@@ -1343,5 +1356,31 @@ function msRender(){
   });
 }
 
+/* ── MS RENDER WRAPPER: renders to both overlay and tab containers ── */
+function msRender(){ msRenderTo(''); msRenderTo('Tab'); }
 
-
+/* ── MS SEARCH INPUT FOR TAB PAGE ── */
+function msSearchInputTab(){
+  clearTimeout(msSearchIdleTimer);
+  clearInterval(msThinkTimer);
+  // sync tab search value to shared quick-add state
+  const q = (document.getElementById('msSearchTab')?.value||'').trim();
+  if(!q){ msThinkPhraseSet=false; msQuickAddState=null; msQuickAddName=''; msThinkCardEl=null; msRender(); return; }
+  if(msQuickAddState && msQuickAddState!=='pick-cat' && msQuickAddState!=='confirm' && msQuickAddState!=='pick-buysize'){
+    msQuickAddState=null; msThinkCardEl=null; msPickNextThinkPhrase();
+  }
+  if(!msThinkPhraseSet){ msPickNextThinkPhrase(); msThinkPhraseSet=true; }
+  msRender();
+  msSearchIdleTimer = setTimeout(()=>{
+    clearInterval(msThinkTimer);
+    const allItems = ls('ms_items',[]);
+    const qWords = q.toLowerCase().split(/\s+/);
+    const exists = allItems.some(i=>{
+      const nWords = i.name.toLowerCase().split(/\s+/);
+      return qWords.every(qw=>nWords.includes(qw));
+    });
+    msQuickAddState = exists ? 'found' : 'confirm';
+    msQuickAddName = q;
+    msRender();
+  }, 2000);
+}

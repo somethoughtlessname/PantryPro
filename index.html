@@ -25,6 +25,7 @@
   <div class="header-tab-row">
     <button class="header-tab-btn active" id="hGrocery" onclick="setPage('Grocery')">Grocery List</button>
     <button class="header-tab-btn" id="hPantry" onclick="setPage('Pantry')">My Pantry</button>
+    <button class="header-tab-btn" id="hMyStore" onclick="setPage('MyStore')">My Store</button>
     <button class="header-tab-btn" id="hStats" onclick="setPage('Stats')">Stats</button>
   </div>
   <div id="statsTabRow"></div>
@@ -59,6 +60,16 @@
     <div id="ptThinkSlot"></div>
   </div>
 
+  <!-- MY STORE (inline tab) -->
+  <div class="page" id="pageMyStore">
+    <div class="ms-search-wrap">
+      <input type="text" id="msSearchTab" class="ms-search" placeholder="Search... type to find or add a new item" oninput="msSearchInputTab()">
+      <button class="ms-search-clear" onclick="document.getElementById('msSearchTab').value='';msThinkPhraseSet=false;msQuickAddState=null;msQuickAddName='';msThinkCardEl=null;msRender();">×</button>
+    </div>
+    <div id="msThinkSlotTab"></div>
+    <div class="list-wrap" id="msListTab"></div>
+  </div>
+
   <!-- STATS -->
   <div class="page" id="pageStats">
     <div id="statsPageBody" style="flex:1;display:flex;flex-direction:column;gap:var(--margin);"></div>
@@ -86,24 +97,14 @@
     </div>
   </div>
 
-  <!-- MY STORE (overlay, opened from sidebar) -->
-  <div class="page" id="pageMyShop" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:250;background:var(--bg-1);flex-direction:column;overflow:hidden;">
-    <div style="height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-2);">
-      <div style="flex:1;display:flex;align-items:center;padding:0 14px;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;">My Store</div>
-      <button onclick="document.getElementById('pageMyShop').style.display='none';" style="width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);font-size:22px;font-weight:900;color:#fff;cursor:pointer;">×</button>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:var(--margin);padding:var(--margin);flex-shrink:0;">
-      <div class="ms-search-wrap">
-        <input type="text" id="msSearch" class="ms-search" placeholder="Search... type to find or add a new list item" oninput="msSearchInput()">
-        <button class="ms-search-clear" onclick="document.getElementById('msSearch').value='';msThinkPhraseSet=false;msQuickAddState=null;msQuickAddName='';msRender();">×</button>
-      </div>
-      <div id="msThinkSlot"></div>
-    </div>
-    <div style="flex:1;overflow-y:auto;padding:0 var(--margin) var(--margin);">
-      <div class="list-wrap" id="msList"></div>
-    </div>
-  </div>
+  <!-- STATS WINDOW is the existing #statsWindow overlay -->
 
+</div>
+
+<!-- SIDEBAR PAGE HEADER: floats over the normal tab when opened from sidebar -->
+<div id="sidebarPageHeader" style="display:none;position:fixed;top:0;left:0;right:0;z-index:300;height:var(--card-height);display:none;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);background:var(--bg-2);">
+  <div id="sidebarPageTitle" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;pointer-events:none;"></div>
+  <button onclick="closeSidebarPage()" style="margin-left:auto;width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);font-size:22px;font-weight:900;color:#fff;cursor:pointer;">×</button>
 </div>
 
 <!-- MODAL -->
@@ -126,19 +127,20 @@
 
 <!-- STATS WINDOW -->
 <div id="statsWindow" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:300;background:var(--bg-1);flex-direction:column;overflow:hidden;">
-  <div style="height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-2);">
-    <div style="flex:1;display:flex;align-items:center;padding:0 14px;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;">Stats</div>
-    <button onclick="closeStatsWindow()" style="width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);font-size:22px;font-weight:900;color:#fff;cursor:pointer;">×</button>
-  </div>
+  <div style="height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-2);position:relative;">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;pointer-events:none;">Stats</div>
+    <button onclick="closeStatsWindow()" style="margin-left:auto;width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);font-size:22px;font-weight:900;color:#fff;cursor:pointer;">×</button>
+    </div>
+  <div id="statsWindowFrozenRow" style="flex-shrink:0;border-bottom:var(--border-width) solid var(--border-color);"></div>
   <div id="statsWindowBody" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--margin);padding:var(--margin);"></div>
 </div>
 
 <!-- SETTINGS WINDOW -->
 <div id="settingsWindow" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:300;background:var(--bg-1);flex-direction:column;overflow:hidden;">
-  <div style="height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-2);">
-    <div style="flex:1;display:flex;align-items:center;padding:0 14px;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;">Settings</div>
-    <button onclick="closeSettingsWindow()" style="width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);font-size:22px;font-weight:900;color:#fff;cursor:pointer;">×</button>
-  </div>
+  <div style="height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-2);position:relative;">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;pointer-events:none;">Settings</div>
+    <button onclick="closeSettingsWindow()" style="margin-left:auto;width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);font-size:22px;font-weight:900;color:#fff;cursor:pointer;">×</button>
+    </div>
   <div id="settingsWindowBody" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--margin);padding:var(--margin);"></div>
 </div>
 
@@ -220,6 +222,8 @@ setGlFilter('all');
 const _csVS=document.getElementById('csVSimple'); if(_csVS) _csVS.classList.toggle('active',csViewMode==='simple');
 const _csVC=document.getElementById('csVCat'); if(_csVC) _csVC.classList.toggle('active',csViewMode==='cat');
 ptRender();
+msRender();
+applyTabOrder();
 </script>
 </body>
 </html>
