@@ -21,7 +21,16 @@
   --color-10: #ffffff;
   --muted: #9ca3af;
 }
+:root[data-size="lg"] {
+  --card-height: 54px;
+  --drop-height: 40px;
+}
+:root[data-size="xl"] {
+  --card-height: 64px;
+  --drop-height: 48px;
+}
 
+html { scroll-padding-top: calc(var(--card-height) + var(--border-width)); }
 html, body {
   width: 100%; min-height: 100vh;
   background: var(--bg-1); color: var(--color-10);
@@ -30,7 +39,7 @@ html, body {
 }
 body {
   display: flex; flex-direction: column; align-items: center;
-  padding: calc(var(--card-height) + var(--border-width) + var(--margin)) var(--margin) 60px;
+  padding: calc(var(--card-height) + var(--margin)) var(--margin) 60px;
 }
 
 /* DATA WINDOW */
@@ -199,7 +208,6 @@ body {
   color: var(--muted); font-size: 10px; font-weight: 800;
   letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
 }
-.header-tab-btn:last-child { border-right: none; }
 .header-tab-btn.active { background: var(--bg-2); color: var(--color-10); }
 
 /* APP */
@@ -287,7 +295,7 @@ body {
   border:var(--border-width) solid var(--border-color); border-radius:var(--radius); overflow:hidden; flex-shrink:0;
 }
 .item-check {
-  width:32px; min-width:32px; background:#fff;
+  width:var(--drop-height); min-width:var(--drop-height); background:#fff;
   border-right:var(--border-width) solid var(--border-color);
   display:flex; align-items:center; justify-content:center;
   font-size:14px; font-weight:700; cursor:pointer; flex-shrink:0;
@@ -299,7 +307,7 @@ body {
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer;
 }
 .item-del {
-  width:32px; min-width:32px; background:var(--color-1); border:none;
+  width:var(--drop-height); min-width:var(--drop-height); background:var(--color-1); border:none;
   border-left:var(--border-width) solid var(--border-color);
   color:#fff; font-size:14px; font-weight:700;
   cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center;
@@ -623,6 +631,7 @@ body {
 #pagePantry {
   flex-direction: column; gap: var(--margin);
   overflow-y: auto;
+  padding-top: var(--margin);
 }
 .pt-card {
   border: 3px solid #000;
@@ -630,16 +639,16 @@ body {
   width: 100%;
 }
 .pt-main {
-  height: 32px !important;
-  min-height: 32px !important;
-  max-height: 32px !important;
+  height: var(--drop-height) !important;
+  min-height: var(--drop-height) !important;
+  max-height: var(--drop-height) !important;
   box-sizing: border-box;
   display: flex; align-items: stretch;
   position: relative; overflow: hidden; cursor: pointer;
 }
 .pt-btn {
-  width: 32px; min-width: 32px; max-width: 32px;
-  height: 32px;
+  width: var(--drop-height); min-width: var(--drop-height); max-width: var(--drop-height);
+  height: var(--drop-height);
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; font-weight: 700;
   z-index: 2; flex-shrink: 0; cursor: pointer;
@@ -649,7 +658,7 @@ body {
 .pt-btn.left  { border-right: 3px solid #000; }
 .pt-btn.right { border-left:  3px solid #000; }
 .pt-center {
-  flex: 1; height: 32px; box-sizing: border-box;
+  flex: 1; height: var(--drop-height); box-sizing: border-box;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   z-index: 2; position: relative;
@@ -694,16 +703,6 @@ body {
 
 /* ── HIDDEN FEATURES ── */
 #pageShop, #recipesWindow, #mealsWindow, #salesWindow { display: none !important; }
-
-/* ── OVERLAY DIM: opacity-based (avoids stacking-context conflicts) ── */
-#pagePantryWindow.overlay-dim-active .ms-search-wrap,
-#pagePantryWindow.overlay-dim-active .pt-card-wrap:not(.focus-active) { opacity:0.25; transition:opacity 0.35s ease; }
-#pagePantryWindow.overlay-dim-active .pt-card-wrap.focus-active { opacity:1; transition:opacity 0.35s ease; }
-#pageMyShop.overlay-dim-active .ms-search-wrap,
-#pageMyShop.overlay-dim-active .cs-section:not(.focus-active),
-#pageMyShop.overlay-dim-active .cat-section:not(.focus-active) { opacity:0.25; transition:opacity 0.35s ease; }
-#pageMyShop.overlay-dim-active .cs-section.focus-active,
-#pageMyShop.overlay-dim-active .cat-section.focus-active { opacity:1; transition:opacity 0.35s ease; }
   `;
   document.head.appendChild(s);
 })();
