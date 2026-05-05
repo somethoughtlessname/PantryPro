@@ -832,6 +832,9 @@ function renderSettingsBody(){
 
 /* ── DATA WINDOW ── */
 let dataTab = 'export';
+let statsExportRange = 'all'; // 'week' | 'month' | 'all'
+let statsExportWeekOffset = 0;  // 0 = current week, -1 = last week, etc.
+let statsExportMonthOffset = 0;
 let exportScope = 'all'; // 'all' | 'stats' | 'store'
 
 const EXPORT_SCOPE_KEYS = {
@@ -928,7 +931,7 @@ function exportData(){
     const v = localStorage.getItem(k);
     if(v===null) return;
     let val = JSON.parse(v);
-    if(k==='pantry_delta_log') val = _pruneDeltaLog(val);
+    if(k==='pantry_delta_log') val = val; // no pruning — export full history
     obj[_EK[k]||k] = val;
   });
   obj['_v'] = 2;
@@ -936,12 +939,30 @@ function exportData(){
   return JSON.stringify(obj);
 }
 
-function exportStatsReadable(){
+function exportStatsReadable(range, weekOffset, monthOffset){
+  range=range||'all'; weekOffset=weekOffset||0; monthOffset=monthOffset||0;
   const msItems = ls('ms_items',[]);
-  const deltaLog = _pruneDeltaLog(ls('pantry_delta_log',{}));
+  const deltaLog = ls('pantry_delta_log',{});
+  const wasteLog = ls('pantry_waste_log',{});
   const pantryData = ls('pantry_data',{});
   const customUnits = ls('unit_custom',[]);
   const customCats = ls('cat_custom',[]);
+
+  // Compute date range filter
+  const now=new Date();
+  let fromKey=null, toKey=null;
+  if(range==='week'){
+    const dow=now.getDay(); const wi=dow===0?6:dow-1;
+    const ws=new Date(now); ws.setHours(0,0,0,0); ws.setDate(now.getDate()-wi+(weekOffset*7));
+    const we=new Date(ws); we.setDate(ws.getDate()+6);
+    fromKey=ptDateKey(ws); toKey=ptDateKey(we);
+  } else if(range==='month'){
+    const vd=new Date(now.getFullYear(),now.getMonth()+monthOffset,1);
+    fromKey=ptDateKey(vd);
+    const vdEnd=new Date(vd.getFullYear(),vd.getMonth()+1,0);
+    toKey=ptDateKey(vdEnd);
+  }
+  function inRange(dateKey){ if(!fromKey) return true; return dateKey>=fromKey&&dateKey<=toKey; }
 
   const customUnitCodes={}, customCatCodes={};
   const _ALPHA='aabbccddeeffffgghhiijjkkllmmnnooqqrrssttuuvvwwxxyyzz'.match(/../g);
@@ -951,51 +972,215 @@ function exportStatsReadable(){
   function unitCode(id){ return _UNIT_CODE[id]||customUnitCodes[id]||'un'; }
   function catCode(id){ return _CAT_CODE[id]||customCatCodes[id]||'ot'; }
 
+  // Compact date: YYMMDD
+  function compactDate(dateKey){ return dateKey.replace(/-/g,'').slice(2); }
+
+  // Cost string: *X.XX | *uk | *fr
+  function costStr(cost, isFree){
+    if(isFree) return '*fr';
+    if(cost==null||isNaN(cost)) return '*uk';
+    return `*${+cost.toFixed(2)}`;
+  }
+
   const lines=[];
-  lines.push('KEY: b=bought u=used w=wasted c=total cost of purchase');
-  lines.push('MEASURE: #gm #kg #ml #li #oz #lb #cp #tb #ts #ea #cn #pk #dz #ct #gl #pt #qt #un #aa #bb...');
+  const keyLines=[];
+  keyLines.push('KEY b=bought u=used w=wasted *=cost uk=unknown fr=free');
 
   const stdCats=Object.entries(_CAT_CODE);
-  lines.push('CATS: '+stdCats.slice(0,11).map(([id,code])=>`*${code}=${id}`).join(' '));
-  if(stdCats.slice(11).length) lines.push('CATS: '+stdCats.slice(11).map(([id,code])=>`*${code}=${id}`).join(' '));
-  if(customUnits.length) lines.push('CUSTOM MEASURE: '+customUnits.map((u,i)=>`#${_ALPHA[i]}=${u.label}`).join(' '));
-  if(customCats.length) lines.push('CUSTOM CATS: '+customCats.map((c,i)=>`*${_ALPHA[i]}=${c.label}`).join(' '));
+  keyLines.push('UNIT '+Object.values(_UNIT_CODE).map(c=>`#${c}`).join(' '));
+  keyLines.push('CAT '+stdCats.slice(0,12).map(([id,code])=>`*${code}=${id}`).join(' '));
+  if(stdCats.slice(12).length) keyLines.push('CAT '+stdCats.slice(12).map(([id,code])=>`*${code}=${id}`).join(' '));
+  if(customUnits.length) keyLines.push('UNIT+ '+customUnits.map((u,i)=>`#${_ALPHA[i]}=${u.label}`).join(' '));
+  if(customCats.length) keyLines.push('CAT+ '+customCats.map((c,i)=>`*${_ALPHA[i]}=${c.label}`).join(' '));
+
+  // Totals accumulator
+  const totals={bought:0,boughtCost:0,used:0,usedCost:0,wasted:0,wastedCost:0,
+    boughtCostKnown:false,usedCostKnown:false,wastedCostKnown:false};
+
+  const itemLines=[];
 
   msItems.forEach(item=>{
     const pd=pantryData[item.id]||{};
     const log=deltaLog[item.id]||{};
-    const days=Object.keys(log).sort();
-    if(!days.length) return;
+    const itemWasteLog=wasteLog; // keyed by dateKey then itemId
+
+    // Collect all days from delta log and waste log within range
+    const allDays=new Set([
+      ...Object.keys(log).filter(inRange),
+      ...Object.keys(wasteLog).filter(dk=>inRange(dk)&&wasteLog[dk]?.[item.id]>0)
+    ]);
+    if(!allDays.size) return;
 
     const uCode=unitCode(pd.unit||item.unit||'unit');
     const cCode=catCode(item.category||'other');
-    const cons=(pd.containers||[]).filter(c=>!c.free&&c.price!=null&&c.cap>0);
-    const ppu=cons.length?cons.reduce((s,c)=>s+c.price/c.cap,0)/cons.length:null;
 
-    lines.push('');
-    lines.push(`${item.name} #${uCode} *${cCode}`);
+    // Containers for cost calculation
+    const freeCons=(pd.containers||[]).filter(c=>c.free);
+    const pricedCons=(pd.containers||[]).filter(c=>!c.free&&c.price!=null&&c.cap>0);
+    const allFree=freeCons.length>0&&pricedCons.length===0;
+    const ppu=pricedCons.length?pricedCons.reduce((s,c)=>s+c.price/c.cap,0)/pricedCons.length:null;
 
-    days.forEach(dateKey=>{
-      const entries=log[dateKey];
-      let bought=0, used=0, wasted=0;
+    itemLines.push('');
+    itemLines.push(`${item.name} #${uCode} *${cCode}`);
+
+    // Build day blocks sorted
+    const dayBlocks=[];
+    [...allDays].sort().forEach(dateKey=>{
+      const entries=log[dateKey]||[];
+      let bought=0,boughtCost=0,used=0,usedCost=0;
+      let boughtFree=false,usedFree=false;
+      let boughtHasCost=false,usedHasCost=false;
+
       entries.forEach(e=>{
-        const delta=e[0]; const isWaste=e[2]==='w'||e[1]==='w';
-        if(delta>0) bought+=delta;
-        else if(isWaste) wasted+=Math.abs(delta);
-        else used+=Math.abs(delta);
+        const delta=e[0];
+        const isWaste=e[2]==='w'||e[1]==='w';
+        const cost=typeof e[1]==='number'?e[1]:null;
+        if(isWaste) return;
+        if(delta>0){
+          bought+=delta;
+          if(cost!=null){ boughtCost+=cost; boughtHasCost=true; }
+          else if(allFree) boughtFree=true;
+        } else {
+          used+=Math.abs(delta);
+          if(cost!=null){ usedCost+=cost; usedHasCost=true; }
+          else if(ppu!=null){ usedCost+=Math.abs(delta)*ppu; usedHasCost=true; }
+          else if(allFree) usedFree=true;
+        }
       });
+
+      const wasted=wasteLog[dateKey]?.[item.id]||0;
+      const wastedCost=wasted>0?(ppu!=null?wasted*ppu:null):null;
+      const wastedFree=wasted>0&&allFree;
+
+      // Accumulate into totals
+      totals.bought+=bought; if(boughtHasCost){ totals.boughtCost+=boughtCost; totals.boughtCostKnown=true; } else if(bought&&ppu){ totals.boughtCost+=bought*ppu; totals.boughtCostKnown=true; }
+      totals.used+=used; if(usedHasCost){ totals.usedCost+=usedCost; totals.usedCostKnown=true; }
+      totals.wasted+=wasted; if(wastedCost!=null){ totals.wastedCost+=wastedCost; totals.wastedCostKnown=true; }
+
       if(!bought&&!used&&!wasted) return;
-      const d=dateKey.replace(/-/g,'');
-      const parts=[d+':'];
-      if(bought) parts.push(`b${+bought.toFixed(2)}`);
-      if(bought&&ppu) parts.push(`c${(bought*ppu).toFixed(2)}`);
-      if(used) parts.push(`u${+used.toFixed(2)}`);
-      if(wasted) parts.push(`w${+wasted.toFixed(2)}`);
-      lines.push(parts.join(' '));
+
+      const cd=compactDate(dateKey);
+      let block=cd;
+      if(bought){
+        const cs=boughtFree?'*fr':boughtHasCost?`*${+boughtCost.toFixed(2)}`:(ppu!=null?`*${+(bought*ppu).toFixed(2)}`:'*uk');
+        block+=`(b${+bought.toFixed(2)}${cs})`;
+      }
+      if(used){
+        const cs=usedFree?'*fr':usedHasCost?`*${+usedCost.toFixed(2)}`:'*uk';
+        block+=`(u${+used.toFixed(2)}${cs})`;
+      }
+      if(wasted){
+        const cs=wastedFree?'*fr':wastedCost!=null?`*${+wastedCost.toFixed(2)}`:'*uk';
+        block+=`(w${+wasted.toFixed(2)}${cs})`;
+      }
+      dayBlocks.push(`{${block}}`);
     });
+
+    if(dayBlocks.length) itemLines.push(dayBlocks.join(range==='all'?'':'\n'));
   });
 
-  return lines.join('\n');
+  // Period label
+  let periodLabel='ALL TIME';
+  if(range==='week'&&fromKey) periodLabel=`WEEK ${fromKey} TO ${toKey}`;
+  else if(range==='month'&&fromKey){ const vd=new Date(now.getFullYear(),now.getMonth()+monthOffset,1); periodLabel=vd.toLocaleDateString('en-US',{month:'long',year:'numeric'}).toUpperCase(); }
+
+  // ── COST TREND: compare to previous equivalent period ──
+  let trendLine='TREND - unknown';
+  if(fromKey&&toKey){
+    const periodMs=new Date(toKey+'T23:59:59').getTime()-new Date(fromKey+'T00:00:00').getTime()+1;
+    const prevToTs=new Date(fromKey+'T00:00:00').getTime()-1;
+    const prevFromTs=prevToTs-periodMs+1;
+    const prevFromKey=ptDateKey(new Date(prevFromTs));
+    const prevToKey=ptDateKey(new Date(prevToTs));
+    function inPrevRange(dk){ return dk>=prevFromKey&&dk<=prevToKey; }
+    let prevBought=0,prevUsed=0,prevWasted=0;
+    let prevBoughtKnown=false,prevUsedKnown=false;
+    msItems.forEach(item=>{
+      const log2=deltaLog[item.id]||{};
+      const pd2=pantryData[item.id]||{};
+      const pricedCons2=(pd2.containers||[]).filter(c=>!c.free&&c.price!=null&&c.cap>0);
+      const ppu2=pricedCons2.length?pricedCons2.reduce((s,c)=>s+c.price/c.cap,0)/pricedCons2.length:null;
+      Object.keys(log2).filter(inPrevRange).forEach(dk=>{
+        (log2[dk]||[]).forEach(e=>{
+          const isW=e[2]==='w'||e[1]==='w'; const cost=typeof e[1]==='number'?e[1]:null;
+          if(isW) return;
+          if(e[0]>0){ if(cost!=null){prevBought+=cost;prevBoughtKnown=true;} else if(ppu2){prevBought+=e[0]*ppu2;prevBoughtKnown=true;} }
+          else { if(cost!=null){prevUsed+=cost;prevUsedKnown=true;} else if(ppu2){prevUsed+=Math.abs(e[0])*ppu2;prevUsedKnown=true;} }
+        });
+      });
+      Object.keys(wasteLog).filter(inPrevRange).forEach(dk=>{
+        const w=wasteLog[dk]?.[item.id]||0; if(w>0&&ppu2) prevWasted+=w*ppu2;
+      });
+    });
+    if(totals.boughtCostKnown&&prevBoughtKnown&&prevBought>0){
+      const bPct=((totals.boughtCost-prevBought)/prevBought*100);
+      const uPct=totals.usedCostKnown&&prevUsedKnown&&prevUsed>0?((totals.usedCost-prevUsed)/prevUsed*100):null;
+      trendLine=`TREND - BOUGHT ${bPct>=0?'+':''}${bPct.toFixed(1)}% vs prev period${uPct!==null?' / USED '+(uPct>=0?'+':'')+uPct.toFixed(1)+'%':''}`;
+    }
+  }
+
+  // ── BUY/USE RATIO ──
+  let ratioLine='BUY/USE RATIO - unknown';
+  if(totals.boughtCostKnown&&totals.usedCostKnown&&totals.usedCost>0){
+    ratioLine=`BUY/USE RATIO - ${(totals.boughtCost/totals.usedCost).toFixed(2)}`;
+  }
+
+  // ── PANTRY VALUE: current stock × price-per-unit ──
+  let pantryValue=0; let pantryValueKnown=false;
+  msItems.forEach(item=>{
+    const pd2=pantryData[item.id]||{};
+    (pd2.containers||[]).forEach(con=>{
+      if(con.free||con.price==null||con.cap==null||con.cap===0) return;
+      pantryValue+=con.amount*(con.price/con.cap);
+      pantryValueKnown=true;
+    });
+  });
+  const pantryValueLine=`PANTRY VALUE - ${pantryValueKnown?'$'+pantryValue.toFixed(2):'unknown'}`;
+
+  // Build final output: summary header, items, key at bottom
+  const out=[];
+  out.push(`PERIOD ${periodLabel}`);
+  out.push(`BOUGHT - ${totals.boughtCostKnown?'$'+totals.boughtCost.toFixed(2):'unknown'}`);
+  out.push(`USED   - ${totals.usedCostKnown?'$'+totals.usedCost.toFixed(2):'unknown'}`);
+  out.push(`WASTED - ${totals.wastedCostKnown?'$'+totals.wastedCost.toFixed(2):'unknown'}`);
+  out.push(ratioLine);
+  out.push(trendLine);
+  out.push(pantryValueLine);
+  out.push('---');
+  out.push(...itemLines);
+  out.push('');
+  out.push('---');
+  out.push(...keyLines);
+  return out.join('\n');
+}
+
+/* ── EXPORT SUMMARY PARSING ── */
+function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function parseExportSummary(text){
+  const lines=text.split('\n');
+  const get=prefix=>{ const l=lines.find(x=>x.startsWith(prefix)); return l?l.slice(prefix.length).trim():null; };
+  function parseCost(s){ if(!s||s==='unknown') return '—'; return s; }
+  function parseTrend(text, key){
+    const tl=lines.find(x=>x.startsWith('TREND'));
+    if(!tl||tl.includes('unknown')) return '—';
+    const rx=new RegExp(key+'\\s*([+-][\\d.]+%)');
+    const m=tl.match(rx); return m?m[1]:'—';
+  }
+  return {
+    bought: parseCost(get('BOUGHT -')),
+    used:   parseCost(get('USED   -')),
+    wasted: parseCost(get('WASTED -')),
+    ratio:  get('BUY/USE RATIO -')||'—',
+    pantryValue: get('PANTRY VALUE -')||'—',
+    boughtTrend: parseTrend(text,'BOUGHT'),
+    usedTrend:   parseTrend(text,'USED'),
+    wastedTrend: parseTrend(text,'WASTED'),
+  };
+}
+function stripExportSummary(text){
+  const skip=new Set(['PERIOD','BOUGHT -','USED   -','WASTED -','BUY/USE RATIO -','PANTRY VALUE -','TREND -']);
+  return text.split('\n').filter(l=>!([...skip].some(p=>l.startsWith(p)))).join('\n').replace(/^---\n/,'');
 }
 
 function importData(json){
@@ -1098,6 +1283,9 @@ function openNewItemOverlay(prefillName, onSave){
 function openDataWindow(){
   closeSettings();
   dataTab='export';
+  statsExportRange='week';
+  statsExportWeekOffset=0;
+  statsExportMonthOffset=0;
   document.getElementById('dataWindow').classList.add('open');
   renderDataBody();
 }
@@ -1134,21 +1322,131 @@ function renderDataBody(){
     });
     body.appendChild(scopeCard);
 
-    const exported = exportScope==='stats' ? exportStatsReadable() : exportData();
-    ta.value = exported;
-    body.appendChild(ta);
+    // Stats date filter — only shown when exportScope === 'stats'
+    if(exportScope==='stats'){
+      const now=new Date();
 
+      // Range selector
+      const rangeCard=document.createElement('div'); rangeCard.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;flex-shrink:0;height:var(--drop-height);';
+      [['week','This Week'],['month','This Month'],['all','All Time']].forEach(([v,lbl],i)=>{
+        const isAct=statsExportRange===v; const btn=document.createElement('div');
+        btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-3)'};color:${isAct?'var(--color-10)':'var(--muted)'};${i<2?'border-right:var(--border-width) solid var(--border-color);':''}`;
+        btn.textContent=lbl;
+        btn.onclick=()=>{ statsExportRange=v; statsExportWeekOffset=0; statsExportMonthOffset=0; renderDataBody(); };
+        rangeCard.appendChild(btn);
+      });
+      body.appendChild(rangeCard);
+
+      // Nav is inside summary card header — no separate nav row needed
+    }
+
+    const exported = exportScope==='stats' ? exportStatsReadable(statsExportRange, statsExportWeekOffset, statsExportMonthOffset) : exportData();
+
+    // Stats summary card — shown only for stats scope
+    if(exportScope==='stats'){
+      const now=new Date();
+      const stats=parseExportSummary(exported);
+
+      // Date range label for header
+      let dateRangeLabel='All Time';
+      if(statsExportRange==='week'){
+        const dow=now.getDay(); const wi=dow===0?6:dow-1;
+        const ws=new Date(now); ws.setHours(0,0,0,0); ws.setDate(now.getDate()-wi+(statsExportWeekOffset*7));
+        const we=new Date(ws); we.setDate(ws.getDate()+6);
+        dateRangeLabel=ws.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+we.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      } else if(statsExportRange==='month'){
+        const vd=new Date(now.getFullYear(),now.getMonth()+statsExportMonthOffset,1);
+        dateRangeLabel=vd.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+      } else {
+        const dl2=ls('pantry_delta_log',{});
+        const allDk=Object.values(dl2).flatMap(x=>Object.keys(x)).sort();
+        if(allDk.length) dateRangeLabel=`${allDk[0]} – ${ptDateKey()}`;
+      }
+
+      const sumCard=document.createElement('div'); sumCard.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;';
+
+      // Header
+      const sumHdr=document.createElement('div'); sumHdr.style.cssText='height:var(--drop-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);background:var(--bg-2);position:relative;';
+      const sumTitle=document.createElement('div'); sumTitle.style.cssText='position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;pointer-events:none;'; sumTitle.textContent=dateRangeLabel;
+      if(statsExportRange==='week'||statsExportRange==='month'){
+        const hPrev=document.createElement('div'); hPrev.style.cssText='width:var(--drop-height);min-width:var(--drop-height);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;cursor:pointer;border-right:var(--border-width) solid var(--border-color);flex-shrink:0;'; hPrev.textContent='◀';
+        hPrev.onclick=()=>{ if(statsExportRange==='week') statsExportWeekOffset--; else statsExportMonthOffset--; renderDataBody(); };
+        const curOff=statsExportRange==='week'?statsExportWeekOffset:statsExportMonthOffset;
+        const hNext=document.createElement('div'); hNext.style.cssText=`margin-left:auto;width:var(--drop-height);min-width:var(--drop-height);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:${curOff<0?'#fff':'var(--muted)'};cursor:pointer;border-left:var(--border-width) solid var(--border-color);flex-shrink:0;`; hNext.textContent='▶';
+        hNext.onclick=()=>{ if(curOff>=0) return; if(statsExportRange==='week') statsExportWeekOffset++; else statsExportMonthOffset++; renderDataBody(); };
+        sumHdr.append(hPrev,sumTitle,hNext);
+      } else {
+        sumHdr.appendChild(sumTitle);
+      }
+      sumCard.appendChild(sumHdr);
+
+      // Three metric columns
+      const metricsRow=document.createElement('div'); metricsRow.style.cssText='display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);';
+      [['Bought',stats.bought,'#5A8DB8',stats.boughtTrend],['Used',stats.used,'#48a971',stats.usedTrend],['Wasted',stats.wasted,'#C85A5A',stats.wastedTrend]].forEach(([label,val,color,trend],i)=>{
+        const col=document.createElement('div'); col.style.cssText=`flex:1;display:flex;flex-direction:column;align-items:stretch;${i<2?'border-right:var(--border-width) solid var(--border-color);':''}`;
+        const main=document.createElement('div'); main.style.cssText='display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 4px 6px;gap:2px;border-bottom:var(--border-width) solid var(--border-color);';
+        const lbl=document.createElement('div'); lbl.style.cssText='font-size:7px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);'; lbl.textContent=label;
+        const vEl=document.createElement('div'); vEl.style.cssText=`font-size:14px;font-weight:900;color:${color};`; vEl.textContent=val;
+        main.append(lbl,vEl);
+        const tEl=document.createElement('div'); tEl.style.cssText=`display:flex;align-items:center;justify-content:center;padding:4px;font-size:12px;font-weight:900;color:${trend&&trend.startsWith('-')?'#48a971':trend&&trend!=='—'?'#C85A5A':'var(--muted)'};`; tEl.textContent=trend||'—';
+        col.append(main,tEl); metricsRow.appendChild(col);
+      });
+      sumCard.appendChild(metricsRow);
+
+      // Secondary row: ratio + pantry value
+      const secRow=document.createElement('div'); secRow.style.cssText='display:flex;align-items:stretch;';
+      [['Buy / Use Ratio',stats.ratio],['Pantry Value',stats.pantryValue]].forEach(([label,val],i)=>{
+        const sec=document.createElement('div'); sec.style.cssText=`flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:7px 4px;gap:2px;${i>0?'border-left:var(--border-width) solid var(--border-color);':''}`;
+        const lbl=document.createElement('div'); lbl.style.cssText='font-size:7px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);'; lbl.textContent=label;
+        const vEl=document.createElement('div'); vEl.style.cssText='font-size:14px;font-weight:900;color:#fff;'; vEl.textContent=val;
+        sec.append(lbl,vEl); secRow.appendChild(sec);
+      });
+      sumCard.appendChild(secRow);
+      body.appendChild(sumCard);
+    }
+
+    // Strip summary lines from textarea (they're shown in the card above)
+    // For stats export: use colored pre instead of textarea
+    let rawExportText = '';
+    if(exportScope==='stats'){
+      const strippedText = stripExportSummary(exported);
+      rawExportText = strippedText;
+      const pre = document.createElement('pre'); pre.className='data-textarea'; pre.style.cssText=`cursor:text;user-select:text;white-space:pre-wrap;overflow-y:auto;${statsExportRange==='all'?'word-break:break-all;':''}`;
+      // Parse and colorize { } day blocks alternating green/blue
+      let html='', blockIdx=0;
+      let remaining=strippedText;
+      while(remaining.length){
+        const start=remaining.indexOf('{');
+        if(start===-1){ html+=escHtml(remaining); break; }
+        html+=escHtml(remaining.slice(0,start));
+        const end=remaining.indexOf('}',start);
+        if(end===-1){ html+=escHtml(remaining.slice(start)); break; }
+        const block=remaining.slice(start,end+1);
+        const color=blockIdx%2===0?'#48a971':'#5A8DB8';
+        html+=`<span style="color:${color}">${escHtml(block)}</span>`;
+        blockIdx++;
+        remaining=remaining.slice(end+1);
+      }
+      pre.innerHTML=html;
+      ta.remove && ta.remove(); // remove the original textarea if added
+      body.appendChild(pre);
+    } else {
+      ta.value = exported;
+      body.appendChild(ta);
+    }
+
+    const copyText = exportScope==='stats' ? rawExportText : exported;
     const info = document.createElement('div'); info.style.cssText='font-size:9px;color:var(--muted);text-align:center;padding:2px 0;';
-    info.textContent = `${exported.length.toLocaleString()} characters`;
+    info.textContent = `${copyText.length.toLocaleString()} characters`;
     body.appendChild(info);
 
     const btn = document.createElement('button'); btn.className='data-btn green'; btn.textContent='Copy to Clipboard';
     btn.onclick=()=>{
-      navigator.clipboard.writeText(ta.value).then(()=>{
+      navigator.clipboard.writeText(copyText).then(()=>{
         status.textContent='Copied!';
         setTimeout(()=>status.textContent='', 2000);
       }).catch(()=>{
-        ta.select(); document.execCommand('copy');
+        const tmp=document.createElement('textarea'); tmp.value=copyText; document.body.appendChild(tmp); tmp.select(); document.execCommand('copy'); tmp.remove();
         status.textContent='Copied!';
         setTimeout(()=>status.textContent='', 2000);
       });
@@ -1513,7 +1811,7 @@ function renderStatsWindow(){
       }
     } else if(singleItem && sw==='thismonth'){
       const qv=aboveBarQtyVals?aboveBarQtyVals[i]:0;
-      numEl=document.createElement('div'); numEl.style.cssText=`height:28px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;margin-bottom:1px;overflow:visible;position:relative;z-index:2;`;
+      numEl=document.createElement('div'); numEl.style.cssText=`height:28px;min-width:40px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;margin-bottom:1px;overflow:visible;position:relative;z-index:2;`;
       if(isSel && v>0){
         const dSpan=document.createElement('div'); dSpan.style.cssText=`font-size:${numSize};font-weight:900;color:#fff;line-height:1;white-space:nowrap;`; dSpan.textContent='$'+v.toFixed(2);
         const div3=document.createElement('div'); div3.style.cssText=`width:50%;height:2px;background:#fff;margin:1px 0;flex-shrink:0;border-radius:999px;`;
@@ -1532,7 +1830,7 @@ function renderStatsWindow(){
     } else {
       const isFutureDay=(sw==='daily'&&i>todayWiSW)||(sw==='thismonth'&&i>now.getDate()-1);
       const showForBar=sw==='thismonth'?isSel&&v>0:sw==='daily'?(showNum&&!isFutureDay):(v>0&&(selBar!==null?isSel:true));
-      numEl=document.createElement('div'); numEl.style.cssText=`font-size:${numSize};font-weight:900;height:14px;width:100%;display:flex;align-items:flex-end;justify-content:center;color:${isSel?'#fff':'rgba(255,255,255,0.5)'};margin-bottom:1px;overflow:hidden;white-space:nowrap;`;
+      numEl=document.createElement('div'); numEl.style.cssText=`font-size:${numSize};font-weight:900;height:14px;min-width:${isSel?'40px':'0'};width:100%;display:flex;align-items:flex-end;justify-content:center;color:${isSel?'#fff':'rgba(255,255,255,0.5)'};margin-bottom:1px;overflow:${isSel?'visible':'hidden'};white-space:nowrap;position:relative;z-index:${isSel?'2':'1'};`;
       numEl.textContent=showForBar?((sw==='daily'||sw==='thismonth')?'$'+v.toFixed(2):v.toFixed(2)):'';
     }
 
@@ -1546,7 +1844,7 @@ function renderStatsWindow(){
   const foot=document.createElement('div');
 
   if(singleItem){
-    foot.style.cssText='height:32px;border-top:var(--border-width) solid var(--border-color);display:flex;align-items:stretch;';
+    foot.style.cssText='height:var(--drop-height);border-top:var(--border-width) solid var(--border-color);display:flex;align-items:stretch;';
     let rt='';
     if(selBar!==null){
       if(sw==='daily'){ const wd=weekDaysSW[selBar]; rt=wd?wd.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}):''; }
@@ -1563,7 +1861,7 @@ function renderStatsWindow(){
     const unitF=(ptDataF?.unit)||msItmF?.unit||'unit';
 
     if(sw==='daily'||sw==='thismonth'){
-      const periodEl=document.createElement('div'); periodEl.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;font-weight:800;color:var(--muted);border-right:var(--border-width) solid var(--border-color);padding:0 4px;text-align:center;overflow:hidden;';
+      const periodEl=document.createElement('div'); periodEl.style.cssText='flex:1;min-width:0;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;font-weight:800;color:var(--muted);border-right:var(--border-width) solid var(--border-color);padding:0 4px;text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;';
       periodEl.textContent=rt;
       const costEl=document.createElement('div'); costEl.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;font-weight:800;color:${multiColor};border-right:var(--border-width) solid var(--border-color);padding:0 4px;`;
       costEl.textContent=costVal>0?'$'+costVal.toFixed(2):'—';
@@ -1573,7 +1871,7 @@ function renderStatsWindow(){
       qtyEl.append(qtyNum,qtyUnitLbl);
       foot.append(periodEl,costEl,qtyEl);
     } else {
-      const periodEl=document.createElement('div'); periodEl.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;font-weight:800;color:var(--muted);border-right:var(--border-width) solid var(--border-color);padding:0 4px;text-align:center;overflow:hidden;';
+      const periodEl=document.createElement('div'); periodEl.style.cssText='flex:1;min-width:0;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;font-weight:800;color:var(--muted);border-right:var(--border-width) solid var(--border-color);padding:0 4px;text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;';
       periodEl.textContent=rt;
       const costEl=document.createElement('div'); costEl.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;font-weight:800;color:${multiColor};border-right:var(--border-width) solid var(--border-color);padding:0 4px;`;
       costEl.textContent=costVal>0?'$'+costVal.toFixed(2):'—';
@@ -1585,8 +1883,8 @@ function renderStatsWindow(){
     }
   } else {
     // Standard 2-column layout
-    foot.style.cssText='height:32px;border-top:var(--border-width) solid var(--border-color);display:flex;align-items:stretch;';
-    const leftEl=document.createElement('div'); leftEl.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;font-weight:800;color:var(--muted);border-right:var(--border-width) solid var(--border-color);padding:0 8px;text-align:center;';
+    foot.style.cssText='height:var(--drop-height);border-top:var(--border-width) solid var(--border-color);display:flex;align-items:stretch;';
+    const leftEl=document.createElement('div'); leftEl.style.cssText='flex:1;min-width:0;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;font-weight:800;color:var(--muted);border-right:var(--border-width) solid var(--border-color);padding:0 4px;text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;';
     const rightEl=document.createElement('div'); rightEl.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;font-weight:800;color:${multiColor};padding:0 8px;`;
     if(selBar!==null){
       let rt='';

@@ -102,12 +102,13 @@ body {
   border:var(--border-width) solid var(--border-color); border-radius:var(--radius);
   color:var(--color-10); font-size:11px; font-weight:800;
   letter-spacing:0.08em; text-transform:uppercase; cursor:pointer;
+  width:100%; flex-shrink:0;
 }
 .data-btn.green { background:var(--color-4); color:#000; }
 .data-status {
   font-size:10px; font-weight:700; letter-spacing:0.06em;
   text-transform:uppercase; color:var(--color-4); text-align:center;
-  min-height:16px;
+  min-height:0;
 }
 
 
