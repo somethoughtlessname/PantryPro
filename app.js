@@ -2043,16 +2043,33 @@ function openPantryHistoryWindow(msItem,pd,wrap,selectedCon,expandView){
     body.innerHTML='';
 
     const days = dlGetDays(msItem.id);
+    const wasteLog=ls('pantry_waste_log',{});
+    const pd2=ls('pantry_data',{})[msItem.id]||{};
+    const pricedCons=(pd2.containers||[]).filter(c=>!c.free&&c.price!=null&&c.cap>0);
+    const ppu=pricedCons.length?pricedCons.reduce((s,c)=>s+c.price/c.cap,0)/pricedCons.length:null;
     const dayMap={};
     days.forEach(dateKey=>{
       const log = ls('pantry_delta_log',{})[msItem.id]?.[dateKey] || [];
       dayMap[dateKey]={used:0,usedCost:0,added:0,addedCost:0,hasEntries:false};
       log.forEach(e=>{
         if(e[0]===0) return; // placeholder
+        const isW=e[2]==='w'||e[1]==='w';
+        if(isW) return; // waste comes from wasteLog
         dayMap[dateKey].hasEntries=true;
-        if(e[0]<0){ dayMap[dateKey].used+=Math.abs(e[0]); if(e[1]!=null) dayMap[dateKey].usedCost+=e[1]; }
-        else { dayMap[dateKey].added+=e[0]; if(e[1]!=null) dayMap[dateKey].addedCost+=e[1]; }
+        if(e[0]<0){ dayMap[dateKey].used+=Math.abs(e[0]); if(typeof e[1]==='number') dayMap[dateKey].usedCost+=e[1]; }
+        else { dayMap[dateKey].added+=e[0]; if(typeof e[1]==='number') dayMap[dateKey].addedCost+=e[1]; }
       });
+      // Add waste from wasteLog
+      const wasted=wasteLog[dateKey]?.[msItem.id]||0;
+      dayMap[dateKey].wasted=wasted;
+      dayMap[dateKey].wastedCost=wasted>0&&ppu?parseFloat((wasted*ppu).toFixed(2)):0;
+    });
+    // Also include days that only have waste
+    Object.keys(wasteLog).forEach(dk=>{
+      if(wasteLog[dk]?.[msItem.id]>0&&!dayMap[dk]){
+        dayMap[dk]={used:0,usedCost:0,added:0,addedCost:0,hasEntries:false,
+          wasted:wasteLog[dk][msItem.id],wastedCost:ppu?parseFloat((wasteLog[dk][msItem.id]*ppu).toFixed(2)):0};
+      }
     });
 
     if(days.length===0){
@@ -2077,7 +2094,7 @@ function openPantryHistoryWindow(msItem,pd,wrap,selectedCon,expandView){
     };
     addCard.append(addLbl,dateInp,addBtn); body.appendChild(addCard);
 
-    days.forEach(dateKey=>{
+    Object.keys(dayMap).sort().reverse().forEach(dateKey=>{
       const day=dayMap[dateKey];
       const d=new Date(dateKey+'T00:00:00');
       const dayLabel=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
@@ -2118,8 +2135,9 @@ function openPantryHistoryWindow(msItem,pd,wrap,selectedCon,expandView){
         row.append(lbl,amtWrap,costWrap); return row;
       }
 
-      card.appendChild(makeRow('Used',  '#1a2a3a','#5A8DB8', day.used,  day.usedCost,  true));
-      card.appendChild(makeRow('Added', '#221a2a','#8a7ca8', day.added, day.addedCost, false));
+      card.appendChild(makeRow('Used',   '#1a2a3a','#5A8DB8', day.used,   day.usedCost,   true));
+      card.appendChild(makeRow('Added',  '#221a2a','#8a7ca8', day.added,  day.addedCost,  false));
+      if(day.wasted>0||true) card.appendChild(makeRow('Wasted', '#2a1010','#C85A5A', day.wasted, day.wastedCost, false));
       body.appendChild(card);
     }); // end days.forEach
   } // end renderHistory
