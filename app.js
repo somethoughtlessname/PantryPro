@@ -1669,32 +1669,62 @@ function renderStatsWindow(){
 
   function getItemVals(itemId,mode,dir){
     const isWaste=dir==='waste';
-    const entries=dlGetEntries(itemId).filter(e=>isWaste?(e.waste&&e.delta<0&&e.cost!=null):(dir==='used'?e.delta<0&&e.cost!=null&&!e.waste:e.delta>0&&e.cost!=null));
     const vals=new Array(N).fill(0);
-    if(mode==='weekly'){
-      entries.forEach(e=>{ const d=new Date(e.ts); activeWeeks.forEach((w,i)=>{ if(d>=w.start&&d<=w.end) vals[i]+=e.cost; }); });
-    } else if(mode==='daily'){
-      entries.forEach(e=>{ const d=new Date(e.ts); const diff=Math.round((weekStartSW-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5); const dayWi=-diff; if(dayWi>=0&&dayWi<7) vals[dayWi]+=e.cost; });
-    } else if(mode==='thismonth'){
-      entries.forEach(e=>{ const d=new Date(e.ts); if(d.getFullYear()===viewDate.getFullYear()&&d.getMonth()===viewDate.getMonth()){ const idx=d.getDate()-1; if(idx>=0&&idx<N) vals[idx]+=e.cost; } });
+    if(isWaste){
+      // Waste reads from pantry_waste_log — the daily net waste level
+      const wLog=ls('pantry_waste_log',{});
+      const pd2=ls('pantry_data',{})[itemId]||{};
+      const pricedCons=(pd2.containers||[]).filter(c=>!c.free&&c.price!=null&&c.cap>0);
+      const ppu=pricedCons.length?pricedCons.reduce((s,c)=>s+c.price/c.cap,0)/pricedCons.length:null;
+      if(mode==='weekly'){
+        activeWeeks.forEach((w,i)=>{ const dk=ptDateKey(w.start); const wAmt=wLog[dk]?.[itemId]||0; if(ppu) vals[i]+=wAmt*ppu; });
+      } else if(mode==='daily'){
+        weekDaysSW.forEach((d,i)=>{ const dk=ptDateKey(d); const wAmt=wLog[dk]?.[itemId]||0; if(ppu) vals[i]+=wAmt*ppu; });
+      } else if(mode==='thismonth'){
+        for(let i=0;i<N;i++){ const d=new Date(viewDate.getFullYear(),viewDate.getMonth(),i+1); const dk=ptDateKey(d); const wAmt=wLog[dk]?.[itemId]||0; if(ppu) vals[i]+=wAmt*ppu; }
+      } else {
+        for(let i=0;i<N;i++){ const d=new Date(now.getFullYear(),now.getMonth()-(N-1-i),1); const dk=ptDateKey(d); const wAmt=wLog[dk]?.[itemId]||0; if(ppu) vals[i]+=wAmt*ppu; }
+      }
     } else {
-      entries.forEach(e=>{ const d=new Date(e.ts); const diff=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth()); const idx=(N-1)-diff; if(idx>=0&&idx<N) vals[idx]+=e.cost; });
+      const entries=dlGetEntries(itemId).filter(e=>dir==='used'?e.delta<0&&e.cost!=null&&!e.waste:e.delta>0&&e.cost!=null);
+      if(mode==='weekly'){
+        entries.forEach(e=>{ const d=new Date(e.ts); activeWeeks.forEach((w,i)=>{ if(d>=w.start&&d<=w.end) vals[i]+=e.cost; }); });
+      } else if(mode==='daily'){
+        entries.forEach(e=>{ const d=new Date(e.ts); const diff=Math.round((weekStartSW-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5); const dayWi=-diff; if(dayWi>=0&&dayWi<7) vals[dayWi]+=e.cost; });
+      } else if(mode==='thismonth'){
+        entries.forEach(e=>{ const d=new Date(e.ts); if(d.getFullYear()===viewDate.getFullYear()&&d.getMonth()===viewDate.getMonth()){ const idx=d.getDate()-1; if(idx>=0&&idx<N) vals[idx]+=e.cost; } });
+      } else {
+        entries.forEach(e=>{ const d=new Date(e.ts); const diff=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth()); const idx=(N-1)-diff; if(idx>=0&&idx<N) vals[idx]+=e.cost; });
+      }
     }
     return vals.map(v=>parseFloat(v.toFixed(2)));
   }
 
   function getItemUnitVals(itemId,mode,dir){
     const isWaste=dir==='waste';
-    const entries=dlGetEntries(itemId).filter(e=>isWaste?(e.waste&&e.delta<0):(dir==='used'?e.delta<0&&!e.waste:e.delta>0));
     const vals=new Array(N).fill(0);
-    if(mode==='weekly'){
-      entries.forEach(e=>{ const d=new Date(e.ts); activeWeeks.forEach((w,i)=>{ if(d>=w.start&&d<=w.end) vals[i]+=Math.abs(e.delta); }); });
-    } else if(mode==='daily'){
-      entries.forEach(e=>{ const d=new Date(e.ts); const diff=Math.round((weekStartSW-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5); const dayWi=-diff; if(dayWi>=0&&dayWi<7) vals[dayWi]+=Math.abs(e.delta); });
-    } else if(mode==='thismonth'){
-      entries.forEach(e=>{ const d=new Date(e.ts); if(d.getFullYear()===viewDate.getFullYear()&&d.getMonth()===viewDate.getMonth()){ const idx=d.getDate()-1; if(idx>=0&&idx<N) vals[idx]+=Math.abs(e.delta); } });
+    if(isWaste){
+      const wLog=ls('pantry_waste_log',{});
+      if(mode==='weekly'){
+        activeWeeks.forEach((w,i)=>{ const dk=ptDateKey(w.start); vals[i]+=wLog[dk]?.[itemId]||0; });
+      } else if(mode==='daily'){
+        weekDaysSW.forEach((d,i)=>{ const dk=ptDateKey(d); vals[i]+=wLog[dk]?.[itemId]||0; });
+      } else if(mode==='thismonth'){
+        for(let i=0;i<N;i++){ const d=new Date(viewDate.getFullYear(),viewDate.getMonth(),i+1); const dk=ptDateKey(d); vals[i]+=wLog[dk]?.[itemId]||0; }
+      } else {
+        for(let i=0;i<N;i++){ const d=new Date(now.getFullYear(),now.getMonth()-(N-1-i),1); const dk=ptDateKey(d); vals[i]+=wLog[dk]?.[itemId]||0; }
+      }
     } else {
-      entries.forEach(e=>{ const d=new Date(e.ts); const diff=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth()); const idx=(N-1)-diff; if(idx>=0&&idx<N) vals[idx]+=Math.abs(e.delta); });
+      const entries=dlGetEntries(itemId).filter(e=>dir==='used'?e.delta<0&&!e.waste:e.delta>0);
+      if(mode==='weekly'){
+        entries.forEach(e=>{ const d=new Date(e.ts); activeWeeks.forEach((w,i)=>{ if(d>=w.start&&d<=w.end) vals[i]+=Math.abs(e.delta); }); });
+      } else if(mode==='daily'){
+        entries.forEach(e=>{ const d=new Date(e.ts); const diff=Math.round((weekStartSW-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5); const dayWi=-diff; if(dayWi>=0&&dayWi<7) vals[dayWi]+=Math.abs(e.delta); });
+      } else if(mode==='thismonth'){
+        entries.forEach(e=>{ const d=new Date(e.ts); if(d.getFullYear()===viewDate.getFullYear()&&d.getMonth()===viewDate.getMonth()){ const idx=d.getDate()-1; if(idx>=0&&idx<N) vals[idx]+=Math.abs(e.delta); } });
+      } else {
+        entries.forEach(e=>{ const d=new Date(e.ts); const diff=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth()); const idx=(N-1)-diff; if(idx>=0&&idx<N) vals[idx]+=Math.abs(e.delta); });
+      }
     }
     return vals.map(v=>parseFloat(v.toFixed(2)));
   }
@@ -1936,14 +1966,28 @@ function renderStatsWindow(){
 
     function getItemQty(itemId,mode,dir,idx){
       const isWaste=dir==='waste';
-      const entries=dlGetEntries(itemId).filter(e=>isWaste?(e.waste&&e.delta<0):dir==='used'?e.delta<0&&!e.waste:e.delta>0);
+      if(isWaste){
+        const wLog=ls('pantry_waste_log',{});
+        const v2=new Array(N).fill(0);
+        if(mode==='weekly'){
+          const weeks=ptGet12Weeks(now); weeks.forEach((w,ii)=>{ const dk=ptDateKey(w.start); v2[ii]=wLog[dk]?.[itemId]||0; });
+        } else if(mode==='daily'){
+          weekDaysSW.forEach((d,ii)=>{ const dk=ptDateKey(d); v2[ii]=wLog[dk]?.[itemId]||0; });
+        } else if(mode==='thismonth'){
+          for(let ii=0;ii<N;ii++){ const d=new Date(viewDate.getFullYear(),viewDate.getMonth(),ii+1); v2[ii]=wLog[ptDateKey(d)]?.[itemId]||0; }
+        } else {
+          for(let ii=0;ii<N;ii++){ const d=new Date(now.getFullYear(),now.getMonth()-(N-1-ii),1); v2[ii]=wLog[ptDateKey(d)]?.[itemId]||0; }
+        }
+        return idx!==null?parseFloat(v2[idx].toFixed(1)):parseFloat(v2.reduce((s,x)=>s+x,0).toFixed(1));
+      }
+      const entries=dlGetEntries(itemId).filter(e=>dir==='used'?e.delta<0&&!e.waste:e.delta>0);
       const v2=new Array(N).fill(0);
       if(mode==='weekly'){
         const weeks=ptGet12Weeks(now); entries.forEach(e=>{ const d=new Date(e.ts); weeks.forEach((w,ii)=>{ if(d>=w.start&&d<=w.end) v2[ii]+=Math.abs(e.delta); }); });
       } else if(mode==='daily'){
         entries.forEach(e=>{ const d=new Date(e.ts); const diff=Math.round((new Date(now.getFullYear(),now.getMonth(),now.getDate())-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5); const ii=todayWiSW-diff; if(ii>=0&&ii<7) v2[ii]+=Math.abs(e.delta); });
       } else if(mode==='thismonth'){
-        entries.forEach(e=>{ const d=new Date(e.ts); if(d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()){ const ii=d.getDate()-1; if(ii>=0&&ii<N) v2[ii]+=Math.abs(e.delta); } });
+        entries.forEach(e=>{ const d=new Date(e.ts); if(d.getFullYear()===viewDate.getFullYear()&&d.getMonth()===viewDate.getMonth()){ const ii=d.getDate()-1; if(ii>=0&&ii<N) v2[ii]+=Math.abs(e.delta); } });
       } else {
         entries.forEach(e=>{ const d=new Date(e.ts); const diff=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth()); const ii=(N-1)-diff; if(ii>=0&&ii<N) v2[ii]+=Math.abs(e.delta); });
       }
