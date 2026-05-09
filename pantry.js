@@ -1763,6 +1763,7 @@ function ptBuildCard(msItem){
   wrap._renderExpand=renderExpand;
 
   function revertPendingFill(){
+    if(!ptOpenSet.has(msItem.id)) return;
     if(expandView.fillStart!==undefined&&selectedCon.id!==null){
       const sc=pd.containers.find(c=>c.id===selectedCon.id);
       if(sc&&sc.amount!==expandView.fillStart){ sc.amount=expandView.fillStart; const d=getPantryData(); d[msItem.id]=pd; setPantryData(d); }
@@ -1771,7 +1772,7 @@ function ptBuildCard(msItem){
     ptRefreshCard(msItem,pd,wrap,selectedCon,expandView);
   }
 
-  const closeThisCard=()=>{ revertPendingFill(); ptOpenSet.delete(msItem.id); expand.style.maxHeight='0'; expand.style.borderTop='none'; selectedCon.id=null; updateBtnState(); focusDimHide(); ptScrollBack(wrap._savedScrollY); wrap._savedScrollY=undefined; };
+  const closeThisCard=()=>{ if(!ptOpenSet.has(msItem.id)) return; revertPendingFill(); ptOpenSet.delete(msItem.id); expand.style.maxHeight='0'; expand.style.borderTop='none'; selectedCon.id=null; updateBtnState(); focusDimHide(); ptScrollBack(wrap._savedScrollY); wrap._savedScrollY=undefined; };
   ptCardRegistry.push({close:closeThisCard});
   wrap.classList.add('pt-card-wrap');
   main.addEventListener('click',()=>{
