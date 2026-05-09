@@ -632,7 +632,6 @@ body {
 #pagePantry {
   flex-direction: column; gap: var(--margin);
   overflow-y: auto;
-  padding-top: var(--margin);
 }
 .pt-card {
   border: 3px solid #000;

@@ -2101,7 +2101,7 @@ function openPantryHistoryWindow(msItem,pd,wrap,selectedCon,expandView){
 
       const card=document.createElement('div'); card.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;';
 
-      const dHdr=document.createElement('div'); dHdr.style.cssText='height:var(--card-height);display:flex;align-items:center;padding:0 12px;background:var(--bg-3);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);border-bottom:var(--border-width) solid var(--border-color);';
+      const dHdr=document.createElement('div'); dHdr.style.cssText='height:var(--drop-height);display:flex;align-items:center;padding:0 12px;background:#374151;font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);border-bottom:var(--border-width) solid var(--border-color);';
       dHdr.textContent=dayLabel; card.appendChild(dHdr);
 
       function makeRow(label,bgColor,textColor,initAmt,initCost,isUsed){
@@ -2136,8 +2136,8 @@ function openPantryHistoryWindow(msItem,pd,wrap,selectedCon,expandView){
       }
 
       card.appendChild(makeRow('Used',   '#1a2a3a','#5A8DB8', day.used,   day.usedCost,   true));
-      card.appendChild(makeRow('Added',  '#221a2a','#8a7ca8', day.added,  day.addedCost,  false));
-      if(day.wasted>0||true) card.appendChild(makeRow('Wasted', '#2a1010','#C85A5A', day.wasted, day.wastedCost, false));
+      card.appendChild(makeRow('Added',  '#221a2a','#8a7ca8', day.added,  day.addedCost,  true));
+      card.appendChild(makeRow('Wasted', '#2a1010','#C85A5A', day.wasted, day.wastedCost, false));
       body.appendChild(card);
     }); // end days.forEach
   } // end renderHistory

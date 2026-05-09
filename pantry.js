@@ -1120,7 +1120,9 @@ function ptBuildCard(msItem){
   val.style.cssText='position:relative;z-index:2;font-size:10px;font-weight:800;color:rgba(255,255,255,0.7);line-height:1;margin-top:1px;';
   val.textContent=`${ptGetStock(pd)}/${ptGetMax(pd)}`;
   center.append(fillBase,fillOver,nm,val);
-  wrap._fillBase=fillBase; wrap._fillOver=fillOver; wrap._val=val;
+  const fillGhost=document.createElement('div'); fillGhost.style.cssText='position:absolute;top:0;bottom:0;opacity:0.3;z-index:1;pointer-events:none;display:none;transition:left 0.15s,width 0.15s;';
+  center.appendChild(fillGhost);
+  wrap._fillBase=fillBase; wrap._fillOver=fillOver; wrap._val=val; wrap._fillGhost=fillGhost;
   wrap._fillBase=fillBase; wrap._fillOver=fillOver; wrap._val=val;
 
   main.append(minBtn, center, plusBtn);
@@ -1146,8 +1148,16 @@ function ptBuildCard(msItem){
     [['stats','Stats'],['containers','Containers'],['waste','Waste'],['adjust','Adjust']].forEach(([mode,label],i,arr)=>{
       const t=document.createElement('div'); const isAct=expandView.mode===mode;
       t.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-3)'};color:${isAct?'var(--color-10)':'var(--muted)'};${i<arr.length-1?'border-right:3px solid #000;':''}`;
-      t.textContent=label; t.onclick=e=>{ e.stopPropagation(); if(expandView.mode!==mode) { expandView._wasteFloor=undefined; selectedCon.id=null; updateBtnState(); } expandView.mode=mode; renderExpand(); }; tabs.appendChild(t);
+      t.textContent=label; t.onclick=e=>{ e.stopPropagation(); if(expandView.mode!==mode) { revertPendingFill(); expandView._wasteFloor=undefined; selectedCon.id=null; updateBtnState(); } expandView.mode=mode; renderExpand(); }; tabs.appendChild(t);
     }); body.appendChild(tabs);
+
+    // ── Shared fill UI constants (used by containers + waste modes) ──
+    const fillFC={2:'#5A8DB8',3:'#8a7ca8',4:'#5A8DB8',5:'#48a971',8:'#C7824A',6:'#5AACB8',9:'#9E6BA8',12:'#A68428'};
+    const fillFRACS=[[1,8],[1,5],[1,4],[1,3],[3,8],[2,5],[1,2],[3,5],[5,8],[2,3],[3,4],[4,5],[7,8]];
+    const fillFRACS2=[[1,12],[1,9],[1,6],[5,12],[5,9],[7,12],[7,9],[5,6],[11,12]];
+    const fillTENS=[0,10,20,30,40,50,60,70,80,90];
+    const fillONES=[0,1,2,3,4,5,6,7,8,9];
+    function fillLerp4(t){const stops=[[0,[0xC8,0x5A,0x5A]],[.33,[0xC7,0x82,0x4A]],[.66,[0xC8,0xB8,0x28]],[1,[0x48,0xA9,0x71]]];for(let i=0;i<stops.length-1;i++){const[t0,c0]=stops[i],[t1,c1]=stops[i+1];if(t<=t1){const f=(t-t0)/(t1-t0);return`rgb(${c0.map((v,j)=>Math.round(v+(c1[j]-v)*f)).join(',')})`;}}return`rgb(${stops[stops.length-1][1].join(',')})`;}
 
     if(expandView.mode==='stats'){
       const sv=expandView.statView||'daily'; const sb=expandView.selBar;
@@ -1295,6 +1305,8 @@ function ptBuildCard(msItem){
 
     } else if(expandView.mode==='containers'){
       const selCon=selectedCon.id?pd.containers.find(c=>c.id===selectedCon.id):null;
+      if(selCon&&expandView.fillConId!==selCon.id){ expandView.fillStart=selCon.amount; expandView.fillConId=selCon.id; }
+      if(!selCon){ expandView.fillStart=undefined; expandView.fillConId=undefined; }
       const sorted=[...pd.containers].sort((a,b)=>(a.amount===0&&b.amount>0)?1:(b.amount===0&&a.amount>0)?-1:0);
       let pendingConfirm=null;
       if(pd.containers.length===0){ const emptyMsg=document.createElement('div'); emptyMsg.style.cssText='height:var(--card-height);border:3px solid #000;border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--bg-2);font-size:9px;font-weight:600;color:var(--muted);font-style:italic;'; emptyMsg.textContent='No containers — add one below'; body.appendChild(emptyMsg); }
@@ -1315,9 +1327,23 @@ function ptBuildCard(msItem){
           const rowEl=document.createElement('div'); rowEl.style.cssText='display:flex;gap:4px;';
           rowCons.forEach(con=>{
             const isSel=selectedCon.id===con.id;
-            const vM=Math.max(con.cap,con.amount)||1; const cPct=(con.amount/vM*100).toFixed(1);
+            const hasPending=isSel&&expandView.fillStart!==undefined&&con.amount!==expandView.fillStart;
+            const vM=Math.max(con.cap,con.amount,expandView.fillStart||0)||1;
+            const cPct=(con.amount/vM*100).toFixed(1);
             const card=document.createElement('div'); card.style.cssText=`flex:1;height:var(--card-height);border:3px solid ${isSel?'#fff':'#000'};border-radius:8px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;min-width:0;`;
             const fill=document.createElement('div'); fill.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${cPct}%;background:${ptConFillColor(con)};opacity:0.3;transition:width 0.3s;pointer-events:none;`;
+            card.appendChild(fill);
+            if(hasPending){
+              const startPct=(expandView.fillStart/vM*100);
+              const nowPct=(con.amount/vM*100);
+              const isUsed=nowPct<startPct;
+              const ghostLeft=Math.min(startPct,nowPct);
+              const ghostWidth=Math.abs(startPct-nowPct);
+              const ghostColor=ptDarken(ptConFillColor(con),0.7);
+              const ghost=document.createElement('div');
+              ghost.style.cssText=`position:absolute;top:0;bottom:0;left:${ghostLeft}%;width:${ghostWidth}%;background:${ghostColor};opacity:0.6;pointer-events:none;transition:left 0.15s,width 0.15s;`;
+              card.appendChild(ghost);
+            }
             const inner=document.createElement('div'); inner.style.cssText='position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:100%;padding:0 4px;box-sizing:border-box;';
             const nmEl=document.createElement('div'); nmEl.style.cssText='font-size:9px;font-weight:800;color:#fff;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center;line-height:1.1;'; nmEl.textContent=(con.label||'Container').toUpperCase();
             const amtEl=document.createElement('div'); amtEl.style.cssText='font-size:8px;font-weight:700;color:rgba(255,255,255,0.7);text-align:center;letter-spacing:0.06em;line-height:1.1;'; amtEl.textContent=`${con.amount} / ${con.cap}`;
@@ -1326,8 +1352,8 @@ function ptBuildCard(msItem){
             else if(con.price!=null){ const ppu=con.cap>0?(con.price/con.cap).toFixed(2):'?'; prEl.style.cssText+='font-size:9px;font-weight:700;color:rgba(255,255,255,0.5);'; prEl.textContent=('$'+ppu+'/'+(pd.unit||'unit')).toUpperCase(); }
             else { prEl.style.cssText+='font-size:9px;font-weight:700;color:#C85A5A;'; prEl.textContent='NO PRICE'; }
             inner.append(nmEl,amtEl,prEl);
-            card.append(fill,inner);
-            card.onclick=e=>{ e.stopPropagation(); selectedCon.id=selectedCon.id===con.id?null:con.id; updateBtnState(); renderExpand(); };
+            card.appendChild(inner);
+            card.onclick=e=>{ e.stopPropagation(); revertPendingFill(); selectedCon.id=selectedCon.id===con.id?null:con.id; updateBtnState(); renderExpand(); };
             if(con._confirmEmpty) pendingConfirm=con;
             rowEl.appendChild(card);
           });
@@ -1341,37 +1367,143 @@ function ptBuildCard(msItem){
           conf.append(msg,usedBtn,wasteBtn,hereBtn); body.appendChild(conf); }
         pd.containers.filter(c=>c._isEmptyChoice).forEach(con=>{ const ch=document.createElement('div'); ch.style.cssText=`border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;`; const bR=document.createElement('div'); bR.style.cssText='height:32px;display:flex;align-items:stretch;'; const dBtn=document.createElement('div'); dBtn.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;background:#502424;color:#fff;cursor:pointer;border-right:3px solid #000;'; dBtn.textContent='Delete Container'; dBtn.onclick=e=>{ e.stopPropagation(); pd.containers=pd.containers.filter(c=>c.id!==con.id); if(selectedCon.id===con.id) selectedCon.id=null; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; const kBtn=document.createElement('div'); kBtn.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;background:#1d3318;color:#48a971;cursor:pointer;'; kBtn.textContent='Keep Empty'; kBtn.onclick=e=>{ e.stopPropagation(); con._isEmptyChoice=false; saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; bR.append(dBtn,kBtn); ch.append(bR); body.appendChild(ch); });
       }
-      // fraction card
-      const fracColors={2:'#5A8DB8',3:'#8a7ca8',4:'#5A8DB8',5:'#48a971',8:'#C7824A'};
-      const fracs=[{n:1,d:8},{n:1,d:5},{n:1,d:4},{n:1,d:3},{n:3,d:8},{n:2,d:5},{n:1,d:2},{n:3,d:5},{n:5,d:8},{n:2,d:3},{n:3,d:4},{n:4,d:5},{n:7,d:8}];
-      const selCon2=selectedCon.id?pd.containers.find(c=>c.id===selectedCon.id):null;
-      function makeDoubleTap(label,bgDef,color,onConfirm){ const s=document.createElement('div'); s._t=0; s._timer=null; s.style.cssText=`display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:${color};background:${bgDef};cursor:${selCon?'pointer':'default'};opacity:${selCon?'1':'0.3'};`; s.textContent=label; s.onclick=e=>{ e.stopPropagation(); if(!selCon) return; s._t++; clearTimeout(s._timer); if(s._t>=2){ s._t=0; s.style.background=bgDef; s.style.color=color; onConfirm(); } else{ s.style.background='#fff'; s.style.color='#C85A5A'; s._timer=setTimeout(()=>{ s._t=0; s.style.background=bgDef; s.style.color=color; },3000); } }; return s; }
+      // ── Fill UI: Percent / Fraction tabs ──
+      if(!expandView.fillTab) expandView.fillTab='pct';
+      function doFillApply(pct){
+        if(!selCon) return;
+        const next=parseFloat((selCon.cap*Math.max(0,Math.min(100,pct))/100).toFixed(1));
+        selCon.amount=next;
+        saveItemPantry(msItem.id,pd); // silent — no prevStock, no delta logged
+        ptRefreshCard(msItem,pd,wrap,selectedCon,expandView);
+      }
 
-      // fCard: [empty ×] [label] [fracs] [fill +]
-      const fCard=document.createElement('div'); fCard.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;';
-      const fLblRow=document.createElement('div'); fLblRow.style.cssText='height:20px;display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-bottom:3px solid #000;font-size:7px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.5);'; fLblRow.textContent='Set Fill To'; fCard.appendChild(fLblRow);
-      const fRow=document.createElement('div'); fRow.style.cssText='height:22px;display:flex;align-items:stretch;';
-      // empty button left
-      const emptyBtn=makeDoubleTap('×','#C85A5A','#fff',()=>{ const prev=selCon.amount; const prevS=ptGetStock(pd); selCon.amount=0; selCon._confirmEmpty=false; selCon._isEmptyChoice=false; const eCost=(!selCon.free&&selCon.price!=null&&selCon.cap>0&&prev>0)?(prev/selCon.cap)*selCon.price:null; saveItemPantry(msItem.id,pd,prevS,eCost); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); });
-      emptyBtn.style.cssText+='width:28px;min-width:28px;border-right:3px solid #000;';
-      fRow.appendChild(emptyBtn);
-      fracs.forEach(({n,d},i)=>{ const btn=document.createElement('div'); const fc2=fracColors[d]||'var(--bg-2)'; const isSelFrac=selCon2&&parseFloat((selCon2.amount/selCon2.cap).toFixed(4))===parseFloat((n/d).toFixed(4)); btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${isSelFrac?fc2:'#fff'};background:${!selCon2?'var(--bg-4)':isSelFrac?'#fff':fc2};cursor:${selCon2?'pointer':'default'};${i<fracs.length-1?'border-right:3px solid #000;':''}`;  btn.innerHTML=`<sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub>`; btn.onclick=e=>{ e.stopPropagation(); if(!selCon2) return; const prev=selCon2.amount; const prevS=ptGetStock(pd); const next=parseFloat((selCon2.cap*(n/d)).toFixed(1)); selCon2.amount=next; const fDiff=prev-next; const fCost=(!selCon2.free&&selCon2.price!=null&&selCon2.cap>0&&fDiff!==0)?(Math.abs(fDiff)/selCon2.cap)*selCon2.price:null; saveItemPantry(msItem.id,pd,prevS,fCost); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }; fRow.appendChild(btn); });
-      // fill button right
-      const fillBtn=makeDoubleTap('+','#C85A5A','#fff',()=>{ const prevConAmt2=selCon.amount; const prevS=ptGetStock(pd); selCon.amount=selCon.cap; selCon._confirmEmpty=false; selCon._isEmptyChoice=false; const filledAmt=selCon.cap-prevConAmt2; const fillCost=(!selCon.free&&selCon.price!=null&&selCon.cap>0&&filledAmt>0)?(filledAmt/selCon.cap)*selCon.price:null; saveItemPantry(msItem.id,pd,prevS,fillCost); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); });
-      fillBtn.style.cssText+='width:28px;min-width:28px;border-left:3px solid #000;';
-      fRow.appendChild(fillBtn);
-      fCard.appendChild(fRow); body.appendChild(fCard);
-      if(!selCon){ fCard.style.display='none'; }
-
-      // EDIT | DELETE card (shown when container selected)
+      // EDIT | DELETE card
       const actCard=document.createElement('div'); actCard.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
-      const editSec=document.createElement('div'); editSec.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#fff;background:var(--bg-2);cursor:pointer;'; editSec.textContent='Edit';
+      const editSec=document.createElement('div'); editSec.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#fff;background:#48a971;cursor:pointer;'; editSec.textContent='Edit';
       editSec.onclick=e=>{ e.stopPropagation(); if(!selCon) return; openEditContainerWindow(msItem,pd,selCon,wrap,selectedCon,expandView); };
-      const editDivider=document.createElement('div'); editDivider.style.cssText='width:3px;background:#000;flex-shrink:0;';
+      const edDiv=document.createElement('div'); edDiv.style.cssText='width:3px;background:#000;flex-shrink:0;';
       const delSec=document.createElement('div'); delSec.style.cssText='flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#fff;background:#C85A5A;cursor:pointer;'; delSec.textContent='Delete'; delSec._t=0; delSec._timer=null;
-      delSec.onclick=e=>{ e.stopPropagation(); if(!selCon) return; delSec._t++; clearTimeout(delSec._timer); if(delSec._t>=2){ delSec._t=0; pd.containers=pd.containers.filter(c=>c.id!==selCon.id); selectedCon.id=null; updateBtnState(); saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); } else{ delSec.style.background='#fff'; delSec.style.color='#C85A5A'; delSec._timer=setTimeout(()=>{ delSec._t=0; delSec.style.background='#C85A5A'; delSec.style.color='#fff'; },3000); } };
-      actCard.append(editSec,editDivider,delSec); body.appendChild(actCard);
+      delSec.onclick=e=>{ e.stopPropagation(); if(!selCon) return; delSec._t++; clearTimeout(delSec._timer); if(delSec._t>=2){ delSec._t=0; expandView.fillStart=undefined; expandView.fillConId=undefined; pd.containers=pd.containers.filter(c=>c.id!==selCon.id); selectedCon.id=null; updateBtnState(); saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); } else{ delSec.style.background='#fff'; delSec.style.color='#C85A5A'; delSec._timer=setTimeout(()=>{ delSec._t=0; delSec.style.background='#C85A5A'; delSec.style.color='#fff'; },3000); } };
+      actCard.append(editSec,edDiv,delSec); body.appendChild(actCard);
       if(!selCon){ actCard.style.display='none'; }
+      const ctrlDivider=document.createElement('div'); ctrlDivider.style.cssText='height:3px;background:#000;margin:0 -4px;flex-shrink:0;';
+      body.appendChild(ctrlDivider);
+      if(!selCon){ ctrlDivider.style.display='none'; }
+
+      // Fill tab switcher (Percent / Fraction)
+      const fillTabBar=document.createElement('div'); fillTabBar.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;flex-shrink:0;';
+      [['pct','Percent'],['frac','Fraction']].forEach(([tv,tlbl],i)=>{
+        const t=document.createElement('div'); const isAct=expandView.fillTab===tv;
+        t.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-3)'};color:${isAct?'#fff':'var(--muted)'};${i===0?'border-right:3px solid #000;':''}`;
+        t.textContent=tlbl;
+        t.onclick=e=>{ e.stopPropagation(); expandView.fillTab=tv; renderExpand(); };
+        fillTabBar.appendChild(t);
+      });
+      body.appendChild(fillTabBar);
+      if(!selCon){ fillTabBar.style.display='none'; }
+
+      // Percent panel
+      const pctPanel=document.createElement('div'); pctPanel.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;';
+      const pctInner=document.createElement('div'); pctInner.style.cssText='display:flex;align-items:stretch;';
+      const pctCols=document.createElement('div'); pctCols.style.cssText='flex:1;min-width:0;display:flex;flex-direction:column;';
+      const curFillPct=selCon?parseFloat((selCon.amount/selCon.cap*100).toFixed(2)):0;
+      const curFillR=Math.round(curFillPct);
+      const curFillTens=Math.floor(curFillR/10)*10;
+      const curFillOnes=curFillR%10;
+      const fillAt100=(curFillR>=100);
+      // Tens row
+      const tensRowEl=document.createElement('div'); tensRowEl.style.cssText='height:22px;display:flex;align-items:stretch;';
+      fillTENS.forEach((p,i)=>{
+        const el=document.createElement('div');
+        const on=(p===curFillTens&&!fillAt100);
+        const c=fillLerp4(Math.max(p,1)/100);
+        el.style.cssText=`${i===0?'width:20px;min-width:20px;flex-shrink:0;':'flex:1;min-width:0;'}display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:8px;font-weight:900;user-select:none;background:${on?'#fff':c};color:${on?c:'#fff'};${i>0?'border-left:3px solid #000;':''}`;
+        el.textContent=(p===0)?'00':String(p);
+        el.onclick=e=>{ e.stopPropagation(); doFillApply(p); };
+        tensRowEl.appendChild(el);
+      });
+      pctCols.appendChild(tensRowEl);
+      // Ones row
+      const onesRowEl=document.createElement('div'); onesRowEl.style.cssText='height:22px;display:flex;align-items:stretch;border-top:3px solid #000;';
+      fillONES.forEach((o,i)=>{
+        const el=document.createElement('div');
+        const on=(!fillAt100&&o===curFillOnes);
+        const fullPct=Math.min(100,curFillTens+o);
+        const c=fillLerp4(Math.max(fullPct,1)/100);
+        el.style.cssText=`${i===0?'width:20px;min-width:20px;flex-shrink:0;':'flex:1;min-width:0;'}display:flex;align-items:center;justify-content:center;cursor:${fillAt100?'default':'pointer'};font-size:8px;font-weight:900;user-select:none;background:${fillAt100?'#1e2a35':on?'#fff':c};color:${fillAt100?'#4a5568':on?c:'#fff'};${i>0?'border-left:3px solid #000;':''}`;
+        el.textContent=String(o);
+        el.onclick=e=>{ e.stopPropagation(); if(fillAt100) return; doFillApply(Math.min(100,curFillTens+o)); };
+        onesRowEl.appendChild(el);
+      });
+      pctCols.appendChild(onesRowEl);
+      pctInner.appendChild(pctCols);
+      const btn100=document.createElement('div');
+      btn100.style.cssText=`width:23px;min-width:23px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:900;writing-mode:vertical-rl;border-left:3px solid #000;background:${fillAt100?'#fff':'#48a971'};color:${fillAt100?'#48a971':'#fff'};`;
+      btn100.textContent='100';
+      btn100.onclick=e=>{ e.stopPropagation(); doFillApply(100); };
+      pctInner.appendChild(btn100);
+      pctPanel.appendChild(pctInner);
+      body.appendChild(pctPanel);
+      if(!selCon||expandView.fillTab!=='pct'){ pctPanel.style.display='none'; }
+
+      // Fraction panel — Empty/Full flank both rows via align-items:stretch
+      const fracPanel=document.createElement('div'); fracPanel.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;';
+      const fracInner=document.createElement('div'); fracInner.style.cssText='display:flex;align-items:stretch;';
+      // Empty button — spans full height of both rows
+      const isFracEmpty=(selCon&&selCon.amount===0);
+      const fEmptyBtn=document.createElement('div');
+      fEmptyBtn.style.cssText=`width:20px;min-width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:900;writing-mode:vertical-lr;transform:rotate(180deg);background:${isFracEmpty?'#fff':'#C85A5A'};color:${isFracEmpty?'#C85A5A':'#fff'};`;
+      fEmptyBtn.textContent='Empty';
+      fEmptyBtn.onclick=e=>{ e.stopPropagation(); doFillApply(0); };
+      fracInner.appendChild(fEmptyBtn);
+      // Two fraction rows stacked in a column
+      const fracCols=document.createElement('div'); fracCols.style.cssText='flex:1;min-width:0;display:flex;flex-direction:column;border-left:3px solid #000;border-right:3px solid #000;';
+      const fRow1=document.createElement('div'); fRow1.style.cssText='height:22px;display:flex;align-items:stretch;';
+      fillFRACS.forEach(([n,d],i)=>{
+        const btn=document.createElement('div'); const fc2=fillFC[d]||'#374151';
+        const isSelFrac=selCon&&Math.abs((selCon.amount/selCon.cap)-(n/d))<0.001;
+        btn.style.cssText=`flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${isSelFrac?fc2:'#fff'};background:${!selCon?'var(--bg-4)':isSelFrac?'#fff':fc2};cursor:${selCon?'pointer':'default'};${i>0?'border-left:3px solid #000;':''}`;
+        btn.innerHTML=`<sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub>`;
+        btn.onclick=e=>{ e.stopPropagation(); if(!selCon) return; doFillApply((n/d)*100); };
+        fRow1.appendChild(btn);
+      });
+      fracCols.appendChild(fRow1);
+      const fRow2=document.createElement('div'); fRow2.style.cssText='height:22px;display:flex;align-items:stretch;border-top:3px solid #000;';
+      fillFRACS2.forEach(([n,d],i)=>{
+        const btn=document.createElement('div'); const fc2=fillFC[d]||'#374151';
+        const isSelFrac=selCon&&Math.abs((selCon.amount/selCon.cap)-(n/d))<0.001;
+        btn.style.cssText=`flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${isSelFrac?fc2:'#fff'};background:${!selCon?'var(--bg-4)':isSelFrac?'#fff':fc2};cursor:${selCon?'pointer':'default'};${i>0?'border-left:3px solid #000;':''}`;
+        btn.innerHTML=`<sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub>`;
+        btn.onclick=e=>{ e.stopPropagation(); if(!selCon) return; doFillApply((n/d)*100); };
+        fRow2.appendChild(btn);
+      });
+      fracCols.appendChild(fRow2);
+      fracInner.appendChild(fracCols);
+      // Full button — spans full height of both rows
+      const isFracFull=(selCon&&selCon.amount>=selCon.cap);
+      const fFullBtn=document.createElement('div');
+      fFullBtn.style.cssText=`width:20px;min-width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:900;writing-mode:vertical-rl;background:${isFracFull?'#fff':'#48a971'};color:${isFracFull?'#48a971':'#fff'};`;
+      fFullBtn.textContent='Full';
+      fFullBtn.onclick=e=>{ e.stopPropagation(); doFillApply(100); };
+      fracInner.appendChild(fFullBtn);
+      fracPanel.appendChild(fracInner);
+      body.appendChild(fracPanel);
+      if(!selCon||expandView.fillTab!=='frac'){ fracPanel.style.display='none'; }
+
+      // Confirm card — shown when fill has changed since container was selected
+      if(selCon&&expandView.fillStart!==undefined&&selCon.amount!==expandView.fillStart){
+        const nowPct=Math.round(selCon.amount/selCon.cap*100);
+        const startPct=Math.round(expandView.fillStart/selCon.cap*100);
+        const deltaPct=nowPct-startPct;
+        const isUsed=deltaPct<0;
+        const confirmEl=document.createElement('div'); confirmEl.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
+        const confLeft=document.createElement('div'); confLeft.style.cssText='flex:1;min-width:0;display:flex;align-items:center;justify-content:center;background:#374151;font-size:11px;font-weight:900;color:#fff;';
+        confLeft.textContent=`${nowPct}% (${deltaPct>0?'+':''}${deltaPct}%)`;
+        const confRight=document.createElement('div'); confRight.style.cssText=`flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#fff;border-left:3px solid #000;cursor:pointer;background:${isUsed?'#C85A5A':'#48a971'};`;
+        confRight.textContent=isUsed?'Tap to Log as Used':'Tap to Log as Added';
+        confRight.onclick=e=>{ e.stopPropagation(); const netDelta=selCon.amount-expandView.fillStart; const prevS=ptGetStock(pd)-netDelta; const cost=(!selCon.free&&selCon.price!=null&&selCon.cap>0&&netDelta!==0)?(Math.abs(netDelta)/selCon.cap)*selCon.price:null; saveItemPantry(msItem.id,pd,prevS,cost); expandView.fillStart=selCon.amount; expandView.fillConId=selCon.id; if(!isUsed&&expandView._wasteCeilings){ expandView._wasteCeilings[selCon.id]=Math.max(expandView._wasteCeilings[selCon.id]??0,selCon.amount); } ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); };
+        confirmEl.append(confLeft,confRight); body.appendChild(confirmEl);
+      }
 
     } else if(expandView.mode==='waste'){
       const sorted=[...pd.containers].sort((a,b)=>(a.amount===0&&b.amount>0)?1:(b.amount===0&&a.amount>0)?-1:0);
@@ -1383,52 +1515,129 @@ function ptBuildCard(msItem){
         const selCon=selectedCon.id?pd.containers.find(c=>c.id===selectedCon.id):null;
         // Session floor: current waste level when waste tab was opened — cannot go below this
         if(expandView._wasteFloor===undefined) expandView._wasteFloor=wlGet(msItem.id);
+        if(!expandView._wasteCeilings) expandView._wasteCeilings={};
+        pd.containers.forEach(c=>{ if(!(c.id in expandView._wasteCeilings)) expandView._wasteCeilings[c.id]=c.amount; });
         const wasteFloor=expandView._wasteFloor;
         const currentWaste=wlGet(msItem.id);
         const maxWaste=selCon?parseFloat(Math.min(selCon.amount+(currentWaste-wasteFloor),todayUsed).toFixed(2)):0;
+        // initialize fillStart for waste mode
+        if(selCon&&expandView.fillConId!==selCon.id){ expandView.fillStart=selCon.amount; expandView.fillConId=selCon.id; }
+        if(!selCon){ expandView.fillStart=undefined; expandView.fillConId=undefined; }
         function chunkWaste(arr){ const total=arr.length,rows=Math.ceil(total/3),chunks=[]; let rem=total; for(let r=0;r<rows;r++){ const rowsLeft=rows-r; const size=Math.ceil(rem/rowsLeft); chunks.push(arr.slice(total-rem,total-rem+size)); rem-=size; } return chunks; }
         chunkWaste(sorted).forEach(rowCons=>{
           const rowEl=document.createElement('div'); rowEl.style.cssText='display:flex;gap:4px;';
           rowCons.forEach(con=>{
             const isSel=selectedCon.id===con.id;
-            const vM=Math.max(con.cap,con.amount)||1; const cPct=(con.amount/vM*100).toFixed(1);
+            const hasPending=isSel&&expandView.fillStart!==undefined&&con.amount!==expandView.fillStart;
+            const vM=Math.max(con.cap,con.amount,expandView.fillStart||0)||1; const cPct=(con.amount/vM*100).toFixed(1);
             const card=document.createElement('div'); card.style.cssText=`flex:1;height:var(--card-height);border:3px solid ${isSel?'#fff':'#000'};border-radius:8px;overflow:hidden;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;min-width:0;`;
             const fill=document.createElement('div'); fill.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${cPct}%;background:#C85A5A;opacity:0.25;transition:width 0.3s;pointer-events:none;`;
+            card.appendChild(fill);
+            if(hasPending){
+              const startPct=(expandView.fillStart/vM*100);
+              const nowPct=(con.amount/vM*100);
+              const ghostLeft=Math.min(startPct,nowPct);
+              const ghostWidth=Math.abs(startPct-nowPct);
+              const ghostColor=ptDarken(ptConFillColor(con),0.7);
+              const ghost=document.createElement('div');
+              ghost.style.cssText=`position:absolute;top:0;bottom:0;left:${ghostLeft}%;width:${ghostWidth}%;background:${ghostColor};opacity:0.6;pointer-events:none;transition:left 0.15s,width 0.15s;`;
+              card.appendChild(ghost);
+            }
             const inner=document.createElement('div'); inner.style.cssText='position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:100%;padding:0 4px;box-sizing:border-box;';
             const nmEl=document.createElement('div'); nmEl.style.cssText='font-size:9px;font-weight:800;color:#fff;letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center;line-height:1.1;'; nmEl.textContent=(con.label||'Container').toUpperCase();
             const amtEl=document.createElement('div'); amtEl.style.cssText='font-size:8px;font-weight:700;color:rgba(255,255,255,0.7);text-align:center;'; amtEl.textContent=`${con.amount} / ${con.cap}`;
-            inner.append(nmEl,amtEl); card.append(fill,inner);
-            card.onclick=e=>{ e.stopPropagation(); selectedCon.id=selectedCon.id===con.id?null:con.id; updateBtnState(); renderExpand(); };
+            inner.append(nmEl,amtEl); card.appendChild(inner);
+            card.onclick=e=>{ e.stopPropagation(); revertPendingFill(); selectedCon.id=selectedCon.id===con.id?null:con.id; updateBtnState(); renderExpand(); };
             rowEl.appendChild(card);
           });
           body.appendChild(rowEl);
         });
-        // Set Waste To card
-        const fracColors={2:'#5A8DB8',3:'#8a7ca8',4:'#5A8DB8',5:'#48a971',8:'#C7824A'};
-        const fracs=[{n:1,d:8},{n:1,d:5},{n:1,d:4},{n:1,d:3},{n:3,d:8},{n:2,d:5},{n:1,d:2},{n:3,d:5},{n:5,d:8},{n:2,d:3},{n:3,d:4},{n:4,d:5},{n:7,d:8}];
-        const wCard=document.createElement('div'); wCard.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;';
-        const wLblRow=document.createElement('div'); wLblRow.style.cssText='height:20px;display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-bottom:3px solid #000;font-size:7px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.5);'; wLblRow.textContent='Set Waste To'; wCard.appendChild(wLblRow);
-        const wRow=document.createElement('div'); wRow.style.cssText='height:22px;display:flex;align-items:stretch;';
-        const clearBtn=document.createElement('div'); clearBtn.style.cssText=`width:28px;min-width:28px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;background:#C85A5A;cursor:${selCon?'pointer':'default'};opacity:${selCon?'1':'0.3'};border-right:3px solid #000;`; clearBtn.textContent='\u00d7';
-        clearBtn.onclick=e=>{ e.stopPropagation(); if(!selCon) return; const prevS=ptGetStock(pd); const rollback=currentWaste-wasteFloor; selCon.amount=parseFloat(Math.min(selCon.cap,selCon.amount+rollback).toFixed(2)); wlSet(msItem.id,wasteFloor); const dw=getPantryData(); dw[msItem.id]=pd; setPantryData(dw); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); };
-        wRow.appendChild(clearBtn);
-        fracs.forEach(({n,d},i)=>{
-          const btn=document.createElement('div'); const fc=fracColors[d]||'var(--bg-2)';
-          const fracAmt=selCon?parseFloat((selCon.cap*(n/d)).toFixed(2)):0;
-          const unavail=!selCon||fracAmt>selCon.amount; // can't waste more than currently in container
-          const isCur=selCon&&parseFloat((selCon.amount/selCon.cap).toFixed(4))===parseFloat((n/d).toFixed(4));
-          btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${isCur?fc:(unavail?'rgba(255,255,255,0.2)':'#fff')};background:${!selCon?'var(--bg-4)':isCur?'#fff':fc};cursor:${selCon&&!unavail?'pointer':'default'};${i<fracs.length-1?'border-right:3px solid #000;':''}`;
-          btn.innerHTML=`<sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub>`;
-          btn.onclick=e=>{ e.stopPropagation(); if(!selCon||unavail) return; const prevS=ptGetStock(pd); const prev=selCon.amount; const conDelta=prev-fracAmt; // positive=waste, negative=rollback
-            const newWaste=conDelta>0?currentWaste+conDelta:Math.max(wasteFloor,currentWaste+conDelta);
-            selCon.amount=fracAmt; wlSet(msItem.id,newWaste); const dw=getPantryData(); dw[msItem.id]=pd; setPantryData(dw); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); };
-          wRow.appendChild(btn);
+
+        // Waste fill UI — same percent/fraction tabs, confirm logs as waste
+        function doWasteFillApply(pct){
+          if(!selCon) return;
+          const next=parseFloat((selCon.cap*Math.max(0,Math.min(100,pct))/100).toFixed(1));
+          selCon.amount=next;
+          saveItemPantry(msItem.id,pd); // silent — confirm card logs waste
+          ptRefreshCard(msItem,pd,wrap,selectedCon,expandView);
+        }
+        if(!expandView.fillTab) expandView.fillTab='pct';
+
+        // Tab switcher
+        const wFillTabBar=document.createElement('div'); wFillTabBar.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;flex-shrink:0;';
+        [['pct','Percent'],['frac','Fraction']].forEach(([tv,tlbl],i)=>{
+          const t=document.createElement('div'); const isAct=expandView.fillTab===tv;
+          t.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-3)'};color:${isAct?'#fff':'var(--muted)'};${i===0?'border-right:3px solid #000;':''}`;
+          t.textContent=tlbl;
+          t.onclick=e=>{ e.stopPropagation(); expandView.fillTab=tv; renderExpand(); };
+          wFillTabBar.appendChild(t);
         });
-        const wasteAllBtn=document.createElement('div'); wasteAllBtn.style.cssText=`width:28px;min-width:28px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff;background:#C85A5A;cursor:${selCon&&maxWaste>0?'pointer':'default'};opacity:${selCon&&maxWaste>0?'1':'0.3'};border-left:3px solid #000;`; wasteAllBtn.textContent='+';
-        wasteAllBtn.onclick=e=>{ e.stopPropagation(); if(!selCon||maxWaste<=0) return; const prevS=ptGetStock(pd); selCon.amount=parseFloat(Math.max(0,selCon.amount-maxWaste).toFixed(2)); wlSet(msItem.id,parseFloat((currentWaste+maxWaste).toFixed(2))); const dw=getPantryData(); dw[msItem.id]=pd; setPantryData(dw); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); };
-        wRow.appendChild(wasteAllBtn);
-        wCard.appendChild(wRow); body.appendChild(wCard);
-        if(!selCon){ wCard.style.display='none'; }
+        body.appendChild(wFillTabBar);
+        if(!selCon){ wFillTabBar.style.display='none'; }
+
+        // Percent panel
+        const wPctPanel=document.createElement('div'); wPctPanel.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;';
+        const wPctInner=document.createElement('div'); wPctInner.style.cssText='display:flex;align-items:stretch;';
+        const wPctCols=document.createElement('div'); wPctCols.style.cssText='flex:1;min-width:0;display:flex;flex-direction:column;';
+        const wCurPct=selCon?parseFloat((selCon.amount/selCon.cap*100).toFixed(2)):0;
+        const wCurR=Math.round(wCurPct); const wCurTens=Math.floor(wCurR/10)*10; const wCurOnes=wCurR%10; const wAt100=(wCurR>=100);
+        const wFloorPct=selCon&&expandView._wasteCeilings?Math.round((expandView._wasteCeilings[selCon.id]??selCon.amount)/selCon.cap*100):wCurR;
+        const wTensRow=document.createElement('div'); wTensRow.style.cssText='height:22px;display:flex;align-items:stretch;';
+        fillTENS.forEach((p,i)=>{ const el=document.createElement('div'); const blocked=p>wFloorPct; const on=(!blocked&&p===wCurTens&&!wAt100); const c=fillLerp4(Math.max(p,1)/100); el.style.cssText=`${i===0?'width:20px;min-width:20px;flex-shrink:0;':'flex:1;min-width:0;'}display:flex;align-items:center;justify-content:center;cursor:${blocked?'default':'pointer'};font-size:8px;font-weight:900;user-select:none;background:${blocked?'#1e2a35':on?'#fff':c};color:${blocked?'#4a5568':on?c:'#fff'};${i>0?'border-left:3px solid #000;':''}`;el.textContent=(p===0)?'00':String(p); el.onclick=e=>{ e.stopPropagation(); if(blocked) return; doWasteFillApply(p); }; wTensRow.appendChild(el); });
+        wPctCols.appendChild(wTensRow);
+        const wOnesRow=document.createElement('div'); wOnesRow.style.cssText='height:22px;display:flex;align-items:stretch;border-top:3px solid #000;';
+        fillONES.forEach((o,i)=>{ const el=document.createElement('div'); const fullPct=Math.min(100,wCurTens+o); const blocked=fullPct>wFloorPct; const on=(!blocked&&!wAt100&&o===wCurOnes); const c=fillLerp4(Math.max(fullPct,1)/100); el.style.cssText=`${i===0?'width:20px;min-width:20px;flex-shrink:0;':'flex:1;min-width:0;'}display:flex;align-items:center;justify-content:center;cursor:${blocked?'default':'pointer'};font-size:8px;font-weight:900;user-select:none;background:${blocked?'#1e2a35':on?'#fff':c};color:${blocked?'#4a5568':on?c:'#fff'};${i>0?'border-left:3px solid #000;':''}`;el.textContent=String(o); el.onclick=e=>{ e.stopPropagation(); if(blocked) return; doWasteFillApply(fullPct); }; wOnesRow.appendChild(el); });
+        wPctCols.appendChild(wOnesRow);
+        wPctInner.appendChild(wPctCols);
+        const wBtn100=document.createElement('div'); wBtn100.style.cssText='width:23px;min-width:23px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:default;font-size:9px;font-weight:900;writing-mode:vertical-rl;border-left:3px solid #000;background:#1e2a35;color:#4a5568;'; wBtn100.textContent='100';
+        wPctInner.appendChild(wBtn100);
+        wPctPanel.appendChild(wPctInner); body.appendChild(wPctPanel);
+        if(!selCon||expandView.fillTab!=='pct'){ wPctPanel.style.display='none'; }
+
+        // Fraction panel
+        const wFracPanel=document.createElement('div'); wFracPanel.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;';
+        const wFracInner=document.createElement('div'); wFracInner.style.cssText='display:flex;align-items:stretch;';
+        const wCeiling=selCon&&expandView._wasteCeilings?(expandView._wasteCeilings[selCon.id]??selCon.amount):selCon?.amount??0;
+        const wIsEmpty=(selCon&&selCon.amount===0);
+        const wEmptyBtn=document.createElement('div'); wEmptyBtn.style.cssText=`width:20px;min-width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:900;writing-mode:vertical-lr;transform:rotate(180deg);background:${wIsEmpty?'#fff':'#C85A5A'};color:${wIsEmpty?'#C85A5A':'#fff'};`; wEmptyBtn.textContent='Empty'; wEmptyBtn.onclick=e=>{ e.stopPropagation(); doWasteFillApply(0); };
+        wFracInner.appendChild(wEmptyBtn);
+        const wFracCols=document.createElement('div'); wFracCols.style.cssText='flex:1;min-width:0;display:flex;flex-direction:column;border-left:3px solid #000;border-right:3px solid #000;';
+        const wFRow1=document.createElement('div'); wFRow1.style.cssText='height:22px;display:flex;align-items:stretch;';
+        fillFRACS.forEach(([n,d],i)=>{ const btn=document.createElement('div'); const fc2=fillFC[d]||'#374151'; const fracRatio=n/d; const blocked=selCon&&fracRatio>(wCeiling/selCon.cap)+0.001; const isSel2=!blocked&&selCon&&Math.abs((selCon.amount/selCon.cap)-fracRatio)<0.001; btn.style.cssText=`flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${blocked?'#4a5568':isSel2?fc2:'#fff'};background:${blocked?'#1e2a35':!selCon?'var(--bg-4)':isSel2?'#fff':fc2};cursor:${blocked||!selCon?'default':'pointer'};${i>0?'border-left:3px solid #000;':''}`;btn.innerHTML=`<sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub>`;btn.onclick=e=>{ e.stopPropagation(); if(blocked||!selCon) return; doWasteFillApply(fracRatio*100); }; wFRow1.appendChild(btn); });
+        wFracCols.appendChild(wFRow1);
+        const wFRow2=document.createElement('div'); wFRow2.style.cssText='height:22px;display:flex;align-items:stretch;border-top:3px solid #000;';
+        fillFRACS2.forEach(([n,d],i)=>{ const btn=document.createElement('div'); const fc2=fillFC[d]||'#374151'; const fracRatio=n/d; const blocked=selCon&&fracRatio>(wCeiling/selCon.cap)+0.001; const isSel2=!blocked&&selCon&&Math.abs((selCon.amount/selCon.cap)-fracRatio)<0.001; btn.style.cssText=`flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${blocked?'#4a5568':isSel2?fc2:'#fff'};background:${blocked?'#1e2a35':!selCon?'var(--bg-4)':isSel2?'#fff':fc2};cursor:${blocked||!selCon?'default':'pointer'};${i>0?'border-left:3px solid #000;':''}`;btn.innerHTML=`<sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub>`;btn.onclick=e=>{ e.stopPropagation(); if(blocked||!selCon) return; doWasteFillApply(fracRatio*100); }; wFRow2.appendChild(btn); });
+        wFracCols.appendChild(wFRow2);
+        wFracInner.appendChild(wFracCols);
+        const wFullBtn=document.createElement('div'); wFullBtn.style.cssText='width:20px;min-width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:default;font-size:9px;font-weight:900;writing-mode:vertical-rl;background:#1e2a35;color:#4a5568;'; wFullBtn.textContent='Full';
+        wFracInner.appendChild(wFullBtn);
+        wFracPanel.appendChild(wFracInner); body.appendChild(wFracPanel);
+        if(!selCon||expandView.fillTab!=='frac'){ wFracPanel.style.display='none'; }
+
+        // Confirm card — waste only logs on confirm
+        if(selCon&&expandView.fillStart!==undefined&&selCon.amount!==expandView.fillStart){
+          const wNowPct=Math.round(selCon.amount/selCon.cap*100);
+          const wStartPct=Math.round(expandView.fillStart/selCon.cap*100);
+          const wDeltaPct=wNowPct-wStartPct;
+          const wConfirm=document.createElement('div'); wConfirm.style.cssText='height:32px;border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;';
+          const wConfLeft=document.createElement('div'); wConfLeft.style.cssText='flex:1;min-width:0;display:flex;align-items:center;justify-content:center;background:#374151;font-size:11px;font-weight:900;color:#fff;';
+          wConfLeft.textContent=`${wNowPct}% (${wDeltaPct>0?'+':''}${wDeltaPct}%)`;
+          const wConfRight=document.createElement('div'); wConfRight.style.cssText='flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;color:#fff;border-left:3px solid #000;cursor:pointer;background:#C85A5A;';
+          wConfRight.textContent='Tap to Log as Waste';
+          wConfRight.onclick=e=>{
+            e.stopPropagation();
+            const wasteDelta=expandView.fillStart-selCon.amount; // positive = waste
+            const newWaste=parseFloat((currentWaste+wasteDelta).toFixed(2));
+            const wCost=(!selCon.free&&selCon.price!=null&&selCon.cap>0&&wasteDelta!==0)?(Math.abs(wasteDelta)/selCon.cap)*selCon.price:null;
+            if(wasteDelta>0){ dlPush(msItem.id,-wasteDelta,wCost,'w'); }
+            wlSet(msItem.id,Math.max(wasteFloor,newWaste));
+            saveItemPantry(msItem.id,pd);
+            expandView.fillStart=selCon.amount; expandView.fillConId=selCon.id;
+            ptRefreshCard(msItem,pd,wrap,selectedCon,expandView);
+          };
+          wConfirm.append(wConfLeft,wConfRight); body.appendChild(wConfirm);
+        }
+        // legacy clear/wasteAll buttons no longer needed — handled by confirm card
       }
 
     } else {
@@ -1553,7 +1762,16 @@ function ptBuildCard(msItem){
   }
   wrap._renderExpand=renderExpand;
 
-  const closeThisCard=()=>{ ptOpenSet.delete(msItem.id); expand.style.maxHeight='0'; expand.style.borderTop='none'; selectedCon.id=null; updateBtnState(); focusDimHide(); ptScrollBack(wrap._savedScrollY); wrap._savedScrollY=undefined; };
+  function revertPendingFill(){
+    if(expandView.fillStart!==undefined&&selectedCon.id!==null){
+      const sc=pd.containers.find(c=>c.id===selectedCon.id);
+      if(sc&&sc.amount!==expandView.fillStart){ sc.amount=expandView.fillStart; const d=getPantryData(); d[msItem.id]=pd; setPantryData(d); }
+    }
+    expandView.fillStart=undefined; expandView.fillConId=undefined;
+    ptRefreshCard(msItem,pd,wrap,selectedCon,expandView);
+  }
+
+  const closeThisCard=()=>{ revertPendingFill(); ptOpenSet.delete(msItem.id); expand.style.maxHeight='0'; expand.style.borderTop='none'; selectedCon.id=null; updateBtnState(); focusDimHide(); ptScrollBack(wrap._savedScrollY); wrap._savedScrollY=undefined; };
   ptCardRegistry.push({close:closeThisCard});
   wrap.classList.add('pt-card-wrap');
   main.addEventListener('click',()=>{
