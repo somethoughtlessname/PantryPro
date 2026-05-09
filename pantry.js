@@ -1402,91 +1402,44 @@ function ptBuildCard(msItem){
       body.appendChild(fillTabBar);
       if(!selCon){ fillTabBar.style.display='none'; }
 
-      // Percent panel
-      const pctPanel=document.createElement('div'); pctPanel.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;';
-      const pctInner=document.createElement('div'); pctInner.style.cssText='display:flex;align-items:stretch;';
-      const pctCols=document.createElement('div'); pctCols.style.cssText='flex:1;min-width:0;display:flex;flex-direction:column;';
+      // Percent panel — innerHTML for performance
       const curFillPct=selCon?parseFloat((selCon.amount/selCon.cap*100).toFixed(2)):0;
       const curFillR=Math.round(curFillPct);
       const curFillTens=Math.floor(curFillR/10)*10;
       const curFillOnes=curFillR%10;
       const fillAt100=(curFillR>=100);
-      // Tens row
-      const tensRowEl=document.createElement('div'); tensRowEl.style.cssText='height:22px;display:flex;align-items:stretch;';
-      fillTENS.forEach((p,i)=>{
-        const el=document.createElement('div');
-        const on=(p===curFillTens&&!fillAt100);
-        const c=fillLerp4(Math.max(p,1)/100);
-        el.style.cssText=`${i===0?'width:20px;min-width:20px;flex-shrink:0;':'flex:1;min-width:0;'}display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:8px;font-weight:900;user-select:none;background:${on?'#fff':c};color:${on?c:'#fff'};${i>0?'border-left:3px solid #000;':''}`;
-        el.textContent=(p===0)?'00':String(p);
-        el.onclick=e=>{ e.stopPropagation(); doFillApply(p); };
-        tensRowEl.appendChild(el);
-      });
-      pctCols.appendChild(tensRowEl);
-      // Ones row
-      const onesRowEl=document.createElement('div'); onesRowEl.style.cssText='height:22px;display:flex;align-items:stretch;border-top:3px solid #000;';
-      fillONES.forEach((o,i)=>{
-        const el=document.createElement('div');
-        const on=(!fillAt100&&o===curFillOnes);
-        const fullPct=Math.min(100,curFillTens+o);
-        const c=fillLerp4(Math.max(fullPct,1)/100);
-        el.style.cssText=`${i===0?'width:20px;min-width:20px;flex-shrink:0;':'flex:1;min-width:0;'}display:flex;align-items:center;justify-content:center;cursor:${fillAt100?'default':'pointer'};font-size:8px;font-weight:900;user-select:none;background:${fillAt100?'#1e2a35':on?'#fff':c};color:${fillAt100?'#4a5568':on?c:'#fff'};${i>0?'border-left:3px solid #000;':''}`;
-        el.textContent=String(o);
-        el.onclick=e=>{ e.stopPropagation(); if(fillAt100) return; doFillApply(Math.min(100,curFillTens+o)); };
-        onesRowEl.appendChild(el);
-      });
-      pctCols.appendChild(onesRowEl);
-      pctInner.appendChild(pctCols);
-      const btn100=document.createElement('div');
-      btn100.style.cssText=`width:23px;min-width:23px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:900;writing-mode:vertical-rl;border-left:3px solid #000;background:${fillAt100?'#fff':'#48a971'};color:${fillAt100?'#48a971':'#fff'};`;
-      btn100.textContent='100';
-      btn100.onclick=e=>{ e.stopPropagation(); doFillApply(100); };
-      pctInner.appendChild(btn100);
-      pctPanel.appendChild(pctInner);
+      const pctPanel=document.createElement('div'); pctPanel.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;';
+      const btn100bg=fillAt100?'#fff':'#48a971'; const btn100col=fillAt100?'#48a971':'#fff';
+      pctPanel.innerHTML=`<div style="display:flex;align-items:stretch;">
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+          <div data-role="tens" style="height:22px;display:flex;align-items:stretch;">${fillTENS.map((p,i)=>{const on=(p===curFillTens&&!fillAt100);const c=fillLerp4(Math.max(p,1)/100);return`<div data-p="${p}" style="${i===0?'width:20px;min-width:20px;flex-shrink:0;':'flex:1;min-width:0;'}display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:8px;font-weight:900;user-select:none;background:${on?'#fff':c};color:${on?c:'#fff'};${i>0?'border-left:3px solid #000;':''}">${p===0?'00':p}</div>`;}).join('')}</div>
+          <div data-role="ones" style="height:22px;display:flex;align-items:stretch;border-top:3px solid #000;">${fillONES.map((o,i)=>{const on=(!fillAt100&&o===curFillOnes);const fp=Math.min(100,curFillTens+o);const c=fillLerp4(Math.max(fp,1)/100);return`<div data-o="${o}" data-fp="${fp}" style="${i===0?'width:20px;min-width:20px;flex-shrink:0;':'flex:1;min-width:0;'}display:flex;align-items:center;justify-content:center;cursor:${fillAt100?'default':'pointer'};font-size:8px;font-weight:900;user-select:none;background:${fillAt100?'#1e2a35':on?'#fff':c};color:${fillAt100?'#4a5568':on?c:'#fff'};${i>0?'border-left:3px solid #000;':''}">${o}</div>`;}).join('')}</div>
+        </div>
+        <div data-role="btn100" style="width:23px;min-width:23px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:900;writing-mode:vertical-rl;border-left:3px solid #000;background:${btn100bg};color:${btn100col};">100</div>
+      </div>`;
+      pctPanel.querySelector('[data-role="tens"]').onclick=e=>{ e.stopPropagation(); const el=e.target.closest('[data-p]'); if(el) doFillApply(+el.dataset.p); };
+      pctPanel.querySelector('[data-role="ones"]').onclick=e=>{ e.stopPropagation(); if(fillAt100) return; const el=e.target.closest('[data-o]'); if(el) doFillApply(+el.dataset.fp); };
+      pctPanel.querySelector('[data-role="btn100"]').onclick=e=>{ e.stopPropagation(); doFillApply(100); };
       body.appendChild(pctPanel);
       if(!selCon||expandView.fillTab!=='pct'){ pctPanel.style.display='none'; }
 
-      // Fraction panel — Empty/Full flank both rows via align-items:stretch
-      const fracPanel=document.createElement('div'); fracPanel.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;';
-      const fracInner=document.createElement('div'); fracInner.style.cssText='display:flex;align-items:stretch;';
-      // Empty button — spans full height of both rows
+      // Fraction panel — innerHTML for performance
       const isFracEmpty=(selCon&&selCon.amount===0);
-      const fEmptyBtn=document.createElement('div');
-      fEmptyBtn.style.cssText=`width:20px;min-width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:900;writing-mode:vertical-lr;transform:rotate(180deg);background:${isFracEmpty?'#fff':'#C85A5A'};color:${isFracEmpty?'#C85A5A':'#fff'};`;
-      fEmptyBtn.textContent='Empty';
-      fEmptyBtn.onclick=e=>{ e.stopPropagation(); doFillApply(0); };
-      fracInner.appendChild(fEmptyBtn);
-      // Two fraction rows stacked in a column
-      const fracCols=document.createElement('div'); fracCols.style.cssText='flex:1;min-width:0;display:flex;flex-direction:column;border-left:3px solid #000;border-right:3px solid #000;';
-      const fRow1=document.createElement('div'); fRow1.style.cssText='height:22px;display:flex;align-items:stretch;';
-      fillFRACS.forEach(([n,d],i)=>{
-        const btn=document.createElement('div'); const fc2=fillFC[d]||'#374151';
-        const isSelFrac=selCon&&Math.abs((selCon.amount/selCon.cap)-(n/d))<0.001;
-        btn.style.cssText=`flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${isSelFrac?fc2:'#fff'};background:${!selCon?'var(--bg-4)':isSelFrac?'#fff':fc2};cursor:${selCon?'pointer':'default'};${i>0?'border-left:3px solid #000;':''}`;
-        btn.innerHTML=`<sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub>`;
-        btn.onclick=e=>{ e.stopPropagation(); if(!selCon) return; doFillApply((n/d)*100); };
-        fRow1.appendChild(btn);
-      });
-      fracCols.appendChild(fRow1);
-      const fRow2=document.createElement('div'); fRow2.style.cssText='height:22px;display:flex;align-items:stretch;border-top:3px solid #000;';
-      fillFRACS2.forEach(([n,d],i)=>{
-        const btn=document.createElement('div'); const fc2=fillFC[d]||'#374151';
-        const isSelFrac=selCon&&Math.abs((selCon.amount/selCon.cap)-(n/d))<0.001;
-        btn.style.cssText=`flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${isSelFrac?fc2:'#fff'};background:${!selCon?'var(--bg-4)':isSelFrac?'#fff':fc2};cursor:${selCon?'pointer':'default'};${i>0?'border-left:3px solid #000;':''}`;
-        btn.innerHTML=`<sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub>`;
-        btn.onclick=e=>{ e.stopPropagation(); if(!selCon) return; doFillApply((n/d)*100); };
-        fRow2.appendChild(btn);
-      });
-      fracCols.appendChild(fRow2);
-      fracInner.appendChild(fracCols);
-      // Full button — spans full height of both rows
       const isFracFull=(selCon&&selCon.amount>=selCon.cap);
-      const fFullBtn=document.createElement('div');
-      fFullBtn.style.cssText=`width:20px;min-width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:900;writing-mode:vertical-rl;background:${isFracFull?'#fff':'#48a971'};color:${isFracFull?'#48a971':'#fff'};`;
-      fFullBtn.textContent='Full';
-      fFullBtn.onclick=e=>{ e.stopPropagation(); doFillApply(100); };
-      fracInner.appendChild(fFullBtn);
-      fracPanel.appendChild(fracInner);
+      const fracPanel=document.createElement('div'); fracPanel.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;';
+      fracPanel.innerHTML=`<div style="display:flex;align-items:stretch;">
+        <div data-role="fempty" style="width:20px;min-width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:900;writing-mode:vertical-lr;transform:rotate(180deg);background:${isFracEmpty?'#fff':'#C85A5A'};color:${isFracEmpty?'#C85A5A':'#fff'};">Empty</div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;border-left:3px solid #000;border-right:3px solid #000;">
+          <div data-role="frow1" style="height:22px;display:flex;align-items:stretch;">${fillFRACS.map(([n,d],i)=>{const fc2=fillFC[d]||'#374151';const isSel=selCon&&Math.abs((selCon.amount/selCon.cap)-(n/d))<0.001;return`<div data-n="${n}" data-d="${d}" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${isSel?fc2:'#fff'};background:${!selCon?'var(--bg-4)':isSel?'#fff':fc2};cursor:${selCon?'pointer':'default'};${i>0?'border-left:3px solid #000;':''}"><sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub></div>`;}).join('')}</div>
+          <div data-role="frow2" style="height:22px;display:flex;align-items:stretch;border-top:3px solid #000;">${fillFRACS2.map(([n,d],i)=>{const fc2=fillFC[d]||'#374151';const isSel=selCon&&Math.abs((selCon.amount/selCon.cap)-(n/d))<0.001;return`<div data-n="${n}" data-d="${d}" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${isSel?fc2:'#fff'};background:${!selCon?'var(--bg-4)':isSel?'#fff':fc2};cursor:${selCon?'pointer':'default'};${i>0?'border-left:3px solid #000;':''}"><sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub></div>`;}).join('')}</div>
+        </div>
+        <div data-role="ffull" style="width:20px;min-width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:900;writing-mode:vertical-rl;background:${isFracFull?'#fff':'#48a971'};color:${isFracFull?'#48a971':'#fff'};">Full</div>
+      </div>`;
+      fracPanel.querySelector('[data-role="fempty"]').onclick=e=>{ e.stopPropagation(); doFillApply(0); };
+      fracPanel.querySelector('[data-role="ffull"]').onclick=e=>{ e.stopPropagation(); doFillApply(100); };
+      const fracClickHandler=e=>{ e.stopPropagation(); if(!selCon) return; const el=e.target.closest('[data-n]'); if(el) doFillApply((+el.dataset.n/+el.dataset.d)*100); };
+      fracPanel.querySelector('[data-role="frow1"]').onclick=fracClickHandler;
+      fracPanel.querySelector('[data-role="frow2"]').onclick=fracClickHandler;
       body.appendChild(fracPanel);
       if(!selCon||expandView.fillTab!=='frac'){ fracPanel.style.display='none'; }
 
@@ -1575,43 +1528,40 @@ function ptBuildCard(msItem){
         body.appendChild(wFillTabBar);
         if(!selCon){ wFillTabBar.style.display='none'; }
 
-        // Percent panel
-        const wPctPanel=document.createElement('div'); wPctPanel.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;';
-        const wPctInner=document.createElement('div'); wPctInner.style.cssText='display:flex;align-items:stretch;';
-        const wPctCols=document.createElement('div'); wPctCols.style.cssText='flex:1;min-width:0;display:flex;flex-direction:column;';
+        // Percent panel — innerHTML for performance
         const wCurPct=selCon?parseFloat((selCon.amount/selCon.cap*100).toFixed(2)):0;
         const wCurR=Math.round(wCurPct); const wCurTens=Math.floor(wCurR/10)*10; const wCurOnes=wCurR%10; const wAt100=(wCurR>=100);
         const wFloorPct=selCon&&expandView._wasteCeilings?Math.round((expandView._wasteCeilings[selCon.id]??selCon.amount)/selCon.cap*100):wCurR;
-        const wTensRow=document.createElement('div'); wTensRow.style.cssText='height:22px;display:flex;align-items:stretch;';
-        fillTENS.forEach((p,i)=>{ const el=document.createElement('div'); const blocked=p>wFloorPct; const on=(!blocked&&p===wCurTens&&!wAt100); const c=fillLerp4(Math.max(p,1)/100); el.style.cssText=`${i===0?'width:20px;min-width:20px;flex-shrink:0;':'flex:1;min-width:0;'}display:flex;align-items:center;justify-content:center;cursor:${blocked?'default':'pointer'};font-size:8px;font-weight:900;user-select:none;background:${blocked?'#1e2a35':on?'#fff':c};color:${blocked?'#4a5568':on?c:'#fff'};${i>0?'border-left:3px solid #000;':''}`;el.textContent=(p===0)?'00':String(p); el.onclick=e=>{ e.stopPropagation(); if(blocked) return; doWasteFillApply(p); }; wTensRow.appendChild(el); });
-        wPctCols.appendChild(wTensRow);
-        const wOnesRow=document.createElement('div'); wOnesRow.style.cssText='height:22px;display:flex;align-items:stretch;border-top:3px solid #000;';
-        fillONES.forEach((o,i)=>{ const el=document.createElement('div'); const fullPct=Math.min(100,wCurTens+o); const blocked=fullPct>wFloorPct; const on=(!blocked&&!wAt100&&o===wCurOnes); const c=fillLerp4(Math.max(fullPct,1)/100); el.style.cssText=`${i===0?'width:20px;min-width:20px;flex-shrink:0;':'flex:1;min-width:0;'}display:flex;align-items:center;justify-content:center;cursor:${blocked?'default':'pointer'};font-size:8px;font-weight:900;user-select:none;background:${blocked?'#1e2a35':on?'#fff':c};color:${blocked?'#4a5568':on?c:'#fff'};${i>0?'border-left:3px solid #000;':''}`;el.textContent=String(o); el.onclick=e=>{ e.stopPropagation(); if(blocked) return; doWasteFillApply(fullPct); }; wOnesRow.appendChild(el); });
-        wPctCols.appendChild(wOnesRow);
-        wPctInner.appendChild(wPctCols);
-        const wBtn100=document.createElement('div'); wBtn100.style.cssText='width:23px;min-width:23px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:default;font-size:9px;font-weight:900;writing-mode:vertical-rl;border-left:3px solid #000;background:#1e2a35;color:#4a5568;'; wBtn100.textContent='100';
-        wPctInner.appendChild(wBtn100);
-        wPctPanel.appendChild(wPctInner); body.appendChild(wPctPanel);
-        if(!selCon||expandView.fillTab!=='pct'){ wPctPanel.style.display='none'; }
-
-        // Fraction panel
-        const wFracPanel=document.createElement('div'); wFracPanel.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;';
-        const wFracInner=document.createElement('div'); wFracInner.style.cssText='display:flex;align-items:stretch;';
         const wCeiling=selCon&&expandView._wasteCeilings?(expandView._wasteCeilings[selCon.id]??selCon.amount):selCon?.amount??0;
         const wIsEmpty=(selCon&&selCon.amount===0);
-        const wEmptyBtn=document.createElement('div'); wEmptyBtn.style.cssText=`width:20px;min-width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:900;writing-mode:vertical-lr;transform:rotate(180deg);background:${wIsEmpty?'#fff':'#C85A5A'};color:${wIsEmpty?'#C85A5A':'#fff'};`; wEmptyBtn.textContent='Empty'; wEmptyBtn.onclick=e=>{ e.stopPropagation(); doWasteFillApply(0); };
-        wFracInner.appendChild(wEmptyBtn);
-        const wFracCols=document.createElement('div'); wFracCols.style.cssText='flex:1;min-width:0;display:flex;flex-direction:column;border-left:3px solid #000;border-right:3px solid #000;';
-        const wFRow1=document.createElement('div'); wFRow1.style.cssText='height:22px;display:flex;align-items:stretch;';
-        fillFRACS.forEach(([n,d],i)=>{ const btn=document.createElement('div'); const fc2=fillFC[d]||'#374151'; const fracRatio=n/d; const blocked=selCon&&fracRatio>(wCeiling/selCon.cap)+0.001; const isSel2=!blocked&&selCon&&Math.abs((selCon.amount/selCon.cap)-fracRatio)<0.001; btn.style.cssText=`flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${blocked?'#4a5568':isSel2?fc2:'#fff'};background:${blocked?'#1e2a35':!selCon?'var(--bg-4)':isSel2?'#fff':fc2};cursor:${blocked||!selCon?'default':'pointer'};${i>0?'border-left:3px solid #000;':''}`;btn.innerHTML=`<sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub>`;btn.onclick=e=>{ e.stopPropagation(); if(blocked||!selCon) return; doWasteFillApply(fracRatio*100); }; wFRow1.appendChild(btn); });
-        wFracCols.appendChild(wFRow1);
-        const wFRow2=document.createElement('div'); wFRow2.style.cssText='height:22px;display:flex;align-items:stretch;border-top:3px solid #000;';
-        fillFRACS2.forEach(([n,d],i)=>{ const btn=document.createElement('div'); const fc2=fillFC[d]||'#374151'; const fracRatio=n/d; const blocked=selCon&&fracRatio>(wCeiling/selCon.cap)+0.001; const isSel2=!blocked&&selCon&&Math.abs((selCon.amount/selCon.cap)-fracRatio)<0.001; btn.style.cssText=`flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${blocked?'#4a5568':isSel2?fc2:'#fff'};background:${blocked?'#1e2a35':!selCon?'var(--bg-4)':isSel2?'#fff':fc2};cursor:${blocked||!selCon?'default':'pointer'};${i>0?'border-left:3px solid #000;':''}`;btn.innerHTML=`<sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub>`;btn.onclick=e=>{ e.stopPropagation(); if(blocked||!selCon) return; doWasteFillApply(fracRatio*100); }; wFRow2.appendChild(btn); });
-        wFracCols.appendChild(wFRow2);
-        wFracInner.appendChild(wFracCols);
-        const wFullBtn=document.createElement('div'); wFullBtn.style.cssText='width:20px;min-width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:default;font-size:9px;font-weight:900;writing-mode:vertical-rl;background:#1e2a35;color:#4a5568;'; wFullBtn.textContent='Full';
-        wFracInner.appendChild(wFullBtn);
-        wFracPanel.appendChild(wFracInner); body.appendChild(wFracPanel);
+        const wPctPanel=document.createElement('div'); wPctPanel.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;';
+        wPctPanel.innerHTML=`<div style="display:flex;align-items:stretch;">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+            <div data-role="wtens" style="height:22px;display:flex;align-items:stretch;">${fillTENS.map((p,i)=>{const blocked=p>wFloorPct;const on=(!blocked&&p===wCurTens&&!wAt100);const c=fillLerp4(Math.max(p,1)/100);return`<div data-p="${p}" data-blocked="${blocked}" style="${i===0?'width:20px;min-width:20px;flex-shrink:0;':'flex:1;min-width:0;'}display:flex;align-items:center;justify-content:center;cursor:${blocked?'default':'pointer'};font-size:8px;font-weight:900;user-select:none;background:${blocked?'#1e2a35':on?'#fff':c};color:${blocked?'#4a5568':on?c:'#fff'};${i>0?'border-left:3px solid #000;':''}">${p===0?'00':p}</div>`;}).join('')}</div>
+            <div data-role="wones" style="height:22px;display:flex;align-items:stretch;border-top:3px solid #000;">${fillONES.map((o,i)=>{const fp=Math.min(100,wCurTens+o);const blocked=fp>wFloorPct;const on=(!blocked&&!wAt100&&o===wCurOnes);const c=fillLerp4(Math.max(fp,1)/100);return`<div data-fp="${fp}" data-blocked="${blocked}" style="${i===0?'width:20px;min-width:20px;flex-shrink:0;':'flex:1;min-width:0;'}display:flex;align-items:center;justify-content:center;cursor:${blocked?'default':'pointer'};font-size:8px;font-weight:900;user-select:none;background:${blocked?'#1e2a35':on?'#fff':c};color:${blocked?'#4a5568':on?c:'#fff'};${i>0?'border-left:3px solid #000;':''}">${o}</div>`;}).join('')}</div>
+          </div>
+          <div style="width:23px;min-width:23px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:default;font-size:9px;font-weight:900;writing-mode:vertical-rl;border-left:3px solid #000;background:#1e2a35;color:#4a5568;">100</div>
+        </div>`;
+        wPctPanel.querySelector('[data-role="wtens"]').onclick=e=>{ e.stopPropagation(); const el=e.target.closest('[data-p]'); if(el&&el.dataset.blocked!=='true') doWasteFillApply(+el.dataset.p); };
+        wPctPanel.querySelector('[data-role="wones"]').onclick=e=>{ e.stopPropagation(); const el=e.target.closest('[data-fp]'); if(el&&el.dataset.blocked!=='true') doWasteFillApply(+el.dataset.fp); };
+        body.appendChild(wPctPanel);
+        if(!selCon||expandView.fillTab!=='pct'){ wPctPanel.style.display='none'; }
+
+        // Fraction panel — innerHTML for performance
+        const wFracPanel=document.createElement('div'); wFracPanel.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;';
+        wFracPanel.innerHTML=`<div style="display:flex;align-items:stretch;">
+          <div data-role="wfempty" style="width:20px;min-width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:900;writing-mode:vertical-lr;transform:rotate(180deg);background:${wIsEmpty?'#fff':'#C85A5A'};color:${wIsEmpty?'#C85A5A':'#fff'};">Empty</div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;border-left:3px solid #000;border-right:3px solid #000;">
+            <div data-role="wfrow1" style="height:22px;display:flex;align-items:stretch;">${fillFRACS.map(([n,d],i)=>{const fc2=fillFC[d]||'#374151';const ratio=n/d;const blocked=selCon&&ratio>(wCeiling/selCon.cap)+0.001;const isSel2=!blocked&&selCon&&Math.abs((selCon.amount/selCon.cap)-ratio)<0.001;return`<div data-n="${n}" data-d="${d}" data-blocked="${blocked}" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${blocked?'#4a5568':isSel2?fc2:'#fff'};background:${blocked?'#1e2a35':!selCon?'var(--bg-4)':isSel2?'#fff':fc2};cursor:${blocked||!selCon?'default':'pointer'};${i>0?'border-left:3px solid #000;':''}"><sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub></div>`;}).join('')}</div>
+            <div data-role="wfrow2" style="height:22px;display:flex;align-items:stretch;border-top:3px solid #000;">${fillFRACS2.map(([n,d],i)=>{const fc2=fillFC[d]||'#374151';const ratio=n/d;const blocked=selCon&&ratio>(wCeiling/selCon.cap)+0.001;const isSel2=!blocked&&selCon&&Math.abs((selCon.amount/selCon.cap)-ratio)<0.001;return`<div data-n="${n}" data-d="${d}" data-blocked="${blocked}" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${blocked?'#4a5568':isSel2?fc2:'#fff'};background:${blocked?'#1e2a35':!selCon?'var(--bg-4)':isSel2?'#fff':fc2};cursor:${blocked||!selCon?'default':'pointer'};${i>0?'border-left:3px solid #000;':''}"><sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub></div>`;}).join('')}</div>
+          </div>
+          <div data-role="wffull" style="width:20px;min-width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:default;font-size:9px;font-weight:900;writing-mode:vertical-rl;background:#1e2a35;color:#4a5568;">Full</div>
+        </div>`;
+        wFracPanel.querySelector('[data-role="wfempty"]').onclick=e=>{ e.stopPropagation(); doWasteFillApply(0); };
+        const wFracClick=e=>{ e.stopPropagation(); const el=e.target.closest('[data-n]'); if(el&&el.dataset.blocked!=='true'&&selCon) doWasteFillApply((+el.dataset.n/+el.dataset.d)*100); };
+        wFracPanel.querySelector('[data-role="wfrow1"]').onclick=wFracClick;
+        wFracPanel.querySelector('[data-role="wfrow2"]').onclick=wFracClick;
+        body.appendChild(wFracPanel);
         if(!selCon||expandView.fillTab!=='frac'){ wFracPanel.style.display='none'; }
 
         // Confirm card — waste only logs on confirm
@@ -2019,13 +1969,23 @@ function ptRender(){
   const itemsWrap=document.createElement('div'); itemsWrap.className='pt-items-wrap'; itemsWrap.style.cssText='display:flex;flex-direction:column;gap:4px;';
   const rawCats=[...new Set(ptFilterSnapshot.map(i=>i.category))];
   const cats=ptSmartSortCats(rawCats, ptFilterSnapshot);
-  cats.forEach(catId=>{ const catItems=ptSmartSortItems(ptFilterSnapshot.filter(i=>i.category===catId)); const cat=getCat(catId); itemsWrap.appendChild(ptDivider(cat.label,cat.color)); catItems.forEach(item=>itemsWrap.appendChild(ptBuildCard(item))); });
-  page.appendChild(itemsWrap);
-
-  // Worth card — only in on-hand filter
-  if(ptActiveFilter==='onhand'){
-    page.appendChild(ptBuildWorthCard());
+  const renderQueue=[];
+  cats.forEach(catId=>{ const catItems=ptSmartSortItems(ptFilterSnapshot.filter(i=>i.category===catId)); const cat=getCat(catId); renderQueue.push(['cat',cat]); catItems.forEach(item=>renderQueue.push(['item',item])); });
+  page.appendChild(itemsWrap); // append immediately — no blank-out
+  ptRender._token=(ptRender._token||0)+1; const myToken=ptRender._token;
+  let rqIdx=0;
+  function renderChunk(){
+    if(ptRender._token!==myToken) return; // cancelled by a newer ptRender call
+    const end=Math.min(rqIdx+8, renderQueue.length);
+    for(;rqIdx<end;rqIdx++){
+      const [type,data]=renderQueue[rqIdx];
+      if(type==='cat') itemsWrap.appendChild(ptDivider(data.label,data.color));
+      else itemsWrap.appendChild(ptBuildCard(data));
+    }
+    if(rqIdx<renderQueue.length){ requestAnimationFrame(renderChunk); }
+    else if(ptActiveFilter==='onhand'){ page.appendChild(ptBuildWorthCard()); }
   }
+  requestAnimationFrame(renderChunk);
 }
 
 function ptCalcWorth(){
