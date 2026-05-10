@@ -1059,39 +1059,39 @@ function ptBuildCard(msItem){
     e.stopPropagation(); if(!selectedCon.id) return;
     const con=pd.containers.find(c=>c.id===selectedCon.id); if(!con) return;
     if(expandView.mode==='waste'){
-      const curW=wlGet(msItem.id); const floor=expandView._wasteFloor!==undefined?expandView._wasteFloor:curW;
-      if(expandView._wasteFloor===undefined) expandView._wasteFloor=curW;
       if(con.amount<=0) return;
-      const newW=parseFloat(Math.min(curW+pd.step, (wlGet(msItem.id)||0)+con.amount).toFixed(2));
-      const diff=parseFloat((newW-curW).toFixed(2)); if(diff<=0) return;
-      con.amount=parseFloat(Math.max(0,con.amount-diff).toFixed(2));
-      wlSet(msItem.id,newW); const dw=getPantryData(); dw[msItem.id]=pd; setPantryData(dw);
+      con.amount=parseFloat(Math.max(0,con.amount-pd.step).toFixed(2));
+      saveItemPantry(msItem.id,pd); // silent — confirm card logs waste
+      ptRefreshCard(msItem,pd,wrap,selectedCon,expandView);
+      renderExpand();
     } else {
       const prev=con.amount; con.amount=Math.max(0,parseFloat((con.amount-pd.step).toFixed(1)));
       const used=prev-con.amount; if(used>0) trackPtUsage(msItem.id,used);
       const conCost=(!con.free&&con.price!=null&&con.cap>0)?(used/con.cap)*con.price:null;
       saveItemPantry(msItem.id,pd,ptGetStock(pd)+used,conCost);
       if(con.amount===0&&prev>0) con._confirmEmpty=true; trackPtInteraction(msItem.id);
+      expandView.fillStart=con.amount; expandView.fillConId=con.id; // reset baseline after direct commit
+      ptRefreshCard(msItem,pd,wrap,selectedCon,expandView);
     }
-    ptRefreshCard(msItem,pd,wrap,selectedCon,expandView);
   };
   plusBtn.onclick=e=>{
     e.stopPropagation(); if(!selectedCon.id) return;
     const con=pd.containers.find(c=>c.id===selectedCon.id); if(!con) return;
     if(expandView.mode==='waste'){
-      const curW=wlGet(msItem.id); const floor=expandView._wasteFloor!==undefined?expandView._wasteFloor:curW;
-      if(curW<=floor) return;
-      const newW=parseFloat(Math.max(floor,curW-pd.step).toFixed(2));
-      const diff=curW-newW;
-      con.amount=parseFloat(Math.min(con.cap,con.amount+diff).toFixed(2));
-      wlSet(msItem.id,newW); const dw=getPantryData(); dw[msItem.id]=pd; setPantryData(dw);
+      const ceiling=expandView._wasteCeilings?.[con.id]??con.amount;
+      if(con.amount>=ceiling) return;
+      con.amount=parseFloat(Math.min(ceiling,con.amount+pd.step).toFixed(2));
+      saveItemPantry(msItem.id,pd); // silent — confirm card logs waste
+      ptRefreshCard(msItem,pd,wrap,selectedCon,expandView);
+      renderExpand();
     } else {
       const prevConAmt=con.amount; con.amount=Math.min(con.cap,parseFloat((con.amount+pd.step).toFixed(1)));
       const addedAmt=con.amount-prevConAmt;
       const plusCost=(!con.free&&con.price!=null&&con.cap>0&&addedAmt>0)?(addedAmt/con.cap)*con.price:null;
       saveItemPantry(msItem.id,pd,ptGetStock(pd)-addedAmt,plusCost); trackPtInteraction(msItem.id);
+      expandView.fillStart=con.amount; expandView.fillConId=con.id; // reset baseline after direct commit
+      ptRefreshCard(msItem,pd,wrap,selectedCon,expandView);
     }
-    ptRefreshCard(msItem,pd,wrap,selectedCon,expandView);
   };
 
   const center=document.createElement('div');
