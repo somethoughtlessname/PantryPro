@@ -1152,9 +1152,10 @@ function ptBuildCard(msItem){
     }); body.appendChild(tabs);
 
     // ── Shared fill UI constants (used by containers + waste modes) ──
-    const fillFC={2:'#5A8DB8',3:'#8a7ca8',4:'#5A8DB8',5:'#48a971',8:'#C7824A',6:'#5AACB8',9:'#9E6BA8',12:'#A68428'};
+    const fillFC={2:'#5A8DB8',3:'#8a7ca8',4:'#5A8DB8',5:'#48a971',8:'#C7824A',6:'#5AACB8',9:'#9E6BA8',10:'#B8824A',12:'#A68428'};
     const fillFRACS=[[1,8],[1,5],[1,4],[1,3],[3,8],[2,5],[1,2],[3,5],[5,8],[2,3],[3,4],[4,5],[7,8]];
-    const fillFRACS2=[[1,12],[1,9],[1,6],[5,12],[5,9],[7,12],[7,9],[5,6],[11,12]];
+    const fillFRACS2=[[1,12],[1,10],[1,9],[1,6],[3,10],[5,12],[5,9],[7,12],[7,10],[7,9],[5,6],[9,10],[11,12]];
+    const allFracs=[...fillFRACS,...fillFRACS2];
     const fillTENS=[0,10,20,30,40,50,60,70,80,90];
     const fillONES=[0,1,2,3,4,5,6,7,8,9];
     function fillLerp4(t){const stops=[[0,[0xC8,0x5A,0x5A]],[.33,[0xC7,0x82,0x4A]],[.66,[0xC8,0xB8,0x28]],[1,[0x48,0xA9,0x71]]];for(let i=0;i<stops.length-1;i++){const[t0,c0]=stops[i],[t1,c1]=stops[i+1];if(t<=t1){const f=(t-t0)/(t1-t0);return`rgb(${c0.map((v,j)=>Math.round(v+(c1[j]-v)*f)).join(',')})`;}}return`rgb(${stops[stops.length-1][1].join(',')})`;}
@@ -1412,13 +1413,13 @@ function ptBuildCard(msItem){
       const btn100bg=fillAt100?'#fff':'#48a971'; const btn100col=fillAt100?'#48a971':'#fff';
       pctPanel.innerHTML=`<div style="display:flex;align-items:stretch;">
         <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
-          <div data-role="tens" style="height:22px;display:flex;align-items:stretch;">${fillTENS.map((p,i)=>{const on=(p===curFillTens&&!fillAt100);const c=fillLerp4(Math.max(p,1)/100);return`<div data-p="${p}" style="${i===0?'width:20px;min-width:20px;flex-shrink:0;':'flex:1;min-width:0;'}display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:8px;font-weight:900;user-select:none;background:${on?'#fff':c};color:${on?c:'#fff'};${i>0?'border-left:3px solid #000;':''}">${p===0?'00':p}</div>`;}).join('')}</div>
-          <div data-role="ones" style="height:22px;display:flex;align-items:stretch;border-top:3px solid #000;">${fillONES.map((o,i)=>{const on=(!fillAt100&&o===curFillOnes);const fp=Math.min(100,curFillTens+o);const c=fillLerp4(Math.max(fp,1)/100);return`<div data-o="${o}" data-fp="${fp}" style="${i===0?'width:20px;min-width:20px;flex-shrink:0;':'flex:1;min-width:0;'}display:flex;align-items:center;justify-content:center;cursor:${fillAt100?'default':'pointer'};font-size:8px;font-weight:900;user-select:none;background:${fillAt100?'#1e2a35':on?'#fff':c};color:${fillAt100?'#4a5568':on?c:'#fff'};${i>0?'border-left:3px solid #000;':''}">${o}</div>`;}).join('')}</div>
+          <div data-role="tens" style="height:22px;display:flex;align-items:stretch;">${fillTENS.map((p,i)=>{const on=(p===curFillTens&&!fillAt100);const c=fillLerp4(Math.max(p,1)/100);const above=selCon&&p>curFillR&&!on;return`<div data-p="${p}" style="${i===0?'width:20px;min-width:20px;flex-shrink:0;':'flex:1;min-width:0;'}display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:8px;font-weight:900;user-select:none;background:${on?'#fff':above?'#1e2a35':c};color:${on?c:above?c:'#fff'};${i>0?'border-left:3px solid #000;':''}">${p===0?'00':p}</div>`;}).join('')}</div>
+          <div data-role="ones" style="height:22px;display:flex;align-items:stretch;border-top:3px solid #000;">${fillONES.map((o,i)=>{const on=(!fillAt100&&o===curFillOnes);const fp=Math.min(100,curFillTens+o);const c=fillLerp4(Math.max(fp,1)/100);const above=selCon&&fp>curFillR&&!on;return`<div data-o="${o}" data-fp="${fp}" style="${i===0?'width:20px;min-width:20px;flex-shrink:0;':'flex:1;min-width:0;'}display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:8px;font-weight:900;user-select:none;background:${on?'#fff':above?'#1e2a35':c};color:${on?c:above?c:'#fff'};${i>0?'border-left:3px solid #000;':''}">${o}</div>`;}).join('')}</div>
         </div>
         <div data-role="btn100" style="width:23px;min-width:23px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:900;writing-mode:vertical-rl;border-left:3px solid #000;background:${btn100bg};color:${btn100col};">100</div>
       </div>`;
       pctPanel.querySelector('[data-role="tens"]').onclick=e=>{ e.stopPropagation(); const el=e.target.closest('[data-p]'); if(el) doFillApply(+el.dataset.p); };
-      pctPanel.querySelector('[data-role="ones"]').onclick=e=>{ e.stopPropagation(); if(fillAt100) return; const el=e.target.closest('[data-o]'); if(el) doFillApply(+el.dataset.fp); };
+      pctPanel.querySelector('[data-role="ones"]').onclick=e=>{ e.stopPropagation(); const el=e.target.closest('[data-o]'); if(el) doFillApply(+el.dataset.fp); };
       pctPanel.querySelector('[data-role="btn100"]').onclick=e=>{ e.stopPropagation(); doFillApply(100); };
       body.appendChild(pctPanel);
       if(!selCon||expandView.fillTab!=='pct'){ pctPanel.style.display='none'; }
@@ -1426,18 +1427,24 @@ function ptBuildCard(msItem){
       // Fraction panel — innerHTML for performance
       const isFracEmpty=(selCon&&selCon.amount===0);
       const isFracFull=(selCon&&selCon.amount>=selCon.cap);
+      const fracTol=selCon?0.5/selCon.cap:0.001;
+      const conRatio=selCon?selCon.amount/selCon.cap:0;
+      const nearestFrac=selCon?allFracs.reduce((best,[n,d])=>Math.abs(n/d-conRatio)<Math.abs(best[0]/best[1]-conRatio)?[n,d]:best,allFracs[0]):null;
+      const nearestClose=nearestFrac&&Math.abs(nearestFrac[0]/nearestFrac[1]-conRatio)<fracTol;
+      // Direct fraction apply — bypasses % rounding, sets exact fractional amount
+      function doFracApply(n,d){ if(!selCon) return; selCon.amount=parseFloat((selCon.cap*n/d).toFixed(2)); saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }
       const fracPanel=document.createElement('div'); fracPanel.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;';
       fracPanel.innerHTML=`<div style="display:flex;align-items:stretch;">
         <div data-role="fempty" style="width:20px;min-width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:900;writing-mode:vertical-lr;transform:rotate(180deg);background:${isFracEmpty?'#fff':'#C85A5A'};color:${isFracEmpty?'#C85A5A':'#fff'};">Empty</div>
         <div style="flex:1;min-width:0;display:flex;flex-direction:column;border-left:3px solid #000;border-right:3px solid #000;">
-          <div data-role="frow1" style="height:22px;display:flex;align-items:stretch;">${fillFRACS.map(([n,d],i)=>{const fc2=fillFC[d]||'#374151';const isSel=selCon&&Math.abs((selCon.amount/selCon.cap)-(n/d))<0.001;return`<div data-n="${n}" data-d="${d}" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${isSel?fc2:'#fff'};background:${!selCon?'var(--bg-4)':isSel?'#fff':fc2};cursor:${selCon?'pointer':'default'};${i>0?'border-left:3px solid #000;':''}"><sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub></div>`;}).join('')}</div>
-          <div data-role="frow2" style="height:22px;display:flex;align-items:stretch;border-top:3px solid #000;">${fillFRACS2.map(([n,d],i)=>{const fc2=fillFC[d]||'#374151';const isSel=selCon&&Math.abs((selCon.amount/selCon.cap)-(n/d))<0.001;return`<div data-n="${n}" data-d="${d}" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${isSel?fc2:'#fff'};background:${!selCon?'var(--bg-4)':isSel?'#fff':fc2};cursor:${selCon?'pointer':'default'};${i>0?'border-left:3px solid #000;':''}"><sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub></div>`;}).join('')}</div>
+          <div data-role="frow1" style="height:22px;display:flex;align-items:stretch;">${fillFRACS.map(([n,d],i)=>{const fc2=fillFC[d]||'#374151';const isSel=nearestClose&&nearestFrac[0]===n&&nearestFrac[1]===d;const above=selCon&&!isSel&&(n/d)>conRatio;return`<div data-n="${n}" data-d="${d}" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${isSel?fc2:above?fc2:'#fff'};background:${!selCon?'var(--bg-4)':isSel?'#fff':above?'#1e2a35':fc2};cursor:${selCon?'pointer':'default'};${i>0?'border-left:3px solid #000;':''}"><sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub></div>`;}).join('')}</div>
+          <div data-role="frow2" style="height:22px;display:flex;align-items:stretch;border-top:3px solid #000;">${fillFRACS2.map(([n,d],i)=>{const fc2=fillFC[d]||'#374151';const isSel=nearestClose&&nearestFrac[0]===n&&nearestFrac[1]===d;const above=selCon&&!isSel&&(n/d)>conRatio;return`<div data-n="${n}" data-d="${d}" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${isSel?fc2:above?fc2:'#fff'};background:${!selCon?'var(--bg-4)':isSel?'#fff':above?'#1e2a35':fc2};cursor:${selCon?'pointer':'default'};${i>0?'border-left:3px solid #000;':''}"><sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub></div>`;}).join('')}</div>
         </div>
         <div data-role="ffull" style="width:20px;min-width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:900;writing-mode:vertical-rl;background:${isFracFull?'#fff':'#48a971'};color:${isFracFull?'#48a971':'#fff'};">Full</div>
       </div>`;
       fracPanel.querySelector('[data-role="fempty"]').onclick=e=>{ e.stopPropagation(); doFillApply(0); };
       fracPanel.querySelector('[data-role="ffull"]').onclick=e=>{ e.stopPropagation(); doFillApply(100); };
-      const fracClickHandler=e=>{ e.stopPropagation(); if(!selCon) return; const el=e.target.closest('[data-n]'); if(el) doFillApply((+el.dataset.n/+el.dataset.d)*100); };
+      const fracClickHandler=e=>{ e.stopPropagation(); if(!selCon) return; const el=e.target.closest('[data-n]'); if(el) doFracApply(+el.dataset.n,+el.dataset.d); };
       fracPanel.querySelector('[data-role="frow1"]').onclick=fracClickHandler;
       fracPanel.querySelector('[data-role="frow2"]').onclick=fracClickHandler;
       body.appendChild(fracPanel);
@@ -1549,16 +1556,21 @@ function ptBuildCard(msItem){
 
         // Fraction panel — innerHTML for performance
         const wFracPanel=document.createElement('div'); wFracPanel.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;';
+        const wFracTol=selCon?0.5/selCon.cap:0.001;
+        const wConRatio=selCon?selCon.amount/selCon.cap:0;
+        const wNearestFrac=selCon?allFracs.reduce((best,[n,d])=>Math.abs(n/d-wConRatio)<Math.abs(best[0]/best[1]-wConRatio)?[n,d]:best,allFracs[0]):null;
+        const wNearestClose=wNearestFrac&&Math.abs(wNearestFrac[0]/wNearestFrac[1]-wConRatio)<wFracTol;
         wFracPanel.innerHTML=`<div style="display:flex;align-items:stretch;">
           <div data-role="wfempty" style="width:20px;min-width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:9px;font-weight:900;writing-mode:vertical-lr;transform:rotate(180deg);background:${wIsEmpty?'#fff':'#C85A5A'};color:${wIsEmpty?'#C85A5A':'#fff'};">Empty</div>
           <div style="flex:1;min-width:0;display:flex;flex-direction:column;border-left:3px solid #000;border-right:3px solid #000;">
-            <div data-role="wfrow1" style="height:22px;display:flex;align-items:stretch;">${fillFRACS.map(([n,d],i)=>{const fc2=fillFC[d]||'#374151';const ratio=n/d;const blocked=selCon&&ratio>(wCeiling/selCon.cap)+0.001;const isSel2=!blocked&&selCon&&Math.abs((selCon.amount/selCon.cap)-ratio)<0.001;return`<div data-n="${n}" data-d="${d}" data-blocked="${blocked}" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${blocked?'#4a5568':isSel2?fc2:'#fff'};background:${blocked?'#1e2a35':!selCon?'var(--bg-4)':isSel2?'#fff':fc2};cursor:${blocked||!selCon?'default':'pointer'};${i>0?'border-left:3px solid #000;':''}"><sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub></div>`;}).join('')}</div>
-            <div data-role="wfrow2" style="height:22px;display:flex;align-items:stretch;border-top:3px solid #000;">${fillFRACS2.map(([n,d],i)=>{const fc2=fillFC[d]||'#374151';const ratio=n/d;const blocked=selCon&&ratio>(wCeiling/selCon.cap)+0.001;const isSel2=!blocked&&selCon&&Math.abs((selCon.amount/selCon.cap)-ratio)<0.001;return`<div data-n="${n}" data-d="${d}" data-blocked="${blocked}" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${blocked?'#4a5568':isSel2?fc2:'#fff'};background:${blocked?'#1e2a35':!selCon?'var(--bg-4)':isSel2?'#fff':fc2};cursor:${blocked||!selCon?'default':'pointer'};${i>0?'border-left:3px solid #000;':''}"><sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub></div>`;}).join('')}</div>
+            <div data-role="wfrow1" style="height:22px;display:flex;align-items:stretch;">${fillFRACS.map(([n,d],i)=>{const fc2=fillFC[d]||'#374151';const ratio=n/d;const blocked=selCon&&ratio>(wCeiling/selCon.cap)+wFracTol;const isSel2=!blocked&&wNearestClose&&wNearestFrac[0]===n&&wNearestFrac[1]===d;return`<div data-n="${n}" data-d="${d}" data-blocked="${blocked}" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${blocked?'#4a5568':isSel2?fc2:'#fff'};background:${blocked?'#1e2a35':!selCon?'var(--bg-4)':isSel2?'#fff':fc2};cursor:${blocked||!selCon?'default':'pointer'};${i>0?'border-left:3px solid #000;':''}"><sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub></div>`;}).join('')}</div>
+            <div data-role="wfrow2" style="height:22px;display:flex;align-items:stretch;border-top:3px solid #000;">${fillFRACS2.map(([n,d],i)=>{const fc2=fillFC[d]||'#374151';const ratio=n/d;const blocked=selCon&&ratio>(wCeiling/selCon.cap)+wFracTol;const isSel2=!blocked&&wNearestClose&&wNearestFrac[0]===n&&wNearestFrac[1]===d;return`<div data-n="${n}" data-d="${d}" data-blocked="${blocked}" style="flex:1;min-width:0;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;color:${blocked?'#4a5568':isSel2?fc2:'#fff'};background:${blocked?'#1e2a35':!selCon?'var(--bg-4)':isSel2?'#fff':fc2};cursor:${blocked||!selCon?'default':'pointer'};${i>0?'border-left:3px solid #000;':''}"><sup style="font-size:6px;font-weight:900">${n}</sup><span style="font-size:8px;font-weight:900">/</span><sub style="font-size:6px;font-weight:900">${d}</sub></div>`;}).join('')}</div>
           </div>
           <div data-role="wffull" style="width:20px;min-width:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:default;font-size:9px;font-weight:900;writing-mode:vertical-rl;background:#1e2a35;color:#4a5568;">Full</div>
         </div>`;
         wFracPanel.querySelector('[data-role="wfempty"]').onclick=e=>{ e.stopPropagation(); doWasteFillApply(0); };
-        const wFracClick=e=>{ e.stopPropagation(); const el=e.target.closest('[data-n]'); if(el&&el.dataset.blocked!=='true'&&selCon) doWasteFillApply((+el.dataset.n/+el.dataset.d)*100); };
+        function doWasteFracApply(n,d){ if(!selCon) return; selCon.amount=parseFloat((selCon.cap*n/d).toFixed(2)); saveItemPantry(msItem.id,pd); ptRefreshCard(msItem,pd,wrap,selectedCon,expandView); }
+        const wFracClick=e=>{ e.stopPropagation(); const el=e.target.closest('[data-n]'); if(el&&el.dataset.blocked!=='true'&&selCon) doWasteFracApply(+el.dataset.n,+el.dataset.d); };
         wFracPanel.querySelector('[data-role="wfrow1"]').onclick=wFracClick;
         wFracPanel.querySelector('[data-role="wfrow2"]').onclick=wFracClick;
         body.appendChild(wFracPanel);

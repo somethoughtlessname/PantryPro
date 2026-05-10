@@ -851,9 +851,6 @@ const DATA_KEYS = [
   // Categories & Units
   'cat_custom', 'cat_deleted', 'cat_color_overrides',
   'unit_custom', 'unit_deleted', 'unit_overrides',
-  // Comp Shop
-  'cs_items', 'cs_entries',
-  'setting_cs_preview', 'cs_view',
   // Settings
   'setting_ms_inline_add',
   'setting_ms_add_panel',
@@ -866,14 +863,10 @@ const DATA_KEYS = [
   'pantry_data',
   'pantry_delta_log',
   'pantry_snapshots',
-  'pantry_usage_log',      // ← was missing: needed for "empty & recently used" red tint
-  'pt_thresholds',         // ← was missing: user's threshold %s
-  'pt_thresh_enabled',     // ← was missing: which thresholds are on
-  '_log_v2',               // migration flag — ensures no double-migration on import
-  // Recipes & Meals
-  'rx_recipes', 'rx_meals', 'rx_history',
-  // Sales
-  'my_sales',
+  'pantry_usage_log',
+  'pt_thresholds',
+  'pt_thresh_enabled',
+  '_log_v2',
 ];
 
 // ── Readable stats export ──────────────────────────────────────────────
@@ -895,14 +888,11 @@ const _EK = {
   ms_items:'mi',
   cat_custom:'cc', cat_deleted:'cd', cat_color_overrides:'co',
   unit_custom:'uc', unit_deleted:'ud', unit_overrides:'uo',
-  cs_items:'ci', cs_entries:'ce', setting_cs_preview:'cp', cs_view:'cv',
   setting_ms_inline_add:'sia', setting_ms_add_panel:'sap', setting_gl_add_panel:'sgp',
   setting_smart_sort:'ss', cat_usage:'cu', setting_focus_dim:'fd',
   setting_auto_scroll:'as', setting_splash:'sp',
   pantry_data:'pd', pantry_delta_log:'dl', pantry_snapshots:'ps',
   pantry_usage_log:'ul', pt_thresholds:'pt', pt_thresh_enabled:'pe',
-  rx_recipes:'rr', rx_meals:'rm', rx_history:'rh',
-  my_sales:'ms',
   _log_v2:'lv',
 };
 const _EK_R = Object.fromEntries(Object.entries(_EK).map(([k,v])=>[v,k]));
@@ -1436,8 +1426,15 @@ function renderDataBody(){
     }
 
     const copyText = exportScope==='stats' ? rawExportText : exported;
-    const info = document.createElement('div'); info.style.cssText='font-size:9px;color:var(--muted);text-align:center;padding:2px 0;';
-    info.textContent = `${copyText.length.toLocaleString()} characters`;
+    const charCount = copyText.length;
+    const bytes = new TextEncoder().encode(copyText).length;
+    const sizeStr = bytes >= 1048576 ? (bytes/1048576).toFixed(2)+' MB' : (bytes/1024).toFixed(1)+' KB';
+    const info = document.createElement('div');
+    info.style.cssText='display:flex;align-items:stretch;border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;height:32px;';
+    info.innerHTML=`
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-3);font-size:9px;font-weight:800;color:var(--muted);letter-spacing:0.06em;">${charCount.toLocaleString()} chars</div>
+      <div style="width:3px;background:#000;flex-shrink:0;"></div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg-3);font-size:9px;font-weight:800;color:var(--muted);letter-spacing:0.06em;">${sizeStr}</div>`;
     body.appendChild(info);
 
     const btn = document.createElement('button'); btn.className='data-btn green'; btn.textContent='Copy to Clipboard';
@@ -2101,7 +2098,7 @@ function openPantryHistoryWindow(msItem,pd,wrap,selectedCon,expandView){
 
       const card=document.createElement('div'); card.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;';
 
-      const dHdr=document.createElement('div'); dHdr.style.cssText='height:var(--drop-height);display:flex;align-items:center;padding:0 12px;background:#374151;font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);border-bottom:var(--border-width) solid var(--border-color);';
+      const dHdr=document.createElement('div'); dHdr.style.cssText='height:var(--card-height);display:flex;align-items:center;padding:0 12px;background:var(--bg-3);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);border-bottom:var(--border-width) solid var(--border-color);';
       dHdr.textContent=dayLabel; card.appendChild(dHdr);
 
       function makeRow(label,bgColor,textColor,initAmt,initCost,isUsed){
@@ -2136,8 +2133,8 @@ function openPantryHistoryWindow(msItem,pd,wrap,selectedCon,expandView){
       }
 
       card.appendChild(makeRow('Used',   '#1a2a3a','#5A8DB8', day.used,   day.usedCost,   true));
-      card.appendChild(makeRow('Added',  '#221a2a','#8a7ca8', day.added,  day.addedCost,  true));
-      card.appendChild(makeRow('Wasted', '#2a1010','#C85A5A', day.wasted, day.wastedCost, false));
+      card.appendChild(makeRow('Added',  '#221a2a','#8a7ca8', day.added,  day.addedCost,  false));
+      if(day.wasted>0||true) card.appendChild(makeRow('Wasted', '#2a1010','#C85A5A', day.wasted, day.wastedCost, false));
       body.appendChild(card);
     }); // end days.forEach
   } // end renderHistory
