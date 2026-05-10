@@ -137,6 +137,8 @@ window.splashShow = function(){
   // Remove the plain blocker if present
   const blocker = document.getElementById('splashBlocker');
   if(blocker) blocker.remove();
+
+  const overlay = document.createElement('div');
   overlay.id = 'splashOverlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:1000;background:#0c1117;';
 
@@ -159,8 +161,61 @@ window.splashShow = function(){
   const ctx = cv.getContext('2d');
   resize();
 
-  const TARGET=480, FALL_DUR=Math.round(TARGET*0.20), HOLD_END=TARGET-FALL_DUR;
-  const STAGGER=7, DROP=40, LETTER_FADE=30;
+  const splashSecs=ls('setting_splash_duration',5);
+  const STATIC_MODE=splashSecs===2;
+
+  if(STATIC_MODE){
+    // Static mode — draw final state immediately, hold, then fade
+    const d=buildJarData(); const jarsP=d.P; const jarsR=d.R;
+    function drawStatic(){
+      ctx.fillStyle='#0c1117'; ctx.fillRect(0,0,W,H);
+      const jW=Math.min(W/(jarsP.length+2),H*0.14,72);
+      const jH=jW*1.6, gap=jW*0.18, unit=jW+gap;
+      const shelfSpacing=jH*0.55, shelfH=Math.max(6,W*0.014);
+      const blockH=jH+shelfH+shelfSpacing+jH+shelfH;
+      const blockTop=H/2-blockH/2;
+      const topShelfY=blockTop+jH, botShelfY=topShelfY+jH+shelfH+shelfSpacing;
+      const topRestY=topShelfY-jH, botRestY=botShelfY-jH;
+      const totalJars=Math.ceil(W/unit)+2;
+      const shelfX=W/2-(totalJars*unit)/2;
+      const pantryFirstX=W/2-(jarsP.length-1)/2*unit;
+      const proFirstX=W/2-(jarsR.length-1)/2*unit;
+      const topNamedStart=Math.round((pantryFirstX-(shelfX+unit/2))/unit);
+      const botNamedStart=Math.round((proFirstX-(shelfX+unit/2))/unit);
+      const topGridOrigin=pantryFirstX-topNamedStart*unit;
+      const botGridOrigin=proFirstX-botNamedStart*unit;
+      drawShelf(ctx,topGridOrigin-unit*0.5,topShelfY,totalJars*unit,1);
+      drawShelf(ctx,botGridOrigin-unit*0.5,botShelfY,totalJars*unit,1);
+      for(let ji=0;ji<totalJars;ji++){
+        const namedI=ji-botNamedStart, isNamed=namedI>=0&&namedI<jarsR.length;
+        const jar=isNamed?jarsR[namedI]:null;
+        const m=isNamed?jar.m:((ji*3+1)%5+5)%5, col=isNamed?jar.col:'#48a971';
+        drawJar(ctx,botGridOrigin+ji*unit,botRestY,jW,jH,isNamed?jar.l:'',isNamed?jar.fill:0,col,ML[m]||ML[0],1,1);
+      }
+      for(let ji=0;ji<totalJars;ji++){
+        const namedI=ji-topNamedStart, isNamed=namedI>=0&&namedI<jarsP.length;
+        const jar=isNamed?jarsP[namedI]:null;
+        const m=isNamed?jar.m:((ji*5+3)%5+5)%5, col=isNamed?jar.col:'#48a971';
+        drawJar(ctx,topGridOrigin+ji*unit,topRestY,jW,jH,isNamed?jar.l:'',isNamed?jar.fill:0,col,ML[m]||ML[0],1,1);
+      }
+    }
+    drawStatic();
+    setTimeout(()=>{
+      overlay.style.transition='opacity 0.4s';
+      overlay.style.opacity='0';
+      setTimeout(()=>overlay.remove(), 400);
+    }, 1600);
+    return;
+  }
+
+  // Animated mode — scale STAGGER and DROP proportionally to duration
+  const BASE=480;
+  const TARGET=splashSecs*60;
+  const scale=TARGET/BASE;
+  const FALL_DUR=Math.round(TARGET*0.20), HOLD_END=TARGET-FALL_DUR;
+  const STAGGER=Math.max(2,Math.round(7*scale));
+  const DROP=Math.max(12,Math.round(40*scale));
+  const LETTER_FADE=Math.max(10,Math.round(30*scale));
   let frame=0, jarsP, jarsR, dropSeeds, rafId;
 
   function initJars(){

@@ -1047,7 +1047,7 @@ function ptBuildCard(msItem){
 
   const wrap=document.createElement('div'); wrap.className='pt-card';
   const main=document.createElement('div'); main.className='pt-main';
-  main.style.cssText='height:32px;min-height:32px;max-height:32px;display:flex;align-items:stretch;position:relative;overflow:hidden;cursor:pointer;background:var(--bg-3);box-sizing:border-box;';
+  main.style.cssText='height:var(--card-height);min-height:var(--card-height);max-height:var(--card-height);display:flex;align-items:stretch;position:relative;overflow:hidden;cursor:pointer;background:var(--bg-3);box-sizing:border-box;';
 
   const minBtn=document.createElement('button'); minBtn.className='pt-btn left'; minBtn.textContent='';
   const plusBtn=document.createElement('button'); plusBtn.className='pt-btn right'; plusBtn.textContent='';
@@ -1095,7 +1095,7 @@ function ptBuildCard(msItem){
   };
 
   const center=document.createElement('div');
-  center.style.cssText='flex:1;height:32px;min-height:32px;max-height:32px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;background:#374151;';
+  center.style.cssText='flex:1;height:var(--card-height);min-height:var(--card-height);max-height:var(--card-height);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;background:#374151;';
   const fc=ptFillColor(pd); const vMax=Math.max(ptGetMax(pd),ptGetStock(pd))||1;
   const thirtyDaysAgo=Date.now()-(30*24*60*60*1000);
   const usedRecently=ulGetRecent(msItem.id, thirtyDaysAgo);
@@ -1113,11 +1113,14 @@ function ptBuildCard(msItem){
     center.appendChild(redTint);
     wrap._redTint=redTint;
   }
+  const _sz=document.documentElement.dataset.size||'md';
+  const _nmSize=_sz==='xl'?'13px':_sz==='lg'?'11px':'10px';
+  const _valSize=_sz==='xl'?'12px':_sz==='lg'?'10px':'9px';
   const nm=document.createElement('div');
-  nm.style.cssText='position:relative;z-index:2;font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;max-width:100%;padding:0 6px;line-height:1;';
+  nm.style.cssText=`position:relative;z-index:2;font-size:${_nmSize};font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;max-width:100%;padding:0 6px;line-height:1;`;
   nm.textContent=msItem.name;
   const val=document.createElement('div');
-  val.style.cssText='position:relative;z-index:2;font-size:10px;font-weight:800;color:rgba(255,255,255,0.7);line-height:1;margin-top:1px;';
+  val.style.cssText=`position:relative;z-index:2;font-size:${_valSize};font-weight:800;color:rgba(255,255,255,0.7);line-height:1;margin-top:2px;`;
   val.textContent=`${ptGetStock(pd)}/${ptGetMax(pd)}`;
   center.append(fillBase,fillOver,nm,val);
   const fillGhost=document.createElement('div'); fillGhost.style.cssText='position:absolute;top:0;bottom:0;opacity:0.3;z-index:1;pointer-events:none;display:none;transition:left 0.15s,width 0.15s;';

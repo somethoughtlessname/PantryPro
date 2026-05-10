@@ -632,6 +632,7 @@ body {
 #pagePantry {
   flex-direction: column; gap: var(--margin);
   overflow-y: auto;
+  padding-top: var(--margin);
 }
 .pt-card {
   border: 3px solid #000;
@@ -639,16 +640,16 @@ body {
   width: 100%;
 }
 .pt-main {
-  height: var(--drop-height) !important;
-  min-height: var(--drop-height) !important;
-  max-height: var(--drop-height) !important;
+  height: var(--card-height) !important;
+  min-height: var(--card-height) !important;
+  max-height: var(--card-height) !important;
   box-sizing: border-box;
   display: flex; align-items: stretch;
   position: relative; overflow: hidden; cursor: pointer;
 }
 .pt-btn {
-  width: var(--drop-height); min-width: var(--drop-height); max-width: var(--drop-height);
-  height: var(--drop-height);
+  width: var(--card-height); min-width: var(--card-height); max-width: var(--card-height);
+  height: var(--card-height);
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; font-weight: 700;
   z-index: 2; flex-shrink: 0; cursor: pointer;
@@ -658,7 +659,7 @@ body {
 .pt-btn.left  { border-right: 3px solid #000; }
 .pt-btn.right { border-left:  3px solid #000; }
 .pt-center {
-  flex: 1; height: var(--drop-height); box-sizing: border-box;
+  flex: 1; height: var(--card-height); box-sizing: border-box;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   z-index: 2; position: relative;

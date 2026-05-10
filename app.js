@@ -2157,173 +2157,112 @@ function closeSettingsWindow(){
 
 function renderSettingsWindowBody(){
   const body=document.getElementById('settingsWindowBody'); body.innerHTML='';
-  const CS_COLOR='#24384a';
   if(!body._tab) body._tab='pantry';
   const activeTab=body._tab;
 
-  const TABS=[
-    {key:'pantry',label:'Pantry',color:'#C7824A'},
-    {key:'app',   label:'App',   color:'#5A8DB8'},
-    {key:'data',  label:'Data',  color:'#C85A5A'},
-  ];
-
-  // Tab row
+  const TABS=[{key:'pantry',label:'Pantry',color:'#C7824A'},{key:'app',label:'App',color:'#5A8DB8'},{key:'data',label:'Data',color:'#C85A5A'}];
   const tabRow=document.createElement('div'); tabRow.style.cssText='height:var(--card-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;flex-shrink:0;';
-  TABS.forEach(({key,label,color},i,arr)=>{
-    const active=activeTab===key;
-    const btn=document.createElement('div');
-    btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${active?color:'var(--bg-3)'};color:${active?'#fff':'var(--muted)'};${i<arr.length-1?'border-right:var(--border-width) solid var(--border-color);':''}`;
-    btn.textContent=label;
-    btn.onclick=()=>{ body._tab=key; renderSettingsWindowBody(); };
-    tabRow.appendChild(btn);
-  });
+  TABS.forEach(({key,label,color},i,arr)=>{ const active=activeTab===key; const btn=document.createElement('div'); btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${active?color:'var(--bg-3)'};color:${active?'#fff':'var(--muted)'};${i<arr.length-1?'border-right:var(--border-width) solid var(--border-color);':''}`; btn.textContent=label; btn.onclick=()=>{ body._tab=key; renderSettingsWindowBody(); }; tabRow.appendChild(btn); });
   body.appendChild(tabRow);
 
-  function makeSettingDivider(label){
-    const d=document.createElement('div'); d.style.cssText='display:flex;align-items:center;gap:8px;padding:6px 2px 2px;flex-shrink:0;';
-    const la=document.createElement('div'); la.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);';
-    const sp=document.createElement('span'); sp.style.cssText='font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);flex-shrink:0;'; sp.textContent=label;
-    const lb=document.createElement('div'); lb.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);';
-    d.append(la,sp,lb); return d;
-  }
-  function makeOnOffCard(labelHtml,value,onToggle,headerBg){
-    const wrap=document.createElement('div'); wrap.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;height:var(--drop-height);box-sizing:border-box;display:flex;flex-direction:column;';
-    const lbl=document.createElement('div'); lbl.style.cssText=`flex:1;padding:0 8px;display:flex;align-items:center;justify-content:center;background:${headerBg||'var(--bg-2)'};border-bottom:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`; lbl.innerHTML=labelHtml; wrap.appendChild(lbl);
-    const row=document.createElement('div'); row.style.cssText='flex:1;display:flex;';
-    ['On','Off'].forEach((t,i)=>{ const on=i===0; const active=on?value:!value; const btn=document.createElement('button'); btn.style.cssText=`flex:1;border:none;border-right:${on?'var(--border-width) solid var(--border-color)':'none'};font-size:9px;font-weight:800;cursor:pointer;background:${active?'var(--bg-4)':'var(--bg-3)'};color:${active?'var(--color-10)':'var(--muted)'};`; btn.textContent=t; btn.onclick=()=>onToggle(on); row.appendChild(btn); });
-    wrap.appendChild(row); return wrap;
-  }
+  function makeSettingDivider(label){ const d=document.createElement('div'); d.style.cssText='display:flex;align-items:center;gap:8px;flex-shrink:0;'; const la=document.createElement('div'); la.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);'; const sp=document.createElement('span'); sp.style.cssText='font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);flex-shrink:0;'; sp.textContent=label; const lb=document.createElement('div'); lb.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);'; d.append(la,sp,lb); return d; }
+
+  function makeDescCard(name,headerBg,toggleRow,descText){ const wrap=document.createElement('div'); wrap.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;'; const hdr=document.createElement('div'); hdr.style.cssText=`min-height:var(--drop-height);padding:0 12px;display:flex;align-items:center;justify-content:center;background:${headerBg};border-bottom:var(--border-width) solid var(--border-color);font-size:9px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:#fff;flex-shrink:0;`; hdr.textContent=name; const desc=document.createElement('div'); desc.style.cssText='padding:6px 12px;background:var(--bg-3);font-size:11px;font-weight:600;line-height:1.7;letter-spacing:0.02em;color:var(--muted);flex-shrink:0;text-align:center;border-top:var(--border-width) solid var(--border-color);'; desc.textContent=descText; wrap.append(hdr,toggleRow,desc); return wrap; }
 
   if(activeTab==='pantry'){
-    body.appendChild(makeSettingDivider('Pantry Thresholds'));
     (function(){
       const t=ptGetThresholds(); const en=ptGetThreshEnabled(); const snap=ptGetThreshSnap();
+      function buildBarLabels(barEl,threshList){ const bl=document.createElement('div'); bl.style.cssText='position:absolute;inset:0;display:flex;align-items:center;z-index:2;pointer-events:none;'; let lc=0; threshList.forEach(th=>{ const w=th.pct-lc; if(w>2){ const m=lc+w/2; const narrow=w<8; const sp=document.createElement('span'); sp.style.cssText=`position:absolute;left:${m}%;font-size:7px;font-weight:900;letter-spacing:0.1em;color:rgba(0,0,0,0.55);text-transform:uppercase;${narrow?'writing-mode:vertical-rl;transform:translateX(-50%) rotate(180deg);':'transform:translateX(-50%);'}`; sp.textContent=th.lbl; bl.appendChild(sp); } lc=th.pct; }); const ow=100-lc; if(ow>2){ const narrow=ow<8; const sp=document.createElement('span'); sp.style.cssText=`position:absolute;left:${lc+ow/2}%;font-size:7px;font-weight:900;letter-spacing:0.1em;color:rgba(0,0,0,0.55);text-transform:uppercase;${narrow?'writing-mode:vertical-rl;transform:translateX(-50%) rotate(180deg);':'transform:translateX(-50%);'}`; sp.textContent='OK'; bl.appendChild(sp); } barEl.appendChild(bl); }
       const barWrap=document.createElement('div'); barWrap.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;position:relative;flex-shrink:0;';
-      let cursor=0;
-      const activeThresh=[];
+      let cursor=0; const activeThresh=[];
       if(en.critical) activeThresh.push({pct:t.critical,color:'#C85A5A',lbl:'CRIT'});
       if(en.low)      activeThresh.push({pct:t.low,     color:'#C7824A',lbl:'LOW'});
       if(en.partial)  activeThresh.push({pct:t.partial, color:'#5A8DB8',lbl:'PART'});
       activeThresh.forEach(th=>{ if(th.pct>cursor){ const s=document.createElement('div'); s.style.cssText=`position:absolute;left:${cursor}%;top:0;bottom:0;width:${th.pct-cursor}%;background:${th.color};`; barWrap.appendChild(s); if(cursor>0){ const d=document.createElement('div'); d.style.cssText=`position:absolute;top:0;bottom:0;width:var(--border-width);background:var(--border-color);z-index:3;left:${cursor}%;`; barWrap.appendChild(d); } cursor=th.pct; } });
       const okSeg=document.createElement('div'); okSeg.style.cssText=`position:absolute;left:${cursor}%;top:0;bottom:0;width:${100-cursor}%;background:#48a971;`; barWrap.appendChild(okSeg);
       if(cursor>0){ const d=document.createElement('div'); d.style.cssText=`position:absolute;top:0;bottom:0;width:var(--border-width);background:var(--border-color);z-index:3;left:${cursor}%;`; barWrap.appendChild(d); }
-      const barLbl=document.createElement('div'); barLbl.style.cssText='position:absolute;inset:0;display:flex;align-items:center;z-index:2;pointer-events:none;';
-      let lCursor=0;
-      activeThresh.forEach(th=>{ const midPct=lCursor+(th.pct-lCursor)/2; const w=th.pct-lCursor; if(w>6){ const sp=document.createElement('span'); sp.style.cssText=`position:absolute;left:${midPct}%;transform:translateX(-50%);font-size:7px;font-weight:900;letter-spacing:0.1em;color:rgba(0,0,0,0.55);text-transform:uppercase;`; sp.textContent=th.lbl; barLbl.appendChild(sp); } lCursor=th.pct; });
-      if(100-lCursor>4){ const sp=document.createElement('span'); sp.style.cssText=`position:absolute;left:${lCursor+(100-lCursor)/2}%;transform:translateX(-50%);font-size:7px;font-weight:900;letter-spacing:0.1em;color:rgba(0,0,0,0.55);text-transform:uppercase;`; sp.textContent='OK'; barLbl.appendChild(sp); }
-      barWrap.appendChild(barLbl);
-      const threshCard=document.createElement('div'); threshCard.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);padding:var(--margin);display:flex;flex-direction:column;gap:var(--margin);flex-shrink:0;';
-      threshCard.appendChild(barWrap);
+      buildBarLabels(barWrap,activeThresh);
       if(!document.getElementById('pt-thresh-style')){ const st=document.createElement('style'); st.id='pt-thresh-style'; st.textContent='.pt-thresh-inp{position:absolute;left:0;top:0;width:100%;height:100%;background:transparent;outline:none;cursor:pointer;margin:0;padding:0;-webkit-appearance:none;appearance:none;z-index:3;}.pt-thresh-inp::-webkit-slider-runnable-track{background:transparent;height:100%;}.pt-thresh-inp::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:var(--drop-height);border-radius:4px;border:var(--border-width) solid var(--border-color);background:#fff;cursor:grab;margin-top:calc(-1 * var(--border-width));}.pt-thresh-inp:active::-webkit-slider-thumb{cursor:grabbing;}.pt-thresh-inp::-moz-range-thumb{width:14px;height:var(--drop-height);border-radius:4px;border:var(--border-width) solid var(--border-color);background:#fff;cursor:grab;}.pt-thresh-inp::-moz-range-track{background:transparent;}.pt-thresh-inp:disabled{pointer-events:none;}'; document.head.appendChild(st); }
-      function rebuildBar(){ const ct=ptGetThresholds(); const cen=ptGetThreshEnabled(); barWrap.innerHTML=''; let c2=0; const at2=[]; if(cen.critical) at2.push({pct:ct.critical,color:'#C85A5A',lbl:'CRIT'}); if(cen.low) at2.push({pct:ct.low,color:'#C7824A',lbl:'LOW'}); if(cen.partial) at2.push({pct:ct.partial,color:'#5A8DB8',lbl:'PART'}); at2.forEach(th=>{ if(th.pct>c2){ const s=document.createElement('div'); s.style.cssText=`position:absolute;left:${c2}%;top:0;bottom:0;width:${th.pct-c2}%;background:${th.color};`; barWrap.appendChild(s); if(c2>0){ const d=document.createElement('div'); d.style.cssText=`position:absolute;top:0;bottom:0;width:var(--border-width);background:var(--border-color);z-index:3;left:${c2}%;`; barWrap.appendChild(d); } c2=th.pct; } }); const ok2=document.createElement('div'); ok2.style.cssText=`position:absolute;left:${c2}%;top:0;bottom:0;width:${100-c2}%;background:#48a971;`; barWrap.appendChild(ok2); if(c2>0){ const d=document.createElement('div'); d.style.cssText=`position:absolute;top:0;bottom:0;width:var(--border-width);background:var(--border-color);z-index:3;left:${c2}%;`; barWrap.appendChild(d); } const bl=document.createElement('div'); bl.style.cssText='position:absolute;inset:0;display:flex;align-items:center;z-index:2;pointer-events:none;'; let lc2=0; at2.forEach(th=>{ const m=lc2+(th.pct-lc2)/2; if(th.pct-lc2>6){ const sp=document.createElement('span'); sp.style.cssText=`position:absolute;left:${m}%;transform:translateX(-50%);font-size:7px;font-weight:900;letter-spacing:0.1em;color:rgba(0,0,0,0.55);text-transform:uppercase;`; sp.textContent=th.lbl; bl.appendChild(sp); } lc2=th.pct; }); if(100-lc2>4){ const sp=document.createElement('span'); sp.style.cssText=`position:absolute;left:${lc2+(100-lc2)/2}%;transform:translateX(-50%);font-size:7px;font-weight:900;letter-spacing:0.1em;color:rgba(0,0,0,0.55);text-transform:uppercase;`; sp.textContent='OK'; bl.appendChild(sp); } barWrap.appendChild(bl); }
+      function rebuildBar(){ const ct=ptGetThresholds(); const cen=ptGetThreshEnabled(); barWrap.innerHTML=''; let c2=0; const at2=[]; if(cen.critical) at2.push({pct:ct.critical,color:'#C85A5A',lbl:'CRIT'}); if(cen.low) at2.push({pct:ct.low,color:'#C7824A',lbl:'LOW'}); if(cen.partial) at2.push({pct:ct.partial,color:'#5A8DB8',lbl:'PART'}); at2.forEach(th=>{ if(th.pct>c2){ const s=document.createElement('div'); s.style.cssText=`position:absolute;left:${c2}%;top:0;bottom:0;width:${th.pct-c2}%;background:${th.color};`; barWrap.appendChild(s); if(c2>0){ const d=document.createElement('div'); d.style.cssText=`position:absolute;top:0;bottom:0;width:var(--border-width);background:var(--border-color);z-index:3;left:${c2}%;`; barWrap.appendChild(d); } c2=th.pct; } }); const ok2=document.createElement('div'); ok2.style.cssText=`position:absolute;left:${c2}%;top:0;bottom:0;width:${100-c2}%;background:#48a971;`; barWrap.appendChild(ok2); if(c2>0){ const d=document.createElement('div'); d.style.cssText=`position:absolute;top:0;bottom:0;width:var(--border-width);background:var(--border-color);z-index:3;left:${c2}%;`; barWrap.appendChild(d); } buildBarLabels(barWrap,at2); }
+      const threshCard=document.createElement('div'); threshCard.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;';
+      const threshHdr=document.createElement('div'); threshHdr.style.cssText='min-height:var(--drop-height);display:flex;align-items:center;justify-content:center;background:#C7824A;border-bottom:var(--border-width) solid var(--border-color);font-size:9px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:#fff;flex-shrink:0;'; threshHdr.textContent='Pantry Thresholds';
+      const threshInner=document.createElement('div'); threshInner.style.cssText='padding:var(--margin);display:flex;flex-direction:column;gap:var(--margin);';
+      threshInner.appendChild(barWrap); threshCard.appendChild(threshHdr); threshCard.appendChild(threshInner);
       const sliderRefs={};
       function addSlider(key,label,color){
-        const sd=document.createElement('div'); sd.style.cssText='display:flex;align-items:center;gap:8px;flex-shrink:0;'; const sl1=document.createElement('div'); sl1.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);'; const ssp=document.createElement('span'); ssp.style.cssText=`font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:${color};flex-shrink:0;`; ssp.textContent=label; const sl2=document.createElement('div'); sl2.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);'; sd.append(sl1,ssp,sl2); threshCard.appendChild(sd);
+        const sd=document.createElement('div'); sd.style.cssText='display:flex;align-items:center;gap:8px;flex-shrink:0;'; const sl1=document.createElement('div'); sl1.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);'; const ssp=document.createElement('span'); ssp.style.cssText=`font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:${color};flex-shrink:0;`; ssp.textContent=label; const sl2=document.createElement('div'); sl2.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);'; sd.append(sl1,ssp,sl2); threshInner.appendChild(sd);
         const isOn=en[key]; const row=document.createElement('div'); row.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;position:relative;';
         const toggleCell=document.createElement('div'); toggleCell.style.cssText=`width:var(--drop-height);min-width:var(--drop-height);display:flex;align-items:center;justify-content:center;background:${isOn?'var(--bg-2)':'var(--bg-3)'};border-right:var(--border-width) solid var(--border-color);cursor:pointer;flex-shrink:0;z-index:4;`; const dot=document.createElement('div'); dot.style.cssText=`width:10px;height:10px;border-radius:2px;border:var(--border-width) solid var(--border-color);background:${isOn?color:'var(--bg-4)'};`; toggleCell.appendChild(dot); toggleCell.onclick=()=>{ const cur=ptGetThreshEnabled(); cur[key]=!cur[key]; lsSet('pt_thresh_enabled',cur); if(!cur[key]&&ptActiveFilter===key){ptActiveFilter='onhand';} renderSettingsWindowBody(); ptRender(); };
         const track=document.createElement('div'); track.style.cssText='flex:1;position:relative;background:var(--bg-3);overflow:hidden;'; const fill=document.createElement('div'); fill.style.cssText=`position:absolute;left:0;top:0;bottom:0;width:${t[key]}%;background:${color};opacity:${isOn?'0.35':'0.12'};pointer-events:none;z-index:1;`; const inp=document.createElement('input'); inp.type='range'; inp.min=0; inp.max=100; inp.step=snap; inp.value=t[key]; inp.disabled=!isOn; inp.className='pt-thresh-inp';
         inp.oninput=()=>{ const cur=ptGetThresholds(); const curEn=ptGetThreshEnabled(); const curSnap=ptGetThreshSnap(); let v=parseInt(inp.value);
-          if(key==='critical'){
-            // clamp below low (never pushes low or partial)
-            if(curEn.low) v=Math.min(v,cur.low-curSnap);
-            else if(curEn.partial) v=Math.min(v,cur.partial-curSnap);
-          } else if(key==='low'){
-            // clamp above critical, clamp below partial (never pushes partial)
-            if(curEn.critical) v=Math.max(v,cur.critical+curSnap);
-            if(curEn.partial) v=Math.min(v,cur.partial-curSnap);
-          } else if(key==='partial'){
-            // pushes low and critical down if needed
-            if(curEn.low&&v<cur.low+curSnap){
-              cur.low=v-curSnap;
-              if(sliderRefs.low){ sliderRefs.low.inp.value=cur.low; sliderRefs.low.fill.style.width=cur.low+'%'; sliderRefs.low.pctCell.textContent=cur.low+'%'; }
-              if(curEn.critical){ cur.critical=Math.min(cur.critical,cur.low-curSnap); if(sliderRefs.critical){ sliderRefs.critical.inp.value=cur.critical; sliderRefs.critical.fill.style.width=cur.critical+'%'; sliderRefs.critical.pctCell.textContent=cur.critical+'%'; } }
-            } else if(curEn.critical) v=Math.max(v,cur.critical+curSnap);
-            v=Math.min(v,100-curSnap);
-          }
+          const critMin=curSnap; const lowMin=curSnap+(curEn.critical?curSnap:0); const partMin=curSnap+(curEn.low?curSnap:0)+(curEn.low&&curEn.critical?curSnap:(!curEn.low&&curEn.critical?curSnap:0));
+          if(key==='critical'){ v=Math.max(v,critMin); if(curEn.low) v=Math.min(v,cur.low-curSnap); else if(curEn.partial) v=Math.min(v,cur.partial-curSnap); }
+          else if(key==='low'){ v=Math.max(v,lowMin); if(curEn.critical) v=Math.max(v,cur.critical+curSnap); if(curEn.partial) v=Math.min(v,cur.partial-curSnap); }
+          else if(key==='partial'){ if(curEn.low&&v<cur.low+curSnap){ cur.low=Math.max(lowMin,v-curSnap); if(sliderRefs.low){ sliderRefs.low.inp.value=cur.low; sliderRefs.low.fill.style.width=cur.low+'%'; sliderRefs.low.pctCell.textContent=cur.low+'%'; } if(curEn.critical){ cur.critical=Math.max(critMin,Math.min(cur.critical,cur.low-curSnap)); if(sliderRefs.critical){ sliderRefs.critical.inp.value=cur.critical; sliderRefs.critical.fill.style.width=cur.critical+'%'; sliderRefs.critical.pctCell.textContent=cur.critical+'%'; } } } else if(curEn.critical) v=Math.max(v,cur.critical+curSnap); v=Math.max(v,partMin); v=Math.min(v,100-curSnap); }
           cur[key]=v; inp.value=v; lsSet('pt_thresholds',cur); fill.style.width=v+'%'; pctCell.textContent=v+'%'; rebuildBar(); ptRender(); };
         if(!isOn) track.style.opacity='0.4'; track.append(fill,inp);
         const pctCell=document.createElement('div'); pctCell.style.cssText=`width:var(--drop-height);min-width:var(--drop-height);display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-left:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;color:${isOn?color:'var(--bg-4)'};flex-shrink:0;z-index:4;`; pctCell.textContent=isOn?t[key]+'%':'—';
-        row.append(toggleCell,track,pctCell); threshCard.appendChild(row);
-        sliderRefs[key]={inp,fill,pctCell};
+        row.append(toggleCell,track,pctCell); threshInner.appendChild(row); sliderRefs[key]={inp,fill,pctCell};
       }
       addSlider('partial','Partial','#5A8DB8'); addSlider('low','Low','#C7824A'); addSlider('critical','Critical','#C85A5A');
-      const snapSd=document.createElement('div'); snapSd.style.cssText='display:flex;align-items:center;gap:8px;flex-shrink:0;'; const sL1=document.createElement('div'); sL1.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);'; const sSp=document.createElement('span'); sSp.style.cssText='font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);flex-shrink:0;'; sSp.textContent='Snap'; const sL2=document.createElement('div'); sL2.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);'; snapSd.append(sL1,sSp,sL2); threshCard.appendChild(snapSd);
-      const snapRow=document.createElement('div'); snapRow.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;flex-shrink:0;'; [5,10].forEach((s,i)=>{ const btn=document.createElement('div'); btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;${i<1?'border-right:var(--border-width) solid var(--border-color);':''}background:${snap===s?'var(--bg-4)':'var(--bg-3)'};color:${snap===s?'#fff':'var(--muted)'};`; btn.textContent='Snap '+s; btn.onclick=()=>{ lsSet('pt_thresh_snap',s); renderSettingsWindowBody(); }; snapRow.appendChild(btn); }); threshCard.appendChild(snapRow);
-      body.appendChild(threshCard);
+      const snapSd=document.createElement('div'); snapSd.style.cssText='display:flex;align-items:center;gap:8px;flex-shrink:0;'; const sL1=document.createElement('div'); sL1.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);'; const sSp=document.createElement('span'); sSp.style.cssText='font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);flex-shrink:0;'; sSp.textContent='Snap'; const sL2=document.createElement('div'); sL2.style.cssText='flex:1;height:var(--border-width);background:var(--border-color);'; snapSd.append(sL1,sSp,sL2); threshInner.appendChild(snapSd);
+      const snapRow=document.createElement('div'); snapRow.style.cssText='height:var(--drop-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;flex-shrink:0;';
+      [5,10].forEach((s,i)=>{ const btn=document.createElement('div'); btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;${i<1?'border-right:var(--border-width) solid var(--border-color);':''}background:${snap===s?'var(--bg-4)':'var(--bg-3)'};color:${snap===s?'#fff':'var(--muted)'};`; btn.textContent='Snap '+s; btn.onclick=()=>{ lsSet('pt_thresh_snap',s); const cur=ptGetThresholds(); cur.partial=Math.floor(cur.partial/s)*s; cur.low=Math.min(Math.floor(cur.low/s)*s,cur.partial-s); cur.critical=Math.min(Math.floor(cur.critical/s)*s,cur.low-s); cur.critical=Math.max(cur.critical,s); cur.low=Math.max(cur.low,s*2); cur.partial=Math.max(cur.partial,s*3); lsSet('pt_thresholds',cur); renderSettingsWindowBody(); }; snapRow.appendChild(btn); });
+      threshInner.appendChild(snapRow); body.appendChild(threshCard);
     })();
-    body.appendChild(makeSettingDivider('Sorting'));
+    // Smart Sort — three-section card
     let resetCountsPending=false;
     const ssWrap=document.createElement('div'); ssWrap.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;';
-    const ssLbl=document.createElement('div'); ssLbl.style.cssText='flex:1;min-height:calc((var(--drop-height) - var(--border-width)) / 2);padding:0 8px;display:flex;align-items:center;justify-content:center;background:#1d3a3a;border-bottom:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#fff;white-space:nowrap;'; ssLbl.textContent='Smart Sort';
-    const ssRow=document.createElement('div'); ssRow.style.cssText='min-height:calc((var(--drop-height) - var(--border-width)) / 2);display:flex;border-bottom:var(--border-width) solid var(--border-color);';
+    const ssLbl=document.createElement('div'); ssLbl.style.cssText='min-height:var(--drop-height);padding:0 12px;display:flex;align-items:center;justify-content:center;background:#1d3a3a;border-bottom:var(--border-width) solid var(--border-color);font-size:9px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:#fff;flex-shrink:0;'; ssLbl.textContent='Smart Sort';
+    const ssRow=document.createElement('div'); ssRow.style.cssText='min-height:var(--drop-height);display:flex;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;';
     ['On','Off'].forEach((t,i)=>{ const on=i===0; const active=on?smartSort:!smartSort; const btn=document.createElement('button'); btn.style.cssText=`flex:1;border:none;border-right:${on?'var(--border-width) solid var(--border-color)':'none'};font-size:9px;font-weight:800;cursor:pointer;background:${active?'var(--bg-4)':'var(--bg-3)'};color:${active?'var(--color-10)':'var(--muted)'};`; btn.textContent=t; btn.onclick=()=>{ smartSort=on; lsSet('setting_smart_sort',on); csInvalidateSortCache(); msInvalidateSortCache(); csRender(); msRender(); renderSettingsWindowBody(); }; ssRow.appendChild(btn); });
-    const ssReset=document.createElement('div'); ssReset.style.cssText='min-height:calc((var(--drop-height) - var(--border-width)) / 2);padding:0 8px;display:flex;align-items:center;justify-content:center;background:#1d4040;font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.6);cursor:pointer;white-space:nowrap;'; ssReset.textContent='Reset Sort Counts';
+    const ssDesc=document.createElement('div'); ssDesc.style.cssText='padding:6px 12px;background:var(--bg-3);font-size:11px;font-weight:600;line-height:1.7;letter-spacing:0.02em;color:var(--muted);flex-shrink:0;text-align:center;'; ssDesc.textContent='Your pantry learns as you use it. Categories and items you interact with most drift effortlessly to the top, so what you reach for every day is always right where you expect it.';
+    const ssReset=document.createElement('div'); ssReset.style.cssText='min-height:var(--drop-height);padding:0 12px;display:flex;align-items:center;justify-content:center;background:#1d4040;border-top:var(--border-width) solid var(--border-color);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,0.6);cursor:pointer;white-space:nowrap;flex-shrink:0;'; ssReset.textContent='Reset Sort Counts';
     ssReset.onclick=()=>{ if(resetCountsPending){ lsSet('cat_usage',{}); lsSet('pantry_item_taps',{}); csInvalidateSortCache(); msInvalidateSortCache(); resetCountsPending=false; ssReset.style.background='#1d4040'; ssReset.style.color='rgba(255,255,255,0.6)'; ssReset.textContent='Reset Sort Counts'; } else { resetCountsPending=true; ssReset.style.background='#fff'; ssReset.style.color='var(--color-1)'; ssReset.textContent='Confirm? Tap again to wipe'; setTimeout(()=>{ if(resetCountsPending){ resetCountsPending=false; ssReset.style.background='#1d4040'; ssReset.style.color='rgba(255,255,255,0.6)'; ssReset.textContent='Reset Sort Counts'; }},3000); } };
-    ssWrap.append(ssLbl,ssRow,ssReset); body.appendChild(ssWrap);
+    ssWrap.append(ssLbl,ssRow,ssDesc,ssReset); body.appendChild(ssWrap);
 
   } else if(activeTab==='app'){
-    // HIDDEN: Comp Shop settings section
-    // body.appendChild(makeSettingDivider('Comp Shop'));
-    // const pw=document.createElement('div'); pw.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;height:var(--drop-height);box-sizing:border-box;display:flex;flex-direction:column;';
-    // const pl=document.createElement('div'); pl.style.cssText=`...`; pl.innerHTML='Price Previews on Closed Cards'; pw.appendChild(pl);
-    // const tr=document.createElement('div'); tr.style.cssText='flex:1;display:flex;';
-    // [1,2,3].forEach(n=>{ const btn=document.createElement('button'); btn.style.cssText=`...`; btn.textContent=String(n); btn.onclick=()=>{ csPreviewCount=n; lsSet('setting_cs_preview',n); csRender(); renderSettingsWindowBody(); }; tr.appendChild(btn); });
-    // pw.appendChild(tr); body.appendChild(pw);
-    body.appendChild(makeSettingDivider('Display'));
-    body.appendChild(makeOnOffCard('Splash Screen on Launch',ls('setting_splash',true),v=>{ lsSet('setting_splash',v); renderSettingsWindowBody(); },'#48a971'));
-    body.appendChild(makeOnOffCard('Auto-Scroll on Open',autoScrollOpen,v=>{ autoScrollOpen=v; lsSet('setting_auto_scroll',v); renderSettingsWindowBody(); },'#5A8DB8'));
+    // Splash Screen
+    const splashRow=document.createElement('div'); splashRow.style.cssText='min-height:var(--drop-height);display:flex;flex-shrink:0;'; const splashVal=ls('setting_splash',true);
+    ['On','Off'].forEach((t,i)=>{ const on=i===0; const active=on?splashVal:!splashVal; const btn=document.createElement('button'); btn.style.cssText=`flex:1;border:none;border-right:${on?'var(--border-width) solid var(--border-color)':'none'};font-size:9px;font-weight:800;cursor:pointer;background:${active?'var(--bg-4)':'var(--bg-3)'};color:${active?'var(--color-10)':'var(--muted)'};`; btn.textContent=t; btn.onclick=()=>{ lsSet('setting_splash',on); renderSettingsWindowBody(); }; splashRow.appendChild(btn); });
+    body.appendChild(makeDescCard('Splash Screen on Launch','#48a971',splashRow,'A brief branded moment each time the app opens. Disable for an instant cold start that takes you straight into your pantry without pause.'));
 
-    const szCard=document.createElement('div'); szCard.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;';
-    const szHdr=document.createElement('div'); szHdr.style.cssText='height:var(--drop-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);'; const szLbl=document.createElement('div'); szLbl.style.cssText='flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#fff;background:var(--bg-3);'; szLbl.textContent='Card & Text Size'; szHdr.appendChild(szLbl); szCard.appendChild(szHdr);
-    const szRow=document.createElement('div'); szRow.style.cssText='height:var(--card-height);display:flex;align-items:stretch;';
-    [['Default','md','14px'],['Large','lg','17px'],['X-Large','xl','20px']].forEach(([lbl,val,fs],i)=>{
-      const btn=document.createElement('div'); const isAct=cardSize===val;
-      btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-weight:900;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;background:${isAct?'#5A8DB8':'var(--bg-2)'};color:${isAct?'#fff':'var(--muted)'};${i<2?'border-right:var(--border-width) solid var(--border-color);':''}`;
-      btn.style.fontSize=fs; btn.textContent=lbl;
-      btn.onclick=()=>{ cardSize=val; lsSet('setting_card_size',val); document.documentElement.dataset.size=val==='md'?'':val; renderSettingsWindowBody(); };
-      szRow.appendChild(btn);
-    });
-    szCard.appendChild(szRow); body.appendChild(szCard);
-    const fdCard=document.createElement('div'); fdCard.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;';
-    const fdHdr=document.createElement('div'); fdHdr.style.cssText='height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);'; const fdLbl=document.createElement('div'); fdLbl.style.cssText='flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:#fff;background:var(--bg-3);'; fdLbl.textContent='Focus Dim on Open'; fdHdr.appendChild(fdLbl); fdCard.appendChild(fdHdr);
-    const fdRow=document.createElement('div'); fdRow.style.cssText='height:var(--card-height);display:flex;align-items:stretch;';
-    [['Off',0],['60%',60],['70%',70],['80%',80],['90%',90],['100%',100]].forEach(([lbl,val],i)=>{ const btn=document.createElement('div'); const isAct=focusDimLevel===val; btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;background:${isAct?'#5A8DB8':'var(--bg-2)'};color:${isAct?'#fff':'var(--muted)'};${i<5?'border-right:var(--border-width) solid var(--border-color);':''}`; btn.textContent=lbl; btn.onclick=()=>{ focusDimLevel=val; lsSet('setting_focus_dim',val); if(!val) focusDimHide(); renderSettingsWindowBody(); }; fdRow.appendChild(btn); });
-    fdCard.appendChild(fdRow); body.appendChild(fdCard);
+    // Splash duration — only shown when splash is on
+    if(splashVal){
+      const durVal=ls('setting_splash_duration',5);
+      const durWrap=document.createElement('div'); durWrap.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;';
+      const durHdr=document.createElement('div'); durHdr.style.cssText='min-height:var(--drop-height);padding:0 12px;display:flex;align-items:center;justify-content:center;background:#2a4a2a;border-bottom:var(--border-width) solid var(--border-color);font-size:9px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:#fff;flex-shrink:0;'; durHdr.textContent='Splash Duration';
+      const durRow=document.createElement('div'); durRow.style.cssText='min-height:var(--drop-height);display:flex;align-items:stretch;flex-shrink:0;';
+      [2,5,8].forEach((s,i)=>{ const isAct=durVal===s; const btn=document.createElement('div'); btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.06em;cursor:pointer;background:${isAct?'#48a971':'var(--bg-2)'};color:${isAct?'#fff':'var(--muted)'};${i<2?'border-right:var(--border-width) solid var(--border-color);':''}`; btn.textContent=s+'s'; btn.onclick=()=>{ lsSet('setting_splash_duration',s); renderSettingsWindowBody(); }; durRow.appendChild(btn); });
+      durWrap.append(durHdr,durRow); body.appendChild(durWrap);
+    }
+    // Auto-Scroll
+    const scrollRow=document.createElement('div'); scrollRow.style.cssText='min-height:var(--drop-height);display:flex;flex-shrink:0;';
+    ['On','Off'].forEach((t,i)=>{ const on=i===0; const active=on?autoScrollOpen:!autoScrollOpen; const btn=document.createElement('button'); btn.style.cssText=`flex:1;border:none;border-right:${on?'var(--border-width) solid var(--border-color)':'none'};font-size:9px;font-weight:800;cursor:pointer;background:${active?'var(--bg-4)':'var(--bg-3)'};color:${active?'var(--color-10)':'var(--muted)'};`; btn.textContent=t; btn.onclick=()=>{ autoScrollOpen=on; lsSet('setting_auto_scroll',on); renderSettingsWindowBody(); }; scrollRow.appendChild(btn); });
+    body.appendChild(makeDescCard('Auto-Scroll on Open','#5A8DB8',scrollRow,'Every card you open is brought seamlessly into focus without lifting a finger. Designed for a fluid, uninterrupted experience as you move through your pantry.'));
+    // Card & Text Size
+    const szWrap=document.createElement('div'); szWrap.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;';
+    const szHdr=document.createElement('div'); szHdr.style.cssText='min-height:var(--drop-height);padding:0 12px;display:flex;align-items:center;justify-content:center;background:#5A8DB8;border-bottom:var(--border-width) solid var(--border-color);font-size:9px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:#fff;flex-shrink:0;'; szHdr.textContent='Card & Text Size';
+    const szRow=document.createElement('div'); szRow.style.cssText='min-height:var(--drop-height);display:flex;align-items:stretch;flex-shrink:0;';
+    [['Default','md','14px'],['Large','lg','17px'],['X-Large','xl','20px']].forEach(([lbl,val,fs],i)=>{ const btn=document.createElement('div'); const isAct=cardSize===val; btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-weight:900;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-2)'};color:${isAct?'#fff':'var(--muted)'};${i<2?'border-right:var(--border-width) solid var(--border-color);':''}`; btn.style.fontSize=fs; btn.textContent=lbl; btn.onclick=()=>{ cardSize=val; lsSet('setting_card_size',val); document.documentElement.dataset.size=val==='md'?'':val; renderSettingsWindowBody(); }; szRow.appendChild(btn); });
+    const szDesc=document.createElement('div'); szDesc.style.cssText='padding:6px 12px;background:var(--bg-3);font-size:11px;font-weight:600;line-height:1.7;letter-spacing:0.02em;color:var(--muted);flex-shrink:0;text-align:center;border-top:var(--border-width) solid var(--border-color);'; szDesc.textContent='Scales cards and text across the entire app. Choose the size that feels most natural in your hand — larger sizes are especially useful for quick glances without reading glasses.';
+    szWrap.append(szHdr,szRow,szDesc); body.appendChild(szWrap);
+    // Focus Dim
+    const fdWrap=document.createElement('div'); fdWrap.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;';
+    const fdHdr=document.createElement('div'); fdHdr.style.cssText='min-height:var(--drop-height);padding:0 12px;display:flex;align-items:center;justify-content:center;background:#2a1a4a;border-bottom:var(--border-width) solid var(--border-color);font-size:9px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:#fff;flex-shrink:0;'; fdHdr.textContent='Focus Dim on Open';
+    const fdRow=document.createElement('div'); fdRow.style.cssText='min-height:var(--drop-height);display:flex;align-items:stretch;flex-shrink:0;';
+    [['Off',0],['60%',60],['70%',70],['80%',80],['90%',90],['100%',100]].forEach(([lbl,val],i)=>{ const btn=document.createElement('div'); const isAct=focusDimLevel===val; btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;background:${isAct?'#8a5ab8':'var(--bg-2)'};color:${isAct?'#fff':'var(--muted)'};${i<5?'border-right:var(--border-width) solid var(--border-color);':''}`; btn.textContent=lbl; btn.onclick=()=>{ focusDimLevel=val; lsSet('setting_focus_dim',val); if(!val) focusDimHide(); renderSettingsWindowBody(); }; fdRow.appendChild(btn); });
+    const fdDesc=document.createElement('div'); fdDesc.style.cssText='padding:6px 12px;background:var(--bg-3);font-size:11px;font-weight:600;line-height:1.7;letter-spacing:0.02em;color:var(--muted);flex-shrink:0;text-align:center;border-top:var(--border-width) solid var(--border-color);'; fdDesc.textContent='The world fades back when a card opens, leaving just what matters in focus. Choose how deep the effect goes — or turn it off entirely for a fully lit experience.';
+    fdWrap.append(fdHdr,fdRow,fdDesc); body.appendChild(fdWrap);
 
   } else {
-    body.appendChild(makeSettingDivider('Data'));
-    const clearCard=document.createElement('div'); clearCard.className='item-row'; clearCard.style.cssText='cursor:pointer;border-radius:var(--radius);';
-    const clearNm=document.createElement('div'); clearNm.className='item-name'; clearNm.style.cssText='background:#502424;color:#fff;font-weight:800;justify-content:center;letter-spacing:0.06em;'; clearNm.textContent='Clear All Data';
-    clearCard.appendChild(clearNm); clearCard.onclick=()=>{ document.getElementById('clearConfirmOverlay').classList.add('open'); };
-    body.appendChild(clearCard);
-
-    // Reset Stats Data
-    let rstPending=false, rstTimer=null;
-    const rstCard=document.createElement('div'); rstCard.className='item-row'; rstCard.style.cssText='cursor:pointer;border-radius:var(--radius);';
-    const rstNm=document.createElement('div'); rstNm.className='item-name'; rstNm.style.cssText='background:#2a1010;color:#C85A5A;font-weight:800;justify-content:center;letter-spacing:0.06em;'; rstNm.textContent='Reset Stats Data';
-    rstCard.appendChild(rstNm);
-    rstCard.onclick=()=>{
-      if(rstPending){
-        clearTimeout(rstTimer); rstPending=false;
-        lsSet('pantry_delta_log',{}); lsSet('pantry_snapshots',{}); lsSet('pantry_usage_log',{}); lsSet('_log_v2',true);
-        ptBackfillSnapshots();
-        rstNm.style.background='#502424'; rstNm.textContent='Stats Cleared';
-        setTimeout(()=>{ rstNm.style.background='#2a1010'; rstNm.textContent='Reset Stats Data'; },1500);
-      } else {
-        rstPending=true; rstNm.style.background='#fff'; rstNm.style.color='#C85A5A'; rstNm.textContent='Confirm? Tap again to reset';
-        rstTimer=setTimeout(()=>{ rstPending=false; rstNm.style.background='#2a1010'; rstNm.style.color='#C85A5A'; rstNm.textContent='Reset Stats Data'; },3000);
-      }
-    };
-    body.appendChild(rstCard);
-
-    // Onboarding mode
-    const obCard=document.createElement('div'); obCard.className='item-row'; obCard.style.cssText='cursor:pointer;border-radius:var(--radius);';
-    const obNm=document.createElement('div'); obNm.className='item-name'; obNm.style.cssText='background:#1d2d3f;color:#5A8DB8;font-weight:800;justify-content:center;letter-spacing:0.06em;'; obNm.textContent='Run Setup Guide';
-    obCard.appendChild(obNm);
-    obCard.onclick=()=>{ lsSet('onboarding_mode',true); closeSettingsWindow(); setTimeout(()=>{ obInit&&obInit(); },100); };
-    body.appendChild(obCard);
+    const clearCard=document.createElement('div'); clearCard.className='item-row'; clearCard.style.cssText='cursor:pointer;border-radius:var(--radius);'; const clearNm=document.createElement('div'); clearNm.className='item-name'; clearNm.style.cssText='background:#502424;color:#fff;font-weight:800;justify-content:center;letter-spacing:0.06em;'; clearNm.textContent='Clear All Data'; clearCard.appendChild(clearNm); clearCard.onclick=()=>{ document.getElementById('clearConfirmOverlay').classList.add('open'); }; body.appendChild(clearCard);
+    let rstPending=false, rstTimer=null; const rstCard=document.createElement('div'); rstCard.className='item-row'; rstCard.style.cssText='cursor:pointer;border-radius:var(--radius);'; const rstNm=document.createElement('div'); rstNm.className='item-name'; rstNm.style.cssText='background:#2a1010;color:#C85A5A;font-weight:800;justify-content:center;letter-spacing:0.06em;'; rstNm.textContent='Reset Stats Data'; rstCard.appendChild(rstNm);
+    rstCard.onclick=()=>{ if(rstPending){ clearTimeout(rstTimer); rstPending=false; lsSet('pantry_delta_log',{}); lsSet('pantry_snapshots',{}); lsSet('pantry_usage_log',{}); lsSet('_log_v2',true); ptBackfillSnapshots(); rstNm.style.background='#502424'; rstNm.textContent='Stats Cleared'; setTimeout(()=>{ rstNm.style.background='#2a1010'; rstNm.textContent='Reset Stats Data'; },1500); } else { rstPending=true; rstNm.style.background='#fff'; rstNm.style.color='#C85A5A'; rstNm.textContent='Confirm? Tap again to reset'; rstTimer=setTimeout(()=>{ rstPending=false; rstNm.style.background='#2a1010'; rstNm.style.color='#C85A5A'; rstNm.textContent='Reset Stats Data'; },3000); } }; body.appendChild(rstCard);
+    const obCard=document.createElement('div'); obCard.className='item-row'; obCard.style.cssText='cursor:pointer;border-radius:var(--radius);'; const obNm=document.createElement('div'); obNm.className='item-name'; obNm.style.cssText='background:#1d2d3f;color:#5A8DB8;font-weight:800;justify-content:center;letter-spacing:0.06em;'; obNm.textContent='Run Setup Guide'; obCard.appendChild(obNm); obCard.onclick=()=>{ lsSet('onboarding_mode',true); closeSettingsWindow(); setTimeout(()=>{ obInit&&obInit(); },100); }; body.appendChild(obCard);
   }
 }
+
 
 /* ── SETTINGS ── */
 function openSettings(fromRight){
