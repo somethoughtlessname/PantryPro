@@ -1047,7 +1047,7 @@ function ptBuildCard(msItem){
 
   const wrap=document.createElement('div'); wrap.className='pt-card';
   const main=document.createElement('div'); main.className='pt-main';
-  main.style.cssText='height:var(--card-height);min-height:var(--card-height);max-height:var(--card-height);display:flex;align-items:stretch;position:relative;overflow:hidden;cursor:pointer;background:var(--bg-3);box-sizing:border-box;';
+  main.style.cssText='height:var(--pt-row-height);min-height:var(--pt-row-height);max-height:var(--pt-row-height);display:flex;align-items:stretch;position:relative;overflow:hidden;cursor:pointer;background:var(--bg-3);box-sizing:border-box;';
 
   const minBtn=document.createElement('button'); minBtn.className='pt-btn left'; minBtn.textContent='';
   const plusBtn=document.createElement('button'); plusBtn.className='pt-btn right'; plusBtn.textContent='';
@@ -1095,7 +1095,7 @@ function ptBuildCard(msItem){
   };
 
   const center=document.createElement('div');
-  center.style.cssText='flex:1;height:var(--card-height);min-height:var(--card-height);max-height:var(--card-height);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;background:#374151;';
+  center.style.cssText='flex:1;height:var(--pt-row-height);min-height:var(--pt-row-height);max-height:var(--pt-row-height);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;background:#374151;';
   const fc=ptFillColor(pd); const vMax=Math.max(ptGetMax(pd),ptGetStock(pd))||1;
   const thirtyDaysAgo=Date.now()-(30*24*60*60*1000);
   const usedRecently=ulGetRecent(msItem.id, thirtyDaysAgo);

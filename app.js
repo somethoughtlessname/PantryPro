@@ -485,8 +485,8 @@ function showEmpty(container,msg){
 let smartSort = ls('setting_smart_sort', true);
 let focusDimLevel = parseInt(ls('setting_focus_dim',0))||0; // 0=off, 60/70/80/90/100
 let autoScrollOpen = ls('setting_auto_scroll', false);
-let cardSize = ls('setting_card_size','md'); // md | lg | xl
-document.documentElement.dataset.size = cardSize==='md'?'':cardSize;
+let cardSize = ls('setting_card_size','md'); // sm | md | lg | xl
+document.documentElement.dataset.size = (cardSize==='md'||!cardSize)?'':cardSize;
 
 function focusDimShow(activeWrap){
   if(focusDimLevel){
@@ -2244,7 +2244,7 @@ function renderSettingsWindowBody(){
     const szWrap=document.createElement('div'); szWrap.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;';
     const szHdr=document.createElement('div'); szHdr.style.cssText='min-height:var(--drop-height);padding:0 12px;display:flex;align-items:center;justify-content:center;background:#5A8DB8;border-bottom:var(--border-width) solid var(--border-color);font-size:9px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:#fff;flex-shrink:0;'; szHdr.textContent='Card & Text Size';
     const szRow=document.createElement('div'); szRow.style.cssText='min-height:var(--drop-height);display:flex;align-items:stretch;flex-shrink:0;';
-    [['Default','md','14px'],['Large','lg','17px'],['X-Large','xl','20px']].forEach(([lbl,val,fs],i)=>{ const btn=document.createElement('div'); const isAct=cardSize===val; btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-weight:900;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-2)'};color:${isAct?'#fff':'var(--muted)'};${i<2?'border-right:var(--border-width) solid var(--border-color);':''}`; btn.style.fontSize=fs; btn.textContent=lbl; btn.onclick=()=>{ cardSize=val; lsSet('setting_card_size',val); document.documentElement.dataset.size=val==='md'?'':val; renderSettingsWindowBody(); }; szRow.appendChild(btn); });
+    [['Small','sm','14px'],['Default','md','14px'],['Large','lg','17px'],['X-Large','xl','20px']].forEach(([lbl,val,fs],i)=>{ const btn=document.createElement('div'); const isAct=cardSize===val; btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-weight:900;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-2)'};color:${isAct?'#fff':'var(--muted)'};${i<3?'border-right:var(--border-width) solid var(--border-color);':''}`; btn.style.fontSize=fs; btn.textContent=lbl; btn.onclick=()=>{ cardSize=val; lsSet('setting_card_size',val); document.documentElement.dataset.size=val==='md'?'':val; renderSettingsWindowBody(); }; szRow.appendChild(btn); });
     const szDesc=document.createElement('div'); szDesc.style.cssText='padding:6px 12px;background:var(--bg-3);font-size:11px;font-weight:600;line-height:1.7;letter-spacing:0.02em;color:var(--muted);flex-shrink:0;text-align:center;border-top:var(--border-width) solid var(--border-color);'; szDesc.textContent='Scales cards and text across the entire app. Choose the size that feels most natural in your hand — larger sizes are especially useful for quick glances without reading glasses.';
     szWrap.append(szHdr,szRow,szDesc); body.appendChild(szWrap);
     // Focus Dim

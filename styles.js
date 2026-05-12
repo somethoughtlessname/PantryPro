@@ -8,6 +8,7 @@
   --margin: 4px;
   --card-height: 45px;
   --drop-height: 32px;
+  --pt-row-height: 32px;
   --border-width: 3px;
   --border-color: #000;
   --radius: 8px;
@@ -21,13 +22,18 @@
   --color-10: #ffffff;
   --muted: #9ca3af;
 }
+:root[data-size="sm"] {
+  --pt-row-height: 24px;
+}
 :root[data-size="lg"] {
   --card-height: 54px;
   --drop-height: 40px;
+  --pt-row-height: 40px;
 }
 :root[data-size="xl"] {
   --card-height: 64px;
   --drop-height: 48px;
+  --pt-row-height: 48px;
 }
 
 html { scroll-padding-top: calc(var(--card-height) + var(--border-width)); }
@@ -632,7 +638,6 @@ body {
 #pagePantry {
   flex-direction: column; gap: var(--margin);
   overflow-y: auto;
-  padding-top: var(--margin);
 }
 .pt-card {
   border: 3px solid #000;
@@ -640,16 +645,16 @@ body {
   width: 100%;
 }
 .pt-main {
-  height: var(--card-height) !important;
-  min-height: var(--card-height) !important;
-  max-height: var(--card-height) !important;
+  height: var(--pt-row-height) !important;
+  min-height: var(--pt-row-height) !important;
+  max-height: var(--pt-row-height) !important;
   box-sizing: border-box;
   display: flex; align-items: stretch;
   position: relative; overflow: hidden; cursor: pointer;
 }
 .pt-btn {
-  width: var(--card-height); min-width: var(--card-height); max-width: var(--card-height);
-  height: var(--card-height);
+  width: var(--pt-row-height); min-width: var(--pt-row-height); max-width: var(--pt-row-height);
+  height: var(--pt-row-height);
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; font-weight: 700;
   z-index: 2; flex-shrink: 0; cursor: pointer;
@@ -659,7 +664,7 @@ body {
 .pt-btn.left  { border-right: 3px solid #000; }
 .pt-btn.right { border-left:  3px solid #000; }
 .pt-center {
-  flex: 1; height: var(--card-height); box-sizing: border-box;
+  flex: 1; height: var(--pt-row-height); box-sizing: border-box;
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   z-index: 2; position: relative;
