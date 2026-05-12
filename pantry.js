@@ -1212,7 +1212,8 @@ function ptBuildCard(msItem){
       if(sw2==='daily'){
         const allVals=ptGetStatsValues(msItem.id,'daily',sv2==='waste'?'waste':sv2==='added'?'added':'used');
         const allCosts=sv2==='used'?ptGetStatsCosts(msItem.id,'daily'):sv2==='added'?calcAddedCosts(msItem.id,'daily'):ptGetWasteCosts(msItem.id,'daily');
-        function mapWeek2(arr){ return weekDays2.map(d=>{ const diff=Math.round((weekStart2-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5); const idx=11+diff; return (idx>=0&&idx<=11)?arr[idx]:0; }); }
+        const todayMidnight2=new Date(now2); todayMidnight2.setHours(0,0,0,0);
+        function mapWeek2(arr){ return weekDays2.map(d=>{ const idx=11-Math.round((todayMidnight2-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/864e5); return (idx>=0&&idx<=11)?arr[idx]:0; }); }
         displayVals2=mapWeek2(allVals); displayCosts2=mapWeek2(allCosts);
         barLabels2=['M','T','W','T','F','S','S'];
       } else if(sw2==='thismonth'){
@@ -1283,7 +1284,7 @@ function ptBuildCard(msItem){
         else if(sw2==='thismonth') leftEl2.textContent=viewDate2.toLocaleDateString('en-US',{month:'long',year:'numeric'});
         else if(sw2==='weekly') leftEl2.textContent='12 Week Total';
         else leftEl2.textContent='12 Month Total';
-        const totalCost=displayCosts2.reduce((s,v)=>s+v,0); const totalUnits=displayVals2.reduce((s,v)=>s+v,0);
+        const totalCost=parseFloat(displayCosts2.reduce((s,v)=>s+v,0).toFixed(2)); const totalUnits=parseFloat(displayVals2.reduce((s,v)=>s+v,0).toFixed(2));
         rightEl2.textContent=totalCost>0?'$'+totalCost.toFixed(2):(totalUnits>0?totalUnits.toFixed(1)+' '+getUnitDisplay(_ptUnitId,totalUnits):'—');
       }
       foot2.append(leftEl2,rightEl2); gCard.appendChild(foot2);

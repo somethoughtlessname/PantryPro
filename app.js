@@ -1830,7 +1830,7 @@ function renderStatsWindow(){
 
     let numEl;
     if(singleItem && sw==='daily'){
-      const isFutureDay = i > todayWiSW;
+      const isFutureDay = weekOffset===0&&i > todayWiSW;
       const qv=aboveBarQtyVals?aboveBarQtyVals[i]:0;
       numEl=document.createElement('div'); numEl.style.cssText=`height:28px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;margin-bottom:1px;overflow:hidden;`;
       if(!isFutureDay){
@@ -1858,13 +1858,13 @@ function renderStatsWindow(){
         numEl.append(dSpan,div3,qSpan);
       }
     } else {
-      const isFutureDay=(sw==='daily'&&i>todayWiSW)||(sw==='thismonth'&&i>now.getDate()-1);
+      const isFutureDay=(sw==='daily'&&weekOffset===0&&i>todayWiSW)||(sw==='thismonth'&&i>now.getDate()-1);
       const showForBar=sw==='thismonth'?isSel&&v>0:sw==='daily'?(showNum&&!isFutureDay):(v>0&&(selBar!==null?isSel:true));
       numEl=document.createElement('div'); numEl.style.cssText=`font-size:${numSize};font-weight:900;height:14px;min-width:${isSel?'40px':'0'};width:100%;display:flex;align-items:flex-end;justify-content:center;color:${isSel?'#fff':'rgba(255,255,255,0.5)'};margin-bottom:1px;overflow:${isSel?'visible':'hidden'};white-space:nowrap;position:relative;z-index:${isSel?'2':'1'};`;
       numEl.textContent=showForBar?((sw==='daily'||sw==='thismonth')?'$'+v.toFixed(2):v.toFixed(2)):'';
     }
 
-    const isCurrentPeriod=(sw==='daily'&&i===todayWiSW)||isCurWeek||isCurMonth||isCurDay;
+    const isCurrentPeriod=(sw==='daily'&&weekOffset===0&&i===todayWiSW)||isCurWeek||isCurMonth||isCurDay;
     const bar=document.createElement('div'); bar.className='pt-bar'; bar.style.cssText=`height:${Math.max(2,Math.round((v/maxV)*36))}px;background:${v>0?barColor:'rgba(255,255,255,0.08)'};opacity:${isSel?1:0.6};${isSel?'box-shadow:inset 2px 0 0 #fff,inset -2px 0 0 #fff,inset 0 -2px 0 #fff,0 -2px 0 #fff;':''}`;
     // thismonth: only show label on selected or current day
     const showLbl=sw==='thismonth'?(isSel||isCurDay):true;
@@ -1883,9 +1883,9 @@ function renderStatsWindow(){
       else { const d=new Date(now.getFullYear(),now.getMonth()-(11-selBar),1); rt=d.toLocaleDateString('en-US',{month:'long',year:'numeric'}); }
     } else {
       rt=sw==='daily'?weekStartSW.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+weekEndSW.toLocaleDateString('en-US',{month:'short',day:'numeric'}):sw==='thismonth'?viewDate.toLocaleDateString('en-US',{month:'long',year:'numeric'}):sw==='weekly'?'12 Week Total':'12 Month Total';    }
-    const costVal=selBar!==null?vals[selBar]:vals.reduce((s,v)=>s+v,0);
+    const costVal=selBar!==null?vals[selBar]:parseFloat(vals.reduce((s,v)=>s+v,0).toFixed(2));
     const qtyVals=getItemUnitVals(singleItem,sw,sv==='used'?'used':'added');
-    const qtyVal=selBar!==null?qtyVals[selBar]:qtyVals.reduce((s,v)=>s+v,0);
+    const qtyVal=selBar!==null?qtyVals[selBar]:parseFloat(qtyVals.reduce((s,v)=>s+v,0).toFixed(2));
     const msItmF=ls('ms_items',[]).find(m=>m.id===singleItem);
     const ptDataF=ls('pantry_data',{})[singleItem];
     const unitF=(ptDataF?.unit)||msItmF?.unit||'unit';
@@ -1925,7 +1925,7 @@ function renderStatsWindow(){
       leftEl.textContent=rt; rightEl.textContent=vals[selBar]>0?'$'+vals[selBar].toFixed(2):'—';
     } else {
       leftEl.textContent=sw==='daily'?weekStartSW.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+weekEndSW.toLocaleDateString('en-US',{month:'short',day:'numeric'}):sw==='thismonth'?viewDate.toLocaleDateString('en-US',{month:'long',year:'numeric'}):sw==='weekly'?'12 Week Total':'12 Month Total';
-      const total=vals.reduce((s,v)=>s+v,0);
+      const total=parseFloat(vals.reduce((s,v)=>s+v,0).toFixed(2));
       rightEl.textContent=total>0?'$'+total.toFixed(2):'—';
     }
     foot.append(leftEl,rightEl);
@@ -1978,7 +1978,7 @@ function renderStatsWindow(){
         } else {
           for(let ii=0;ii<N;ii++){ const d=new Date(now.getFullYear(),now.getMonth()-(N-1-ii),1); v2[ii]=wLog[ptDateKey(d)]?.[itemId]||0; }
         }
-        return idx!==null?parseFloat(v2[idx].toFixed(1)):parseFloat(v2.reduce((s,x)=>s+x,0).toFixed(1));
+        return idx!==null?parseFloat(v2[idx].toFixed(2)):parseFloat(v2.reduce((s,x)=>s+x,0).toFixed(2));
       }
       const entries=dlGetEntries(itemId).filter(e=>dir==='used'?e.delta<0&&!e.waste:e.delta>0);
       const v2=new Array(N).fill(0);
@@ -1991,7 +1991,7 @@ function renderStatsWindow(){
       } else {
         entries.forEach(e=>{ const d=new Date(e.ts); const diff=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth()); const ii=(N-1)-diff; if(ii>=0&&ii<N) v2[ii]+=Math.abs(e.delta); });
       }
-      return idx!==null?parseFloat(v2[idx].toFixed(1)):parseFloat(v2.reduce((s,x)=>s+x,0).toFixed(1));
+      return idx!==null?parseFloat(v2[idx].toFixed(2)):parseFloat(v2.reduce((s,x)=>s+x,0).toFixed(2));
     }
     const amtTotal=getItemQty(item.id,sw,sv,selBar);
     return {item,costTotal,amtTotal};
