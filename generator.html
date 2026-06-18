@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg-1:#233040;--bg-2:#4d5f72;--bg-3:#1e2d3f;--bg-4:#ffffff;
+  --primary:#48a971;--secondary:#5A8DB8;--accent:#8a7ca8;
+  --color-1:#e07878;--muted:#b4bcc8;--border-color:#000;
+  --border-width:3px;--radius:8px;--margin:4px;--card-height:45px;
+  --day-sq:calc(var(--card-height)/2);
+  --job-half:calc((var(--card-height) - var(--border-width))/2);
+  --qs-hdr:18px;--qs-row:18px;
+  --text-light:#ffffff;--text-mid:#b4bcc8;--text-dark:#000000;
+  --text-xs:10px;--text-sm:12px;--text-md:13px;
+  --fw-bold:800;--fw-heavy:900;
+  --ls-normal:0.03em;--ls-wide:0.08em;--ls-wider:0.1em;
+}
+body{background:#0a0a0a;display:flex;flex-direction:column;align-items:center;padding:4px;gap:4px;font-family:'Courier New',monospace;min-height:100vh}
+
+/* CONTROLS */
+.ctrl{width:100%;max-width:380px;display:flex;flex-direction:column;gap:4px}
+.ctrl-ttl{color:#444;font-size:9px;letter-spacing:.2em;text-transform:uppercase}
+.srow{display:flex;align-items:center;gap:8px}
+.srow label{font-size:8px;letter-spacing:.06em;min-width:18px;text-transform:uppercase}
+.srow input[type=range]{flex:1;height:3px;outline:none;border:none;cursor:pointer;appearance:none;-webkit-appearance:none;border-radius:2px}
+.srow input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#ccc;cursor:pointer}
+#rS{background:linear-gradient(to right,#000,#f00)}#gS{background:linear-gradient(to right,#000,#0f0)}#bS{background:linear-gradient(to right,#000,#00f)}
+#brS{background:linear-gradient(to right,#222,#fff)}#saS{background:linear-gradient(to right,#888,#f0f)}
+.prev-row{display:flex;gap:8px;align-items:center}
+.msw{width:38px;height:38px;border-radius:5px;flex-shrink:0;border:1px solid #222}
+.rsw-wrap{flex:1;height:38px;border-radius:5px;border:1px solid #222;overflow:hidden;display:flex}
+.rsw{flex:1}
+.hexv{color:#444;font-size:9px}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.tb-bg-btn{flex:1;min-width:0;padding:6px 2px;border:none;border-right:var(--border-width) solid #000;background:var(--bg-2);color:var(--text-mid);font-family:inherit;font-size:8px;font-weight:900;letter-spacing:.06em;cursor:pointer;text-align:center;text-transform:uppercase}
+.tb-bg-btn:last-child{border-right:none}
+.tb-bg-btn.active{background:var(--primary);color:var(--text-light)}
+.mrow{display:flex;gap:4px}
+.mbtn{flex:1;padding:5px;border:1px solid #1a1a1a;border-radius:4px;background:#111;color:#444;font-family:inherit;font-size:8px;letter-spacing:.1em;cursor:pointer;text-transform:uppercase}
+.mbtn.active{background:#182018;color:#48c060;border-color:#48c06050}
+.brow{display:flex;gap:6px}
+.btn{flex:1;padding:9px;border:none;border-radius:5px;font-family:inherit;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+.btn:active{opacity:.65}
+.btn-rnd{background:#1a1a1a;color:#666;border:1px solid #222}
+.btn-app{background:#152015;color:#48c060;border:1px solid #48c06040}
+
+/* EXACT APP STYLES */
+.preview-wrap{width:100%}
+.slbl{color:#333;font-size:8px;letter-spacing:.15em;text-transform:uppercase}
+.tb-demo-section{background:var(--bg-1);padding:var(--margin);display:flex;flex-direction:column;gap:var(--margin);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);position:relative;overflow:hidden}
+.label-card{height:calc(var(--job-half) + var(--border-width)*2);padding:0 var(--margin);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;background:var(--bg-4);color:var(--text-dark);font-size:var(--text-sm);font-weight:var(--fw-heavy);letter-spacing:var(--ls-wider);text-transform:uppercase;display:flex;align-items:center}
+.day-card{height:var(--job-half);display:flex;align-items:stretch;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;background:var(--bg-2)}
+.day-letter{width:var(--day-sq);min-width:var(--day-sq);flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--bg-4);border-right:var(--border-width) solid var(--border-color);font-size:var(--text-xs);font-weight:var(--fw-bold);text-transform:uppercase;color:var(--text-dark)}
+.day-date{width:var(--day-sq);min-width:var(--day-sq);flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--bg-4);border-right:var(--border-width) solid var(--border-color);font-size:var(--text-xs);font-weight:var(--fw-bold);color:var(--text-dark)}
+.day-body{flex:1;display:flex;align-items:stretch;background:var(--bg-2)}
+.day-body-half{flex:1;display:flex;align-items:center;justify-content:center;font-size:var(--text-xs);font-weight:var(--fw-bold);color:var(--text-mid);border-right:var(--border-width) solid var(--border-color)}
+.day-body-half:last-child{border-right:none}
+.day-half-off{background:var(--secondary)!important;color:var(--text-light)!important}
+.day-hours{width:calc(var(--day-sq)*2 + var(--border-width));min-width:calc(var(--day-sq)*2 + var(--border-width));flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--bg-4);border-left:var(--border-width) solid var(--border-color);font-size:var(--text-xs);font-weight:var(--fw-bold);color:var(--text-dark)}
+.delete-card{display:flex;align-items:center;justify-content:center;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);font-size:var(--text-xs);font-weight:var(--fw-bold);letter-spacing:var(--ls-wider);text-transform:uppercase;color:var(--text-light);cursor:pointer;height:var(--job-half)}
+</style>
+</head>
+<body>
+
+<div class="ctrl" style="gap:4px">
+  <div style="border:var(--border-width) solid #000;border-radius:var(--radius);overflow:hidden;display:flex;height:calc(var(--job-half) + var(--border-width)*2)">
+    <input type="range" id="hueS" min="0" max="359" value="140" style="flex:1;min-width:0;height:100%;border-radius:0;background:linear-gradient(to right,#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00);appearance:none;-webkit-appearance:none;outline:none;border:none;border-right:var(--border-width) solid #000;cursor:pointer;padding:0 6px">
+    <input type="range" id="brS"  min="0" max="100" value="48"  style="flex:1;min-width:0;height:100%;border-radius:0;background:linear-gradient(to right,#000,#fff);appearance:none;-webkit-appearance:none;outline:none;border:none;border-right:var(--border-width) solid #000;cursor:pointer;padding:0 6px">
+    <input type="range" id="saS"  min="0" max="100" value="65"  style="flex:1;min-width:0;height:100%;border-radius:0;background:linear-gradient(to right,#888,#f4f);appearance:none;-webkit-appearance:none;outline:none;border:none;cursor:pointer;padding:0 6px">
+  </div>
+  <div style="border:var(--border-width) solid #000;border-radius:var(--radius);overflow:hidden">
+    <div id="primaryCard" style="height:var(--job-half);display:flex;align-items:center;justify-content:center;font-size:var(--text-sm);font-weight:var(--fw-heavy);letter-spacing:var(--ls-wider);text-transform:uppercase;">#48A971</div>
+  </div>
+
+  <div style="border:var(--border-width) solid #000;border-radius:var(--radius);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-3);border-bottom:var(--border-width) solid #000;height:calc(var(--job-half) + var(--border-width)*2);padding:0 8px">
+      <div style="font-size:var(--text-xs);font-weight:var(--fw-heavy);letter-spacing:var(--ls-wider);text-transform:uppercase;color:var(--text-mid)">Job Colors</div>
+      <div style="font-size:var(--text-xs);font-weight:var(--fw-bold);letter-spacing:var(--ls-wide);text-transform:uppercase;color:var(--text-mid)">Rainbow</div>
+    </div>
+    <div style="display:flex" id="rswWrap"></div>
+  </div>
+
+  <!-- Base color swatches - exact app theme builder order -->
+  <div style="border:var(--border-width) solid #000;border-radius:var(--radius);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-3);border-bottom:var(--border-width) solid #000;height:calc(var(--job-half) + var(--border-width)*2);padding:0 8px">
+      <div style="font-size:var(--text-xs);font-weight:700;letter-spacing:var(--ls-wider);text-transform:uppercase;color:var(--text-mid)">Theme</div>
+      <div style="font-size:var(--text-xs);font-weight:700;letter-spacing:var(--ls-wide);text-transform:uppercase;color:var(--text-mid)">Base Colors</div>
+    </div>
+    <div style="display:flex;height:var(--job-half)" id="baseSwatchRow"></div>
+  </div>
+
+  <div style="border:var(--border-width) solid #000;border-radius:var(--radius);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-3);border-bottom:var(--border-width) solid #000;height:calc(var(--job-half) + var(--border-width)*2);padding:0 8px">
+      <div style="font-size:var(--text-xs);font-weight:var(--fw-heavy);letter-spacing:var(--ls-wider);text-transform:uppercase;color:var(--text-mid)">Background</div>
+      <div style="font-size:var(--text-xs);font-weight:var(--fw-bold);letter-spacing:var(--ls-wide);text-transform:uppercase;color:var(--text-mid)" id="bgRelLabel">Random</div>
+    </div>
+    <div style="display:flex;flex-wrap:nowrap;border-top:none" id="bgChips">
+      <div class="tb-bg-btn active" onclick="setBg('random',this)" data-val="random" data-name="Random">RND</div>
+      <div class="tb-bg-btn" onclick="setBg('primary-dark',this)" data-val="primary-dark" data-name="Dark Primary">PRI</div>
+      <div class="tb-bg-btn" onclick="setBg('complement',this)" data-val="complement" data-name="Complement">COM</div>
+      <div class="tb-bg-btn" onclick="setBg('analogous',this)" data-val="analogous" data-name="Analogous">ANA</div>
+      <div class="tb-bg-btn" onclick="setBg('contrast90',this)" data-val="contrast90" data-name="90° Contrast">90°</div>
+      <div class="tb-bg-btn" onclick="setBg('warm-neutral',this)" data-val="warm-neutral" data-name="Warm Neutral">WRM</div>
+      <div class="tb-bg-btn" onclick="setBg('cool-neutral',this)" data-val="cool-neutral" data-name="Cool Neutral">COL</div>
+      <div class="tb-bg-btn" onclick="setBg('true-grey',this)" data-val="true-grey" data-name="True Grey">GRY</div>
+      <div class="tb-bg-btn" onclick="setBg('earthy',this)" data-val="earthy" data-name="Earthy">ETH</div>
+      <div class="tb-bg-btn" onclick="setBg('triadic-bg',this)" data-val="triadic-bg" data-name="Triadic Bg">TRI</div>
+      <div class="tb-bg-btn" onclick="setBg('split-bg',this)" data-val="split-bg" data-name="Split Bg">SPL</div>
+      <div class="tb-bg-btn" onclick="setBg('secondary-bg',this)" data-val="secondary-bg" data-name="Secondary Bg">SEC</div>
+    </div>
+  </div>
+
+  <div style="border:var(--border-width) solid #000;border-radius:var(--radius);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-3);border-bottom:var(--border-width) solid #000;height:calc(var(--job-half) + var(--border-width)*2);padding:0 8px">
+      <div style="font-size:var(--text-xs);font-weight:var(--fw-heavy);letter-spacing:var(--ls-wider);text-transform:uppercase;color:var(--text-mid)">Harmony</div>
+      <div style="font-size:var(--text-xs);font-weight:var(--fw-bold);letter-spacing:var(--ls-wide);text-transform:uppercase;color:var(--text-mid)" id="harmLabel">Random</div>
+    </div>
+    <div style="display:flex;flex-wrap:nowrap" id="harmChips">
+      <div class="tb-bg-btn active" onclick="setHarm('random',this)" data-val="random" data-name="Random">RND</div>
+      <div class="tb-bg-btn" onclick="setHarm('complementary',this)" data-val="complementary" data-name="Complementary">COM</div>
+      <div class="tb-bg-btn" onclick="setHarm('analogous',this)" data-val="analogous" data-name="Analogous">ANA</div>
+      <div class="tb-bg-btn" onclick="setHarm('triadic',this)" data-val="triadic" data-name="Triadic">TRI</div>
+      <div class="tb-bg-btn" onclick="setHarm('tetradic',this)" data-val="tetradic" data-name="Tetradic">TET</div>
+      <div class="tb-bg-btn" onclick="setHarm('split',this)" data-val="split" data-name="Split">SPL</div>
+      <div class="tb-bg-btn" onclick="setHarm('accented',this)" data-val="accented" data-name="Accented">ACC</div>
+      <div class="tb-bg-btn" onclick="setHarm('fibonacci',this)" data-val="fibonacci" data-name="Fibonacci">FIB</div>
+      <div class="tb-bg-btn" onclick="setHarm('monochromatic',this)" data-val="monochromatic" data-name="Monochromatic">MON</div>
+      <div class="tb-bg-btn" onclick="setHarm('double-comp',this)" data-val="double-comp" data-name="Double Comp">DBL</div>
+      <div class="tb-bg-btn" onclick="setHarm('near-comp',this)" data-val="near-comp" data-name="Near Complement">NRC</div>
+      <div class="tb-bg-btn" onclick="setHarm('rectangle',this)" data-val="rectangle" data-name="Rectangle">RCT</div>
+    </div>
+  </div>
+
+  <div style="border:var(--border-width) solid #000;border-radius:var(--radius);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-3);border-bottom:var(--border-width) solid #000;height:calc(var(--job-half) + var(--border-width)*2);padding:0 8px">
+      <div style="font-size:var(--text-xs);font-weight:var(--fw-heavy);letter-spacing:var(--ls-wider);text-transform:uppercase;color:var(--text-mid)">Surface</div>
+      <div style="font-size:var(--text-xs);font-weight:var(--fw-bold);letter-spacing:var(--ls-wide);text-transform:uppercase;color:var(--text-mid)" id="surfaceLabel">Random</div>
+    </div>
+    <div style="display:flex;flex-wrap:nowrap" id="surfaceChips">
+      <div class="tb-bg-btn active" onclick="setSurface('random',this)" data-val="random" data-name="Random">RND</div>
+      <div class="tb-bg-btn" onclick="setSurface('white',this)" data-val="white" data-name="White">WHT</div>
+      <div class="tb-bg-btn" onclick="setSurface('off-white',this)" data-val="off-white" data-name="Off White">OFW</div>
+      <div class="tb-bg-btn" onclick="setSurface('light primary',this)" data-val="light primary" data-name="Light Primary">LPR</div>
+      <div class="tb-bg-btn" onclick="setSurface('dark primary',this)" data-val="dark primary" data-name="Dark Primary">DPR</div>
+      <div class="tb-bg-btn" onclick="setSurface('light secondary',this)" data-val="light secondary" data-name="Light Secondary">LSC</div>
+      <div class="tb-bg-btn" onclick="setSurface('dark secondary',this)" data-val="dark secondary" data-name="Dark Secondary">DSC</div>
+      <div class="tb-bg-btn" onclick="setSurface('light accent',this)" data-val="light accent" data-name="Light Accent">LAC</div>
+      <div class="tb-bg-btn" onclick="setSurface('dark accent',this)" data-val="dark accent" data-name="Dark Accent">DAC</div>
+      <div class="tb-bg-btn" onclick="setSurface('tinted neutral',this)" data-val="tinted neutral" data-name="Tinted Neutral">TND</div>
+      <div class="tb-bg-btn" onclick="setSurface('light complement',this)" data-val="light complement" data-name="Light Complement">LCM</div>
+      <div class="tb-bg-btn" onclick="setSurface('4th harmony',this)" data-val="4th harmony" data-name="4th Harmony">4TH</div>
+    </div>
+  </div>
+
+  <div style="border:var(--border-width) solid #000;border-radius:var(--radius);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-3);border-bottom:var(--border-width) solid #000;height:calc(var(--job-half) + var(--border-width)*2);padding:0 8px">
+      <div style="font-size:var(--text-xs);font-weight:var(--fw-heavy);letter-spacing:var(--ls-wider);text-transform:uppercase;color:var(--text-mid)">Tone</div>
+      <div style="font-size:var(--text-xs);font-weight:var(--fw-bold);letter-spacing:var(--ls-wide);text-transform:uppercase;color:var(--text-mid)" id="toneLabel">Random</div>
+    </div>
+    <div style="display:flex;flex-wrap:nowrap">
+      <div class="tb-bg-btn active" id="modeMix"   onclick="setMode('mix',this)" data-val="mix"   data-name="Random">RND</div>
+      <div class="tb-bg-btn" id="modeDark"  onclick="setMode('dark'" data-val="dark" onclick="setMode('dark',this)"  data-name="Dark">DRK</div>
+      <div class="tb-bg-btn"        id="modeMid"   onclick="setMode('mid',this)" data-val="mid"   data-name="Mid">MID</div>
+      <div class="tb-bg-btn"        id="modeLight" onclick="setMode('light',this)" data-val="light" data-name="Light">LGT</div>
+    </div>
+  </div>
+  <div style="display:flex;border:var(--border-width) solid #000;border-radius:var(--radius);overflow:hidden">
+    <div onclick="randomTheme()" style="flex:1;height:calc(var(--job-half) + var(--border-width)*2);display:flex;align-items:center;justify-content:center;background:var(--bg-2);color:var(--text-mid);font-family:'Courier New',monospace;font-size:var(--text-xs);font-weight:900;letter-spacing:var(--ls-wider);text-transform:uppercase;cursor:pointer;border-right:var(--border-width) solid #000">Random</div>
+    <div onclick="applyFromSliders()" style="flex:1;height:calc(var(--job-half) + var(--border-width)*2);display:flex;align-items:center;justify-content:center;background:var(--primary);color:var(--text-light);font-family:'Courier New',monospace;font-size:var(--text-xs);font-weight:900;letter-spacing:var(--ls-wider);text-transform:uppercase;cursor:pointer">Apply</div>
+  </div>
+</div>
+
+<div class="preview-wrap" style="display:flex;flex-direction:column;gap:4px">
+
+  <!-- EXACT APP PREVIEW CARD -->
+  <div class="tb-demo-section">
+    <div style="position:relative;z-index:10;display:flex;flex-direction:column;gap:var(--margin)">
+
+      <!-- label cards -->
+      <div style="display:flex;gap:var(--margin)">
+        <div class="label-card" style="flex:1">Quick Schedule</div>
+        <div class="label-card" style="flex:1">History</div>
+      </div>
+
+      <!-- day card: half height, one time, one OFF -->
+      <div class="day-card">
+        <div class="day-letter">M</div>
+        <div class="day-date">27</div>
+        <div class="day-body">
+          <div class="day-body-half">9:00 AM</div>
+          <div class="day-body-half day-half-off">OFF</div>
+        </div>
+        <div class="day-hours">08.00</div>
+      </div>
+
+      <!-- three cards side by side -->
+      <div style="display:flex;gap:var(--margin);align-items:stretch;flex-shrink:0;min-height:64px">
+
+        <!-- job card -->
+        <div style="flex:1;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column">
+          <div style="height:var(--qs-hdr);box-sizing:border-box;flex-shrink:0;background:var(--primary);border-bottom:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:var(--text-xs);font-weight:var(--fw-bold);letter-spacing:var(--ls-wider);text-transform:uppercase;color:var(--text-light)">DOMINO'S</div>
+          <div style="flex:1;background:var(--bg-2);display:flex;align-items:center;justify-content:center;font-size:var(--text-xs);font-weight:var(--fw-bold);color:var(--text-mid)">19H 55M</div>
+          <div style="height:var(--qs-hdr);box-sizing:border-box;flex-shrink:0;background:var(--bg-2);border-top:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;gap:8px">
+            <svg width="10" height="11" viewBox="0 0 16 16" fill="none"><path d="M2 2 Q2 1 3 1.5 L13.5 7.5 Q15 8 13.5 8.5 L3 14.5 Q2 15 2 14 Z" fill="var(--text-mid)"/></svg>
+            <div style="display:flex;gap:3px;align-items:center"><div style="width:3px;height:10px;background:var(--color-1);border-radius:2px"></div><div style="width:3px;height:10px;background:var(--color-1);border-radius:2px"></div></div>
+            <div style="width:10px;height:7px;border-left:2px solid var(--primary);border-bottom:2px solid var(--primary);border-radius:1px;transform:rotate(-45deg) translate(1px,-1px)"></div>
+          </div>
+        </div>
+
+        <!-- QS card -->
+        <div style="flex:1;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;background:var(--accent)">
+          <div style="height:var(--qs-hdr);box-sizing:border-box;flex-shrink:0;background:var(--accent);border-bottom:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:var(--text-xs);font-weight:var(--fw-bold);letter-spacing:var(--ls-wider);text-transform:uppercase;color:var(--text-light)">Today</div>
+          <div style="height:var(--job-half);background:var(--bg-2);position:relative;overflow:hidden;flex-shrink:0">
+            <div style="position:absolute;inset:0;display:flex"><div style="flex:1;border-right:1px solid rgba(255,255,255,0.18)"></div><div style="flex:1;border-right:1px solid rgba(255,255,255,0.18)"></div><div style="flex:1;border-right:1px solid rgba(255,255,255,0.18)"></div><div style="flex:1"></div></div>
+            <div style="position:absolute;top:50%;left:10%;width:60%;transform:translateY(-50%);height:12px;background:var(--bg-4);border:2px solid var(--secondary);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:800;color:var(--text-dark)">9AM-5PM</div>
+          </div>
+          <div style="height:var(--qs-hdr);box-sizing:border-box;flex-shrink:0;background:var(--accent);border-top:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:space-around;padding:0 4px">
+            <span style="font-size:8px;font-weight:800;color:var(--text-light)">9</span><span style="font-size:8px;font-weight:800;color:var(--text-light)">12</span><span style="font-size:8px;font-weight:800;color:var(--text-light)">3</span><span style="font-size:8px;font-weight:800;color:var(--text-light)">6</span>
+          </div>
+        </div>
+
+        <!-- history card -->
+        <div style="flex:1;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column">
+          <div style="height:var(--qs-hdr);box-sizing:border-box;flex-shrink:0;background:var(--secondary);border-bottom:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:var(--text-xs);font-weight:var(--fw-bold);letter-spacing:var(--ls-wider);text-transform:uppercase;color:var(--text-light)">This Week</div>
+          <div style="flex:1;background:var(--bg-2);display:flex;align-items:center;justify-content:center;font-size:var(--text-xs);font-weight:var(--fw-bold);color:var(--text-light)">MAY 25TH</div>
+          <div style="height:var(--qs-hdr);box-sizing:border-box;flex-shrink:0;background:var(--secondary);border-top:var(--border-width) solid var(--border-color);display:flex;align-items:center;justify-content:center;font-size:var(--text-xs);font-weight:var(--fw-bold);color:var(--text-light)">38.50</div>
+        </div>
+
+      </div>
+
+      <!-- swatch strip -->
+
+
+    </div>
+  </div>
+
+  <!-- theme data card -->
+  <!-- Theme data -->
+  <div style="border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden">
+    <div style="background:var(--bg-2);padding:6px">
+      <textarea id="themeField" readonly style="width:100%;height:52px;background:var(--bg-1);border:var(--border-width) solid var(--border-color);border-radius:calc(var(--radius)/2);color:var(--text-mid);font-family:'Courier New',monospace;font-size:8px;padding:6px;resize:none;outline:none;word-break:break-all"></textarea>
+    </div>
+    <div id="copyBtn" onclick="copyData()" style="height:calc(var(--job-half) + var(--border-width)*2);display:flex;align-items:center;justify-content:center;background:var(--primary);color:var(--text-light);font-size:var(--text-xs);font-weight:900;letter-spacing:var(--ls-wider);text-transform:uppercase;cursor:pointer;border-top:var(--border-width) solid var(--border-color)">Copy</div>
+  </div>
+</div>
+
+<script>
+// -- MATH --
+function lum(hex){const[r,g,b]=hexToRgb(hex).map(v=>{v/=255;return v<=0.04045?v/12.92:Math.pow((v+0.055)/1.055,2.4)});return 0.2126*r+0.7152*g+0.0722*b;}
+function ratio(a,b){const la=lum(a),lb=lum(b);return(Math.max(la,lb)+0.05)/(Math.min(la,lb)+0.05);}
+function H(h,s,l){h=((h%360)+360)%360;s/=100;l/=100;const c=(1-Math.abs(2*l-1))*s,x=c*(1-Math.abs((h/60)%2-1)),m=l-c/2;let r,g,b;if(h<60){r=c;g=x;b=0}else if(h<120){r=x;g=c;b=0}else if(h<180){r=0;g=c;b=x}else if(h<240){r=0;g=x;b=c}else if(h<300){r=x;g=0;b=c}else{r=c;g=0;b=x}return'#'+[r,g,b].map(v=>Math.round((v+m)*255).toString(16).padStart(2,'0')).join('');}
+function hexToHsl(hex){let r=parseInt(hex.slice(1,3),16)/255,g=parseInt(hex.slice(3,5),16)/255,b=parseInt(hex.slice(5,7),16)/255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2;if(mx===mn)return[0,0,Math.round(l*100)];const d=mx-mn,s=l>.5?d/(2-mx-mn):d/(mx+mn);let hh=mx===r?(g-b)/d+(g<b?6:0):mx===g?(b-r)/d+2:(r-g)/d+4;return[Math.round(hh/6*360),Math.round(s*100),Math.round(l*100)];}
+function toHex(r,g,b){return'#'+[r,g,b].map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');}
+function hexToRgb(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+function rnd(a,b){return a+Math.random()*(b-a);}
+function pick(arr){return arr[Math.floor(Math.random()*arr.length)];}
+
+// -- STATE --
+let mode='mix', bgRel='random', harmScheme='random', surfaceStyle='random';
+
+function setMode(m,el){mode=m;document.querySelectorAll('#modeDark,#modeMid,#modeLight,#modeMix').forEach(b=>{b.classList.remove('active');b.style.background='';b.style.color='';});const a=document.getElementById('mode'+m.charAt(0).toUpperCase()+m.slice(1));if(a)a.classList.add('active');document.getElementById('toneLabel').textContent=(el||a||{}).dataset?.name||m;}
+function setSurface(v,el){surfaceStyle=v;document.querySelectorAll('#surfaceChips .tb-bg-btn').forEach(c=>{c.classList.remove('active');c.style.background='';c.style.color='';});el.classList.add('active');document.getElementById('surfaceLabel').textContent=el.dataset.name;}
+function setBg(v,el){bgRel=v;document.querySelectorAll('#bgChips .tb-bg-btn').forEach(c=>{c.classList.remove('active');c.style.background='';c.style.color='';});el.classList.add('active');document.getElementById('bgRelLabel').textContent=el.dataset.name;}
+function setHarm(v,el){harmScheme=v;document.querySelectorAll('#harmChips .tb-bg-btn').forEach(c=>{c.classList.remove('active');c.style.background='';c.style.color='';});el.classList.add('active');document.getElementById('harmLabel').textContent=el.dataset.name;}
+
+// -- BG STRATEGIES --
+function getBgHue(h, strategy){
+  const s={
+    'primary-dark': ()=>({bgH:h+rnd(-8,8),  bgS:rnd(16,30), isPrimaryDark:true}),
+    'complement':   ()=>({bgH:(h+180+rnd(-10,10))%360, bgS:rnd(7,16)}),
+    'analogous':    ()=>({bgH:(h+pick([30,-30,45,-45])+rnd(-8,8)+360)%360, bgS:rnd(7,16)}),
+    'contrast90':   ()=>({bgH:(h+pick([90,270])+rnd(-8,8)+360)%360, bgS:rnd(5,14)}),
+    'warm-neutral': ()=>({bgH:pick([25,30,35,20])+rnd(-5,5), bgS:rnd(7,16)}),
+    'cool-neutral': ()=>({bgH:pick([200,210,220,195])+rnd(-5,5), bgS:rnd(7,16)}),
+    'true-grey':    ()=>({bgH:rnd(0,30), bgS:rnd(0,3)}),
+    'earthy':       ()=>({bgH:pick([22,28,35,18,40])+rnd(-5,5), bgS:rnd(10,22)}),
+    'triadic-bg':   ()=>({bgH:(h+120+rnd(-8,8))%360, bgS:rnd(8,16)}),
+    'split-bg':     ()=>({bgH:(h+150+rnd(-8,8))%360, bgS:rnd(8,16)}),
+    'secondary-bg': ()=>({bgH:(h+35+rnd(-6,6))%360,  bgS:rnd(10,18)}),
+  };
+  const strategy2 = (strategy==='random') ? pick(Object.keys(s)) : strategy;
+  const result = (s[strategy2]||s['complement'])();
+  result.strategyName = strategy2;
+  return result;
+}
+
+// -- HARMONY OFFSETS --
+function getOffsets(scheme){
+  const o={
+    'complementary': [180+rnd(-8,8), 150+rnd(-8,8)],
+    'analogous':     [30+rnd(-6,6), -30+rnd(-6,6)],
+    'triadic':       [120+rnd(-8,8), 240+rnd(-8,8)],
+    'tetradic':      [90+rnd(-6,6),  270+rnd(-6,6)],
+    'split':         [150+rnd(-8,8), 210+rnd(-8,8)],
+    'accented':      [20+rnd(-5,5),  150+rnd(-8,8)],
+    'fibonacci':     [137.508+rnd(-6,6), 275.016+rnd(-6,6)],
+    'monochromatic': [rnd(-5,5), rnd(-5,5)],
+    'double-comp':  [180+rnd(-6,6), 90+rnd(-6,6)],
+    'near-comp':    [160+rnd(-8,8), 200+rnd(-8,8)],
+    'rectangle':    [60+rnd(-6,6),  180+rnd(-6,6)],
+  };
+  const keys=Object.keys(o);
+  const s=(scheme==='random')?pick(keys):scheme;
+  return{offsets:o[s]||o['complementary'],schemeName:s};
+}
+
+// -- MAKE THEME --
+function makeTheme(primaryHex, fixedPrimary){
+  const [h,s,l]=hexToHsl(primaryHex);
+  const bri=fixedPrimary?48:Math.round(rnd(8,60));
+  const sat=fixedPrimary?65:Math.round(rnd(12,88));
+  const m=mode==='mix'?pick(['dark','mid','light']):mode;
+
+  // Background chain (independent)
+  const bg=getBgHue(h, bgRel);
+  const {bgH,bgS,isPrimaryDark,strategyName}=bg;
+
+  // Action colors from harmony
+  const {offsets,schemeName}=getOffsets(harmScheme);
+  const secH=(h+offsets[0]+360)%360;
+  const accH=schemeName==='monochromatic'?h:(h+offsets[1]+360)%360;
+
+  // Pinned lightness = bri slider, saturation influenced by sat slider
+  const priS=Math.min(sat,95);
+  const clampL=(v)=>Math.max(5,Math.min(95,v));
+  // Sometimes desaturate primary to grey while keeping sec/acc vivid (like theme 1)
+  const priSatMod = fixedPrimary ? sat : (Math.random()<0.15 ? Math.min(sat*0.2,15) : sat);
+  const pri = fixedPrimary ? primaryHex : H(h, priSatMod, clampL(bri));
+  const sec=H(secH, schemeName==='monochromatic'?priS*0.8:Math.min(priS*0.9,88), clampL(schemeName==='monochromatic'?bri+14:bri));
+  const acc=H(accH, schemeName==='monochromatic'?priS*0.6:Math.min(priS*0.8,80), clampL(schemeName==='monochromatic'?bri-12:bri));
+
+  // Backgrounds
+  let bg1,bg2,bg3,tl,tm,border;
+  const w=()=>rnd(-2,2);
+  const bH=isPrimaryDark?h:bgH;
+
+  // bg1 strategy - can be any thematically coherent color
+  const bg1Strategies = [
+    // standard: bg hue at tone-appropriate lightness
+    ()=>({h:bH,  s:bgS+w()}),
+    // primary hue darkened/lightened
+    ()=>({h:h,   s:Math.min(priS*0.5+w(),50)}),
+    // secondary hue
+    ()=>({h:secH, s:Math.min(priS*0.45+w(),45)}),
+    // accent hue
+    ()=>({h:accH, s:Math.min(priS*0.4+w(),40)}),
+    // complement of primary
+    ()=>({h:(h+180)%360, s:bgS+rnd(2,8)}),
+    // 4th harmony
+    ()=>({h:(h+offsets[1]*1.5+360)%360, s:Math.min(priS*0.4,38)+w()}),
+    // warm neutral regardless of primary
+    ()=>({h:rnd(20,40), s:rnd(6,14)}),
+    // cool neutral regardless of primary
+    ()=>({h:rnd(195,225), s:rnd(6,14)}),
+    // pure grey
+    ()=>({h:0, s:0}),
+  ];
+  const bg1Pick = bg1Strategies[Math.floor(Math.random()*bg1Strategies.length)]();
+  const b1H=bg1Pick.h, b1S=bg1Pick.s;
+  // bg2 and bg3 track bg1 hue but shift lightness
+  if(bg1Pick.forceBg1){
+    bg1=bg1Pick.forceBg1;
+    const isBlack=bg1Pick.forceBg1==='#000000';
+    if(m==='dark'||isBlack){bg2=H(b1H,b1S+2,20+w());bg3=H(b1H,b1S+1,7+w());}
+    else{bg2=H(b1H,b1S+2,85+w());bg3=H(b1H,b1S+1,77+w());}
+  } else if(m==='dark'){bg1=H(b1H,b1S,12+w());bg2=H(b1H,b1S-2+w(),20+w());bg3=H(b1H,b1S+1+w(),7+w());}
+  else if(m==='mid'){bg1=H(b1H,b1S,26+w());bg2=H(b1H,b1S-2+w(),34+w());bg3=H(b1H,b1S+1+w(),18+w());}
+  else{bg1=H(b1H,b1S,93+w());bg2=H(b1H,b1S-2+w(),85+w());bg3=H(b1H,b1S+1+w(),77+w());}
+  if(false){
+  }
+
+  // Utility - relative luminance and contrast ratio (global scope)
+
+  // Initial text - sometimes use a warm/cool tinted off-white instead of pure white/black
+  const tlVariants = [
+    () => m==='light' ? H(b1H,22,14) : (bri>55 ? H(b1H,22,12) : H(b1H,8,93)),  // standard
+    () => H(b1H+20, Math.min(priS*0.5,45), 88),   // warm cream
+    () => H(b1H-20, Math.min(priS*0.4,35), 90),   // cool off-white
+    () => H(h, Math.min(priS*0.5,40), 88),         // primary-tinted light
+  ];
+  if(m==='light'){tl=H(b1H,22,14);}
+  else{tl=pick(tlVariants)();}
+
+  // textLight must work on action colors - that is its primary job
+  // bg surfaces use textMid for most content, so don't let them override
+  const WHITE='#f2f2f2', BLACK='#111111';
+  const actions=[pri,sec,acc];
+  const worstWhite=Math.min(...actions.map(c=>ratio(WHITE,c)));
+  const worstBlack=Math.min(...actions.map(c=>ratio(BLACK,c)));
+  tl = worstWhite >= worstBlack ? WHITE : BLACK;
+  // textMid is always readable on bg surfaces regardless
+  tm = lum(bg2)>0.3 ? H(b1H,20,35) : H(b1H,12,65);
+  const bg4Strategies = [
+    () => ({ bg4: '#ffffff',                              td: H(bH,bgS+4,5),   name:'white' }),
+    () => ({ bg4: H(bH,bgS+4,rnd(94,98)),                td: H(bH,bgS+4,5),   name:'off-white' }),
+    () => ({ bg4: H(h, Math.min(priS*0.5,40), rnd(88,94)), td: H(h,priS*0.6,8), name:'light primary' }),
+    () => ({ bg4: H(h, Math.min(priS*0.7,60), rnd(20,32)), td: H(bH,6,92),      name:'dark primary' }),
+    () => ({ bg4: H(secH, Math.min(priS*0.5,40), rnd(86,93)), td: H(secH,priS*0.5,8), name:'light secondary' }),
+    () => ({ bg4: H(secH, Math.min(priS*0.7,60), rnd(20,32)), td: H(bH,6,92),   name:'dark secondary' }),
+    () => ({ bg4: H(accH, Math.min(priS*0.4,35), rnd(88,94)), td: H(accH,priS*0.5,8), name:'light accent' }),
+    () => ({ bg4: H(bH, bgS+rnd(2,6), rnd(78,86)),       td: H(bH,bgS+4,8),   name:'tinted neutral' }),
+    () => ({ bg4: H((h+180)%360, Math.min(priS*0.4,35), rnd(86,93)), td: H((h+180)%360,priS*0.5,8), name:'light complement' }),
+    () => ({ bg4: H(bH, 0, rnd(90,96)),                  td: H(bH,0,8),        name:'pure grey' }),
+    // 4th color from harmony - next offset after accent
+    () => { const q=schemeName==='monochromatic'?h:(h+offsets[1]*1.5+360)%360; return { bg4:H(q,Math.min(priS*0.55,50),48), td:lum(H(q,Math.min(priS*0.55,50),48))>0.35?H(q,20,8):H(q,8,94), name:'4th harmony' }; },
+    () => ({ bg4: H(accH, Math.min(priS*0.7,60), rnd(20,32)), td: H(bH,6,92),      name:'dark accent' }),
+  ];
+  // dark/mid modes avoid very light bg4 that washes out; light mode avoids very dark bg4
+  const bg4Pool = m==='dark'
+    ? [0,1,2,3,4,5,6,7,8,9,10,11]
+    : m==='mid'
+    ? [0,1,2,3,4,5,6,7,8,9,10,11]
+    : [0,1,2,4,6,7,8,9,10];
+  const surfaceNames=['white','off-white','light primary','dark primary','light secondary','dark secondary','light accent','tinted neutral','light complement','pure grey','4th harmony','dark accent'];
+  let bg4PickIdx;
+  if(surfaceStyle==='random'){
+    bg4PickIdx=bg4Pool[Math.floor(Math.random()*bg4Pool.length)];
+  } else {
+    const si=surfaceNames.indexOf(surfaceStyle);
+    bg4PickIdx=si>=0?si:0;
+  }
+  let {bg4, td, name:bg4Name} = bg4Strategies[bg4PickIdx]();
+  const chosenSurface=bg4Name;
+  // ensure td contrasts on bg4
+  if(ratio(td,bg4)<4) td = lum(bg4)>0.5 ? H(bH,bgS+4,4) : H(bH,6,92);
+
+  // Border - dark/mid always dark; light picks from mid-dark options
+  if(m==='light'){
+    border=pick(['#000000',H(b1H,15,20),H(b1H,12,28),H(b1H,18,15)]);
+  } else {
+    border=pick([
+      H(b1H,Math.max(b1S,5),4+(m==='mid'?4:0)),   // hue-tinted dark
+      '#000000',                                       // pure black
+      H(h,Math.min(priS*0.3,20),5),                  // primary-tinted very dark
+    ]);
+  }
+
+  // Swatches
+  // Swatch strategy: vivid, muted/earthy, or monochromatic
+  const swStrat=pick(['vivid','vivid','vivid','muted','earthy']);
+  const sw=schemeName==='monochromatic'
+    ?[10,20,30,40,50,60,70,80,85,90].map(ll=>H(h,s,ll))
+    :swStrat==='muted'
+    ?[0,...offsets,60,90,120,150,180,210,270].slice(0,10).map(o=>H((h+o+360)%360,Math.min(sat*0.45,40),bri*0.85))
+    :swStrat==='earthy'
+    ?[0,...offsets,60,90,120,150,180,210,270].slice(0,10).map(o=>H((h+o+20+360)%360,Math.min(sat*0.6,55),Math.max(bri*0.7,20)))
+    :[0,...offsets,60,90,120,150,180,210,270].slice(0,10).map(o=>H((h+o+360)%360,Math.min(sat*0.9,82),bri));
+
+  return{bg1,bg2,bg3,bg4,pri,sec,acc,c1:H(355, m==='dark'?70:m==='mid'?65:60, m==='dark'?52:m==='mid'?48:44),border,tl,tm,td,sw,m,schemeName,strategyName,bg4Name,chosenBg:strategyName,chosenHarm:schemeName,chosenMode:m,chosenSurface};
+}
+
+// -- APPLY --
+const root=document.documentElement;
+function applyTheme(t){
+  root.style.setProperty('--bg-1',t.bg1);root.style.setProperty('--bg-2',t.bg2);root.style.setProperty('--bg-3',t.bg3);root.style.setProperty('--bg-4',t.bg4);
+  root.style.setProperty('--primary',t.pri);root.style.setProperty('--secondary',t.sec);root.style.setProperty('--accent',t.acc);
+  root.style.setProperty('--color-1',t.c1);root.style.setProperty('--border-color',t.border);
+  root.style.setProperty('--text-light',t.tl);root.style.setProperty('--text-mid',t.tm);root.style.setProperty('--text-dark',t.td);
+
+  // Base colors - exact app order: bg1,bg2,bg3,primary,secondary,accent,color1,muted,border,bg4,textLight,textDark,textMid
+  const baseVals=[t.bg1,t.bg2,t.bg3,t.pri,t.sec,t.acc,t.c1,t.tm,t.border,t.bg4,t.tl,t.td,t.tm];
+  const br=document.getElementById('baseSwatchRow');if(br){br.innerHTML='';
+  baseVals.forEach((c,i)=>{const d=document.createElement('div');d.style.cssText='flex:1;background:'+c+(i<baseVals.length-1?';border-right:var(--border-width) solid #000':'');br.appendChild(d);});}
+
+  const pc=document.getElementById('primaryCard');
+  pc.style.background=t.pri;
+  pc.style.color=lum(t.pri)>0.25?'#111':'#f2f2f2';
+  pc.textContent=t.pri.toUpperCase();
+  buildRainbow(t.pri, t.m);
+
+  // Update active button colors
+  const activeTxt = lum(t.pri) > 0.35 ? '#111' : '#f2f2f2';
+  const secTxt    = lum(t.sec) > 0.35 ? '#111' : '#f2f2f2';
+  document.querySelectorAll('.tb-bg-btn').forEach(b=>{b.style.background='';b.style.color='';});
+  document.querySelectorAll('.tb-bg-btn.active').forEach(b=>{b.style.background=t.pri;b.style.color=activeTxt;});
+  // If branch was set to random, highlight the actually-chosen option with secondary
+  if(bgRel==='random'){
+    document.querySelectorAll('#bgChips .tb-bg-btn').forEach(b=>{
+      if(b.dataset.val===t.chosenBg)
+        {b.style.background=t.sec;b.style.color=secTxt;}
+    });
+  }
+  if(harmScheme==='random'){
+    document.querySelectorAll('#harmChips .tb-bg-btn').forEach(b=>{
+      if(b.dataset.val===t.chosenHarm)
+        {b.style.background=t.sec;b.style.color=secTxt;}
+    });
+  }
+  if(surfaceStyle==='random'){
+    document.querySelectorAll('#surfaceChips .tb-bg-btn').forEach(b=>{
+      if(b.dataset.val===t.chosenSurface){b.style.background=t.sec;b.style.color=secTxt;}
+    });
+  }
+  if(mode==='mix'){
+    document.querySelectorAll('#modeDark,#modeMid,#modeLight,#modeMix').forEach(b=>{
+      if(b.dataset.val===t.chosenMode)
+        {b.style.background=t.sec;b.style.color=secTxt;}
+    });
+  }
+  // Encode
+  const bc={bg1:t.bg1,bg2:t.bg2,bg3:t.bg3,bg4:t.bg4,primary:t.pri,secondary:t.sec,accent:t.acc,color1:t.c1,muted:t.tm,border:t.border,textLight:t.tl,textMid:t.tm,textDark:t.td};
+  const jc=Object.fromEntries(t.sw.slice(0,10).map((c,i)=>['swatch'+(i+1),c]));
+  const enc=[...Object.entries(bc),...Object.entries(jc)].map(([k,v])=>k+':'+v.replace('#','')).join('|');
+  document.getElementById('themeField').value=enc;
+}
+
+// -- CONTROLS --
+function getPrimary(){
+  const hue=+document.getElementById('hueS').value;
+  const bri=+document.getElementById('brS').value;
+  const sat=+document.getElementById('saS').value;
+  return H(hue, sat||1, bri||1);
+}
+// App swatch hues: Red, Orange, Gold, Green, Teal, Blue, Purple, Rose, Pink, Sage
+const APP_SWATCHES=[0, 28, 50, 140, 172, 207, 270, 340, 320, 100];
+function buildRainbow(primaryHex, themeMode){
+  const [ph]=hexToHsl(primaryHex);
+  const bri=48, sat=65;
+  let swL, swS;
+  const m = themeMode || mode;
+  if(m==='dark'||m==='mix'){ swL=Math.max(bri*0.7,8);  swS=Math.max(sat*0.75,10); }
+  else if(m==='mid')       { swL=Math.max(bri*0.85,14); swS=Math.max(sat*0.8,15);  }
+  else                     { swL=Math.min(bri*1.1,88);  swS=Math.max(sat*0.7,12);  }
+  const rw=document.getElementById('rswWrap'); rw.innerHTML='';
+  APP_SWATCHES.forEach((base,i)=>{
+    const nudged=(base*0.82+ph*0.18+360)%360;
+    const bg=H(nudged,swS,swL);
+    const d=document.createElement('div');
+    d.style.cssText='flex:1;height:var(--qs-hdr);background:'+bg+(i<APP_SWATCHES.length-1?';border-right:var(--border-width) solid #000':'');
+    rw.appendChild(d);
+  });
+}
+function updateSliderPreview(){
+  const hex=getPrimary();
+  const pc2=document.getElementById('primaryCard');
+  pc2.style.background=hex;
+  pc2.style.color=lum(hex)>0.25?'#111':'#f2f2f2';
+  pc2.textContent=hex.toUpperCase();
+  buildRainbow(hex);
+}
+function randomTheme(){
+  const randHue=Math.floor(Math.random()*360);
+  const randBri=Math.round(rnd(8,60));
+  const randSat=Math.round(rnd(12,88));
+  document.getElementById('hueS').value=randHue;
+  document.getElementById('brS').value=randBri;
+  document.getElementById('saS').value=randSat;
+  updateSliderPreview();
+  const hex=H(randHue,randSat,randBri);
+  applyTheme(makeTheme(hex, true));
+}
+function applyFromSliders(){applyTheme(makeTheme(getPrimary(), true));}
+function copyData(){
+  const f=document.getElementById('themeField');if(!f||!f.value)return;
+  navigator.clipboard.writeText(f.value).then(()=>{const btn=document.getElementById('copyBtn');btn.textContent='Copied!';setTimeout(()=>btn.textContent='Copy',1500);}).catch(()=>{f.select();document.execCommand('copy');});
+}
+
+['hueS','brS','saS'].forEach(id=>document.getElementById(id).addEventListener('input',updateSliderPreview));
+updateSliderPreview();randomTheme();
+</script>
+</body>
+</html>
