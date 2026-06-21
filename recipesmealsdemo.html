@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Pantry Pro · Recipes Demo</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --margin:4px;
+  --card-height:45px;
+  --drop-height:32px;
+  --bw:3px;
+  --bc:#000;
+  --radius:8px;
+  --bg1:#111920;
+  --bg2:#374151;
+  --bg3:#0f1520;
+  --bg4:#636B76;
+  --green:#48a971;
+  --blue:#5A8DB8;
+  --red:#C85A5A;
+  --orange:#C7824A;
+  --purple:#8a7ca8;
+  --muted:#9ca3af;
+  --white:#ffffff;
+}
+html,body{width:100%;min-height:100vh;background:var(--bg1);color:var(--white);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;}
+body{display:flex;flex-direction:column;align-items:center;padding:calc(var(--card-height) + var(--margin)) var(--margin) 60px;}
+
+/* HEADER */
+.header{position:fixed;top:0;left:0;right:0;height:var(--card-height);display:flex;border-bottom:var(--bw) solid var(--bc);z-index:100;}
+.hbtn{flex:1;background:var(--bg3);border:none;border-right:var(--bw) solid var(--bc);color:var(--muted);font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;}
+.hbtn:last-child{border-right:none;}
+.hbtn.active{background:var(--bg2);color:var(--white);}
+
+/* PAGES */
+.page{display:none;flex-direction:column;gap:var(--margin);width:100%;max-width:480px;}
+.page.active{display:flex;}
+
+/* CARDS */
+.card{border:var(--bw) solid var(--bc);border-radius:var(--radius);overflow:hidden;flex-shrink:0;background:var(--bg2);}
+.row{height:var(--drop-height);display:flex;align-items:stretch;}
+.row-tall{height:var(--card-height);display:flex;align-items:stretch;}
+.cell{display:flex;align-items:center;justify-content:center;padding:0 10px;}
+.cell-left{flex:1;display:flex;align-items:center;padding:0 12px;gap:8px;}
+.label{font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);}
+.divider-v{width:var(--bw);background:var(--bc);flex-shrink:0;}
+.divider-h{height:var(--bw);background:var(--bc);flex-shrink:0;}
+
+/* SECTION DIVIDER */
+.sec-div{display:flex;align-items:center;gap:8px;padding:6px 2px 2px;flex-shrink:0;}
+.sec-div-line{flex:1;height:var(--bw);background:var(--bc);}
+.sec-div-lbl{font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;flex-shrink:0;}
+
+/* FILTER BAR */
+.filter-bar{border:var(--bw) solid var(--bc);border-radius:var(--radius);overflow:hidden;flex-shrink:0;display:flex;height:var(--drop-height);}
+.fb-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;gap:1px;background:var(--bg2);border-right:var(--bw) solid var(--bc);}
+.fb-btn:last-child{border-right:none;}
+.fb-btn.active{background:var(--bg4);}
+.fb-num{font-size:11px;font-weight:800;color:rgba(255,255,255,0.4);}
+.fb-btn.active .fb-num{color:#fff;}
+.fb-lbl{font-size:6px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);}
+
+/* PANTRY CARD — matches real app exactly */
+.pt-card{border:3px solid #000;border-radius:8px;overflow:hidden;flex-shrink:0;width:100%;}
+.pt-main{height:32px!important;min-height:32px!important;max-height:32px!important;box-sizing:border-box;display:flex;align-items:stretch;position:relative;overflow:hidden;cursor:pointer;}
+.pt-btn{width:32px;min-width:32px;max-width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;z-index:2;flex-shrink:0;cursor:pointer;border:none;background:var(--bg3);color:#fff;position:relative;box-sizing:border-box;}
+.pt-btn.left{border-right:3px solid #000;}
+.pt-btn.right{border-left:3px solid #000;}
+.pt-center{flex:1;height:32px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;background:#374151;overflow:hidden;}
+.pt-name{position:relative;z-index:2;font-size:10px;font-weight:700;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;padding:0 6px;line-height:1;margin:0;color:#fff;}
+.pt-value{position:relative;z-index:2;font-size:8px;font-weight:600;letter-spacing:0.04em;color:rgba(255,255,255,0.7);text-align:center;line-height:1;margin-top:1px;}
+
+/* WINDOW (slide in from right) */
+.win{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg1);z-index:200;display:none;flex-direction:column;transform:translateX(100%);transition:transform 0.25s ease;}
+.win.open{display:flex;transform:translateX(0);}
+.win-hdr{height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--bw) solid var(--bc);flex-shrink:0;background:var(--bg3);}
+.win-title{flex:1;display:flex;align-items:center;padding:0 14px;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;}
+.win-close{width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--bw) solid var(--bc);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff;cursor:pointer;}
+.win-body{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--margin);padding:var(--margin);}
+
+/* INGREDIENT ROW */
+.ing-row{height:var(--drop-height);border:var(--bw) solid var(--bc);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;}
+.ing-name{flex:1;display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;color:var(--white);background:var(--bg2);}
+.ing-amt{width:80px;min-width:80px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--white);background:var(--bg3);border-left:var(--bw) solid var(--bc);}
+.ing-status{width:36px;min-width:36px;display:flex;align-items:center;justify-content:center;font-size:14px;border-left:var(--bw) solid var(--bc);}
+
+/* ACTION BTN */
+.act-btn{height:var(--card-height);border:var(--bw) solid var(--bc);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;flex-shrink:0;}
+
+/* MEAL CARD */
+.meal-card{border:var(--bw) solid var(--bc);border-radius:var(--radius);overflow:hidden;flex-shrink:0;cursor:pointer;}
+.meal-top{height:var(--card-height);display:flex;align-items:stretch;background:var(--bg2);}
+.meal-bottom{height:var(--drop-height);display:flex;align-items:stretch;border-top:var(--bw) solid var(--bc);background:var(--bg3);}
+
+/* COOK CONFIRM */
+.deduct-row{height:var(--drop-height);border:var(--bw) solid var(--bc);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;}
+.deduct-name{flex:1;display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;background:var(--bg2);}
+.deduct-conv{width:100px;min-width:100px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;background:var(--bg3);border-left:var(--bw) solid var(--bc);color:var(--muted);text-align:center;padding:0 4px;}
+.deduct-ok{width:32px;min-width:32px;display:flex;align-items:center;justify-content:center;font-size:14px;border-left:var(--bw) solid var(--bc);}
+
+/* STAT ROW */
+.stat-row{height:var(--drop-height);display:flex;align-items:stretch;border:var(--bw) solid var(--bc);border-radius:var(--radius);overflow:hidden;flex-shrink:0;}
+.stat-lbl{width:50%;display:flex;align-items:center;padding:0 10px;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);background:var(--bg3);border-right:var(--bw) solid var(--bc);}
+.stat-val{flex:1;display:flex;align-items:center;padding:0 10px;font-size:11px;font-weight:800;background:var(--bg2);}
+
+/* EMPTY STATE */
+.empty{display:flex;align-items:center;justify-content:center;padding:24px 16px;font-size:10px;font-weight:600;color:var(--muted);font-style:italic;text-align:center;border:var(--bw) solid var(--bc);border-radius:var(--radius);background:var(--bg2);}
+
+/* PILL */
+.pill{display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:8px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;border:2px solid;}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--green);color:#000;font-size:10px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;padding:10px 20px;border-radius:99px;border:var(--bw) solid var(--bc);z-index:999;transition:transform 0.3s ease;pointer-events:none;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+
+/* SERVINGS ROW */
+.serv-row{height:var(--drop-height);border:var(--bw) solid var(--bc);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;}
+.serv-lbl{width:50%;display:flex;align-items:center;justify-content:center;background:var(--bg3);border-right:var(--bw) solid var(--bc);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);}
+.serv-ctrl{flex:1;display:flex;align-items:stretch;}
+.serv-btn{width:36px;display:flex;align-items:center;justify-content:center;background:var(--bg2);cursor:pointer;font-size:16px;font-weight:700;border-right:var(--bw) solid var(--bc);}
+.serv-btn:last-child{border-right:none;border-left:var(--bw) solid var(--bc);}
+.serv-val{flex:1;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;background:var(--bg2);}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="hbtn active" onclick="setPage('pantry')">My Pantry</button>
+  <button class="hbtn" onclick="setPage('recipes')">Recipes</button>
+  <button class="hbtn" onclick="setPage('meals')">Meals</button>
+</div>
+
+<!-- PANTRY PAGE -->
+<div class="page active" id="pagePantry"></div>
+
+<!-- RECIPES PAGE -->
+<div class="page" id="pageRecipes"></div>
+
+<!-- MEALS PAGE -->
+<div class="page" id="pageMeals"></div>
+
+<!-- RECIPE DETAIL WINDOW -->
+<div class="win" id="winRecipe">
+  <div class="win-hdr">
+    <div class="win-title" id="winRecipeTitle">Recipe</div>
+    <button class="win-close" onclick="closeWin('winRecipe')">×</button>
+  </div>
+  <div class="win-body" id="winRecipeBody"></div>
+</div>
+
+<!-- COOK WINDOW -->
+<div class="win" id="winCook">
+  <div class="win-hdr">
+    <div class="win-title" id="winCookTitle">Cook</div>
+    <button class="win-close" onclick="closeWin('winCook')">×</button>
+  </div>
+  <div class="win-body" id="winCookBody"></div>
+</div>
+
+<!-- MEAL DETAIL WINDOW -->
+<div class="win" id="winMeal">
+  <div class="win-hdr">
+    <div class="win-title" id="winMealTitle">Meal</div>
+    <button class="win-close" onclick="closeWin('winMeal')">×</button>
+  </div>
+  <div class="win-body" id="winMealBody"></div>
+</div>
+
+<!-- ADD RECIPE WINDOW -->
+<div class="win" id="winAddRecipe">
+  <div class="win-hdr">
+    <div class="win-title">New Recipe</div>
+    <button class="win-close" onclick="closeWin('winAddRecipe')">×</button>
+  </div>
+  <div class="win-body" id="winAddRecipeBody"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────
+
+// Density table: oz per cup for dry goods
+const DENSITY = {
+  'flour':4.25,'sugar':7,'brown sugar':7.5,'butter':8,'salt':9.6,
+  'oats':3.5,'rice':6.5,'pasta':3.5,'breadcrumbs':4,'cornstarch':4.5,
+  'cocoa':3.5,'powdered sugar':4,'almond flour':3.4
+};
+
+// Unit conversion to oz (weight) or fl oz (volume)
+const TO_OZ = {
+  // weight
+  'oz':1,'lbs':16,'g':0.03527,'kg':35.274,
+  // volume → fl oz
+  'fl oz':1,'cup':8,'cups':8,'tbsp':0.5,'tsp':0.1667,
+  'ml':0.03381,'l':33.814,'pint':16,'quart':32,'gallon':128
+};
+
+const VOLUME_UNITS = new Set(['fl oz','cup','cups','tbsp','tsp','ml','l','pint','quart','gallon']);
+const WEIGHT_UNITS = new Set(['oz','lbs','g','kg']);
+
+// Pantry: stock in oz or fl oz, plus pricePerOz for cost calc
+let pantry = [
+  {id:'flour',   name:'All-Purpose Flour', stock:72,  totalCap:80,  unit:'oz',    pricePerOz:0.0485, color:'#5A8DB8', density:4.25,  ozPerCup:4.25,  category:'Baking'},
+  {id:'sugar',   name:'White Sugar',       stock:56,  totalCap:64,  unit:'oz',    pricePerOz:0.0535, color:'#5A8DB8', density:7,     ozPerCup:7,     category:'Baking'},
+  {id:'butter',  name:'Butter',            stock:16,  totalCap:32,  unit:'oz',    pricePerOz:0.281,  color:'#C7824A', density:8,     ozPerCup:8,     category:'Dairy'},
+  {id:'eggs',    name:'Eggs',              stock:12,  totalCap:24,  unit:'each',  pricePerOz:0.333,  color:'#C7824A', density:null,  ozPerCup:null,  category:'Dairy'},
+  {id:'milk',    name:'Whole Milk',        stock:64,  totalCap:128, unit:'fl oz', pricePerOz:0.0546, color:'#5A8DB8', density:null,  ozPerCup:8,     category:'Dairy'},
+  {id:'olive_oil',name:'Olive Oil',        stock:24,  totalCap:32,  unit:'fl oz', pricePerOz:0.374,  color:'#C7824A', density:null,  ozPerCup:8,     category:'Oils'},
+  {id:'pasta',   name:'Pasta (Penne)',     stock:32,  totalCap:48,  unit:'oz',    pricePerOz:0.081,  color:'#C7824A', density:3.5,   ozPerCup:3.5,   category:'Pantry'},
+  {id:'tomatoes',name:'Canned Tomatoes',   stock:56,  totalCap:56,  unit:'oz',    pricePerOz:0.064,  color:'#C85A5A', density:null,  ozPerCup:null,  category:'Pantry'},
+  {id:'garlic',  name:'Garlic Cloves',     stock:12,  totalCap:24,  unit:'each',  pricePerOz:0.167,  color:'#48a971', density:null,  ozPerCup:null,  category:'Produce'},
+  {id:'onion',   name:'Yellow Onion',      stock:3,   totalCap:6,   unit:'each',  pricePerOz:0.792,  color:'#48a971', density:null,  ozPerCup:null,  category:'Produce'},
+  {id:'parmesan',name:'Parmesan',          stock:8,   totalCap:16,  unit:'oz',    pricePerOz:0.624,  color:'#C7824A', density:null,  ozPerCup:null,  category:'Dairy'},
+  {id:'salt',    name:'Salt',              stock:96,  totalCap:128, unit:'oz',    pricePerOz:0.021,  color:'#9ca3af', density:9.6,   ozPerCup:9.6,   category:'Spices'},
+];
+
+// Recipes: ingredients reference pantry IDs, amounts in recipe units
+let recipes = [
+  {
+    id:'r1', name:'Pasta Arrabbiata', servings:4, color:'#C85A5A',
+    ingredients:[
+      {pantryId:'pasta',   amount:12,  unit:'oz',   label:'Pasta'},
+      {pantryId:'tomatoes',amount:28,  unit:'oz',   label:'Canned Tomatoes'},
+      {pantryId:'olive_oil',amount:3,  unit:'tbsp', label:'Olive Oil'},
+      {pantryId:'garlic',  amount:4,   unit:'each', label:'Garlic Cloves'},
+      {pantryId:'salt',    amount:1,   unit:'tsp',  label:'Salt'},
+    ]
+  },
+  {
+    id:'r2', name:'Fluffy Pancakes', servings:4, color:'#C7824A',
+    ingredients:[
+      {pantryId:'flour',  amount:1.5, unit:'cups', label:'Flour'},
+      {pantryId:'milk',   amount:1,   unit:'cup',  label:'Milk'},
+      {pantryId:'eggs',   amount:2,   unit:'each', label:'Eggs'},
+      {pantryId:'butter', amount:2,   unit:'tbsp', label:'Butter (melted)'},
+      {pantryId:'sugar',  amount:2,   unit:'tbsp', label:'Sugar'},
+      {pantryId:'salt',   amount:0.5, unit:'tsp',  label:'Salt'},
+    ]
+  },
+  {
+    id:'r3', name:'Classic Omelette', servings:1, color:'#48a971',
+    ingredients:[
+      {pantryId:'eggs',   amount:3,   unit:'each', label:'Eggs'},
+      {pantryId:'butter', amount:1,   unit:'tbsp', label:'Butter'},
+      {pantryId:'milk',   amount:2,   unit:'tbsp', label:'Milk'},
+      {pantryId:'salt',   amount:0.25,unit:'tsp',  label:'Salt'},
+    ]
+  },
+  {
+    id:'r4', name:'Pasta Cacio e Pepe', servings:2, color:'#8a7ca8',
+    ingredients:[
+      {pantryId:'pasta',    amount:8,   unit:'oz',   label:'Pasta'},
+      {pantryId:'parmesan', amount:3,   unit:'oz',   label:'Parmesan'},
+      {pantryId:'olive_oil',amount:1,   unit:'tbsp', label:'Olive Oil'},
+      {pantryId:'salt',     amount:1,   unit:'tsp',  label:'Salt'},
+    ]
+  },
+];
+
+// Meal log
+let meals = [];
+
+// ── CONVERSION ────────────────────────────────────────────────────────
+
+// Convert a recipe ingredient amount to the pantry item's native unit
+// Returns {convertedAmt, possible, note}
+function convertIngredient(ing, pantryItem) {
+  const recipeUnit = ing.unit.toLowerCase();
+  const pantryUnit = pantryItem.unit.toLowerCase();
+
+  // Same unit — trivial
+  if (recipeUnit === pantryUnit) {
+    return {convertedAmt: ing.amount, possible: true, note: `${ing.amount} ${ing.unit}`};
+  }
+
+  // Both weight — convert through oz
+  if (WEIGHT_UNITS.has(recipeUnit) && WEIGHT_UNITS.has(pantryUnit)) {
+    const inOz = ing.amount * TO_OZ[recipeUnit];
+    const out = inOz / TO_OZ[pantryUnit];
+    return {convertedAmt: parseFloat(out.toFixed(2)), possible: true, note: `${ing.amount} ${ing.unit} → ${parseFloat(out.toFixed(2))} ${pantryUnit}`};
+  }
+
+  // Both volume — convert through fl oz
+  if (VOLUME_UNITS.has(recipeUnit) && VOLUME_UNITS.has(pantryUnit)) {
+    const inFlOz = ing.amount * TO_OZ[recipeUnit];
+    const out = inFlOz / TO_OZ[pantryUnit];
+    return {convertedAmt: parseFloat(out.toFixed(2)), possible: true, note: `${ing.amount} ${ing.unit} → ${parseFloat(out.toFixed(2))} ${pantryUnit}`};
+  }
+
+  // Volume → weight (need density/ozPerCup)
+  if (VOLUME_UNITS.has(recipeUnit) && WEIGHT_UNITS.has(pantryUnit)) {
+    const ozPerCup = pantryItem.ozPerCup;
+    if (!ozPerCup) return {convertedAmt: 0, possible: false, note: 'No density data'};
+    const inCups = (ing.amount * TO_OZ[recipeUnit]) / 8; // convert to cups first
+    const inOz = inCups * ozPerCup;
+    const out = inOz / TO_OZ[pantryUnit];
+    return {convertedAmt: parseFloat(out.toFixed(2)), possible: true, note: `${ing.amount} ${ing.unit} → ${parseFloat(inOz.toFixed(1))} oz → ${parseFloat(out.toFixed(2))} ${pantryUnit}`};
+  }
+
+  // Weight → volume (reverse density)
+  if (WEIGHT_UNITS.has(recipeUnit) && VOLUME_UNITS.has(pantryUnit)) {
+    const ozPerCup = pantryItem.ozPerCup;
+    if (!ozPerCup) return {convertedAmt: 0, possible: false, note: 'No density data'};
+    const inOz = ing.amount * TO_OZ[recipeUnit];
+    const inCups = inOz / ozPerCup;
+    const out = inCups * 8 / TO_OZ[pantryUnit];
+    return {convertedAmt: parseFloat(out.toFixed(2)), possible: true, note: `${ing.amount} ${ing.unit} → ${parseFloat(inCups.toFixed(2))} cups → ${parseFloat(out.toFixed(2))} ${pantryUnit}`};
+  }
+
+  // each → each
+  if (recipeUnit === 'each' && pantryUnit === 'each') {
+    return {convertedAmt: ing.amount, possible: true, note: `${ing.amount} each`};
+  }
+
+  return {convertedAmt: 0, possible: false, note: 'Cannot convert'};
+}
+
+// Cost of using an amount of a pantry item
+function ingredientCost(pantryItem, convertedAmt) {
+  return parseFloat((convertedAmt * pantryItem.pricePerOz).toFixed(4));
+}
+
+// ── RENDERING HELPERS ─────────────────────────────────────────────────
+
+function el(tag, style, text) {
+  const e = document.createElement(tag);
+  if (style) e.style.cssText = style;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function div(style, text) { return el('div', style, text); }
+
+function secDiv(label, color) {
+  const d = div('display:flex;align-items:center;gap:8px;padding:6px 2px 2px;flex-shrink:0;');
+  const l1 = div('flex:1;height:3px;background:#000;');
+  const lbl = div(`font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;flex-shrink:0;color:${color||'var(--muted)'};`, label);
+  const l2 = div('flex:1;height:3px;background:#000;');
+  d.append(l1, lbl, l2);
+  return d;
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function openWin(id) {
+  const w = document.getElementById(id);
+  w.style.display = 'flex';
+  requestAnimationFrame(() => w.classList.add('open'));
+}
+
+function closeWin(id) {
+  const w = document.getElementById(id);
+  w.classList.remove('open');
+  setTimeout(() => w.style.display = 'none', 260);
+}
+
+// ── STATUS HELPERS ────────────────────────────────────────────────────
+
+function stockStatus(item) {
+  // approximate — no totalCap in demo so use rough thresholds
+  if (item.stock <= 0) return 'empty';
+  return 'ok';
+}
+
+function fillColor(item) {
+  if (item.stock <= 0) return 'var(--red)';
+  return item.color || 'var(--green)';
+}
+
+function fmtStock(item) {
+  if (item.unit === 'each') return `${item.stock} each`;
+  if (item.unit === 'fl oz') {
+    if (item.stock >= 32) return `${(item.stock/32).toFixed(1)} qt`;
+    if (item.stock >= 8) return `${(item.stock/8).toFixed(1)} cups (${item.stock} fl oz)`;
+    return `${item.stock} fl oz`;
+  }
+  if (item.unit === 'oz') {
+    if (item.stock >= 16) return `${(item.stock/16).toFixed(1)} lbs (${item.stock} oz)`;
+    return `${item.stock} oz`;
+  }
+  return `${item.stock} ${item.unit}`;
+}
+
+// ── PAGE: PANTRY ──────────────────────────────────────────────────────
+
+function ptFillColor(item) {
+  const ratio = item.stock / (item.totalCap || 1);
+  if (ratio <= 1/6) return '#C85A5A';
+  if (ratio <= 1/3) return '#5A8DB8';
+  return '#48a971';
+}
+
+function ptDarken(hex, pct) {
+  let c = hex.replace('#','');
+  if(c.length===3) c=c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
+  const r=Math.max(0,Math.round(parseInt(c.slice(0,2),16)*(1-pct)));
+  const g=Math.max(0,Math.round(parseInt(c.slice(2,4),16)*(1-pct)));
+  const b=Math.max(0,Math.round(parseInt(c.slice(4,6),16)*(1-pct)));
+  return `rgb(${r},${g},${b})`;
+}
+
+function renderPantry() {
+  const page = document.getElementById('pagePantry');
+  page.innerHTML = '';
+
+  const cats = [...new Set(pantry.map(i => i.category))];
+  cats.forEach(cat => {
+    const items = pantry.filter(i => i.category === cat);
+    const catColor = items[0]?.color || 'var(--muted)';
+    page.appendChild(secDiv(cat, catColor));
+
+    items.forEach(item => {
+      const fc = ptFillColor(item);
+      const vMax = Math.max(item.totalCap, item.stock) || 1;
+      const bPct = (item.stock / vMax * 100).toFixed(1);
+      const oPct = item.stock > item.totalCap ? ((item.stock - item.totalCap) / vMax * 100).toFixed(1) : 0;
+      const emptyAndUsed = item.stock === 0;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'pt-card';
+
+      const main = document.createElement('div');
+      main.className = 'pt-main';
+
+      // Left − button
+      const minBtn = document.createElement('button');
+      minBtn.className = 'pt-btn left';
+      minBtn.textContent = '';
+
+      // Center
+      const center = document.createElement('div');
+      center.className = 'pt-center';
+
+      const fillBase = document.createElement('div');
+      fillBase.style.cssText = `position:absolute;left:0;top:0;bottom:0;width:${bPct}%;background:${fc};opacity:0.5;transition:width 0.35s cubic-bezier(0.4,0,0.2,1);z-index:0;pointer-events:none;`;
+
+      const fillOver = document.createElement('div');
+      fillOver.style.cssText = `position:absolute;right:0;top:0;bottom:0;width:${oPct}%;background:${ptDarken(fc,0.5)};opacity:0.7;transition:width 0.35s;z-index:1;pointer-events:none;`;
+
+      const redTint = document.createElement('div');
+      redTint.style.cssText = `position:absolute;left:0;top:0;right:0;bottom:0;background:rgba(200,90,90,0.15);z-index:0;pointer-events:none;display:${emptyAndUsed?'':'none'};`;
+
+      const nm = document.createElement('div');
+      nm.className = 'pt-name';
+      nm.textContent = item.name;
+
+      const val = document.createElement('div');
+      val.className = 'pt-value';
+      val.textContent = `${item.stock}/${item.totalCap} ${item.unit}`;
+
+      center.append(fillBase, fillOver, redTint, nm, val);
+
+      // Right + button
+      const plusBtn = document.createElement('button');
+      plusBtn.className = 'pt-btn right';
+      plusBtn.textContent = '';
+
+      main.append(minBtn, center, plusBtn);
+      wrap.appendChild(main);
+      page.appendChild(wrap);
+    });
+  });
+}
+
+// ── PAGE: RECIPES ─────────────────────────────────────────────────────
+
+function renderRecipes() {
+  const page = document.getElementById('pageRecipes');
+  page.innerHTML = '';
+
+  // Add recipe button
+  const addBtn = div('height:var(--card-height);border:var(--bw) solid var(--bc);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;background:#1d3318;color:var(--green);flex-shrink:0;', '+ New Recipe');
+  addBtn.onclick = () => openAddRecipe();
+  page.appendChild(addBtn);
+
+  page.appendChild(secDiv('Your Recipes', 'var(--muted)'));
+
+  recipes.forEach(recipe => {
+    const card = div('');
+    card.className = 'card';
+    card.style.cursor = 'pointer';
+
+    const top = div('height:var(--card-height);display:flex;align-items:stretch;');
+    const accent = div(`width:6px;min-width:6px;background:${recipe.color};`);
+    const info = div('flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 12px;gap:2px;');
+    const name = div('font-size:11px;font-weight:800;color:#fff;', recipe.name);
+    const sub = div('font-size:9px;font-weight:600;color:var(--muted);', `${recipe.ingredients.length} ingredients · serves ${recipe.servings}`);
+    info.append(name, sub);
+
+    // Feasibility check
+    const feasible = checkFeasibility(recipe, recipe.servings);
+    const badge = div(`padding:0 8px;display:flex;align-items:center;font-size:8px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;color:${feasible.canMake ? '#000' : '#fff'};background:${feasible.canMake ? 'var(--green)' : 'var(--bg4)'};border-left:var(--bw) solid var(--bc);`, feasible.canMake ? 'READY' : `${feasible.missing} LOW`);
+
+    top.append(accent, info, badge);
+
+    const bottom = div('height:var(--drop-height);display:flex;align-items:stretch;border-top:var(--bw) solid var(--bc);background:var(--bg3);');
+    const costCell = div('flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:700;color:var(--muted);border-right:var(--bw) solid var(--bc);', `Est. cost: $${feasible.totalCost.toFixed(2)}`);
+    const perCell = div('flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:700;color:var(--muted);', `$${(feasible.totalCost / recipe.servings).toFixed(2)}/serving`);
+    bottom.append(costCell, perCell);
+
+    card.append(top, bottom);
+    card.onclick = () => openRecipeDetail(recipe);
+    page.appendChild(card);
+  });
+}
+
+function checkFeasibility(recipe, servings) {
+  const scale = servings / recipe.servings;
+  let missing = 0;
+  let totalCost = 0;
+  recipe.ingredients.forEach(ing => {
+    const item = pantry.find(p => p.id === ing.pantryId);
+    if (!item) { missing++; return; }
+    const conv = convertIngredient({...ing, amount: ing.amount * scale}, item);
+    if (!conv.possible || item.stock < conv.convertedAmt) missing++;
+    totalCost += ingredientCost(item, conv.convertedAmt);
+  });
+  return {canMake: missing === 0, missing, totalCost};
+}
+
+// ── RECIPE DETAIL WINDOW ──────────────────────────────────────────────
+
+function openRecipeDetail(recipe) {
+  document.getElementById('winRecipeTitle').textContent = recipe.name;
+  const body = document.getElementById('winRecipeBody');
+  body.innerHTML = '';
+
+  // Info card
+  const info = div('');
+  info.className = 'card';
+  const infoRow = div('height:var(--drop-height);display:flex;align-items:stretch;');
+  const servCell = div('flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-right:var(--bw) solid var(--bc);background:var(--bg3);');
+  servCell.append(div('font-size:13px;font-weight:900;color:#fff;', recipe.servings.toString()), div('font-size:7px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);','SERVINGS'));
+  const ingCell = div('flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-right:var(--bw) solid var(--bc);background:var(--bg3);');
+  ingCell.append(div('font-size:13px;font-weight:900;color:#fff;', recipe.ingredients.length.toString()), div('font-size:7px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);','INGREDIENTS'));
+  const feasible = checkFeasibility(recipe, recipe.servings);
+  const costCell2 = div('flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:var(--bg3);');
+  costCell2.append(div('font-size:13px;font-weight:900;color:var(--green);', '$'+feasible.totalCost.toFixed(2)), div('font-size:7px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);','EST. COST'));
+  infoRow.append(servCell, ingCell, costCell2);
+  info.appendChild(infoRow);
+  body.appendChild(info);
+
+  // Ingredients
+  body.appendChild(secDiv('Ingredients', 'var(--muted)'));
+
+  recipe.ingredients.forEach(ing => {
+    const item = pantry.find(p => p.id === ing.pantryId);
+    const row = div('');
+    row.className = 'ing-row';
+    const nameEl = div('flex:1;display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:600;background:var(--bg2);', ing.label);
+    const amtEl = div('width:90px;min-width:90px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;background:var(--bg3);border-left:var(--bw) solid var(--bc);', `${ing.amount} ${ing.unit}`);
+    let statusIcon = '⚠️';
+    let statusBg = 'var(--bg4)';
+    if (item) {
+      const conv = convertIngredient(ing, item);
+      if (conv.possible && item.stock >= conv.convertedAmt) { statusIcon = '✓'; statusBg = 'var(--green)'; }
+      else if (!conv.possible) { statusIcon = '?'; statusBg = 'var(--orange)'; }
+      else { statusIcon = '↓'; statusBg = 'var(--red)'; }
+    }
+    const statusEl = div(`width:36px;min-width:36px;display:flex;align-items:center;justify-content:center;font-size:13px;border-left:var(--bw) solid var(--bc);background:${statusBg};`, statusIcon);
+    row.append(nameEl, amtEl, statusEl);
+    body.appendChild(row);
+  });
+
+  // Cook button
+  body.appendChild(div('height:12px;'));
+  const cookBtn = div('height:var(--card-height);border:var(--bw) solid var(--bc);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;background:#1d3318;color:var(--green);flex-shrink:0;', '🍳 Cook This Recipe');
+  cookBtn.onclick = () => { closeWin('winRecipe'); openCookWindow(recipe); };
+  body.appendChild(cookBtn);
+
+  openWin('winRecipe');
+}
+
+// ── COOK WINDOW ───────────────────────────────────────────────────────
+
+let cookServings = 1;
+let currentCookRecipe = null;
+
+function openCookWindow(recipe) {
+  currentCookRecipe = recipe;
+  cookServings = recipe.servings;
+  document.getElementById('winCookTitle').textContent = 'Cook · ' + recipe.name;
+  renderCookBody();
+  openWin('winCook');
+}
+
+function renderCookBody() {
+  const recipe = currentCookRecipe;
+  const body = document.getElementById('winCookBody');
+  body.innerHTML = '';
+  const scale = cookServings / recipe.servings;
+
+  // Servings control
+  const servRow = div('');
+  servRow.className = 'serv-row';
+  const servLbl = div('width:40%;display:flex;align-items:center;justify-content:center;background:var(--bg3);border-right:var(--bw) solid var(--bc);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);', 'Servings');
+  const servCtrl = div('flex:1;display:flex;align-items:stretch;');
+  const minBtn = div('width:40px;display:flex;align-items:center;justify-content:center;background:var(--bg2);cursor:pointer;font-size:18px;font-weight:700;border-right:var(--bw) solid var(--bc);', '−');
+  const valEl = div('flex:1;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;background:var(--bg2);', cookServings.toString());
+  const plusBtn = div('width:40px;display:flex;align-items:center;justify-content:center;background:var(--bg2);cursor:pointer;font-size:18px;font-weight:700;border-left:var(--bw) solid var(--bc);', '+');
+  minBtn.onclick = () => { if(cookServings > 1) { cookServings--; renderCookBody(); } };
+  plusBtn.onclick = () => { cookServings++; renderCookBody(); };
+  servCtrl.append(minBtn, valEl, plusBtn);
+  servRow.append(servLbl, servCtrl);
+  body.appendChild(servRow);
+
+  // Ingredient deduction preview
+  body.appendChild(secDiv('Ingredient Deductions', 'var(--muted)'));
+
+  let totalCost = 0;
+  let allPossible = true;
+  const deductions = [];
+
+  recipe.ingredients.forEach(ing => {
+    const item = pantry.find(p => p.id === ing.pantryId);
+    const scaledIng = {...ing, amount: parseFloat((ing.amount * scale).toFixed(3))};
+    const conv = item ? convertIngredient(scaledIng, item) : {convertedAmt:0, possible:false, note:'Not in pantry'};
+
+    const canDeduct = item && conv.possible && item.stock >= conv.convertedAmt;
+    const cost = item && conv.possible ? ingredientCost(item, conv.convertedAmt) : 0;
+    totalCost += cost;
+    if (!conv.possible || !canDeduct) allPossible = false;
+
+    deductions.push({ing, item, scaledIng, conv, canDeduct, cost});
+
+    const row = div('');
+    row.className = 'deduct-row';
+    const nameEl = div('flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 10px;background:var(--bg2);gap:1px;');
+    nameEl.append(
+      div('font-size:10px;font-weight:700;', ing.label),
+      div('font-size:8px;font-weight:600;color:var(--muted);', `${scaledIng.amount} ${ing.unit}`)
+    );
+    const convEl = div(`width:110px;min-width:110px;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;background:var(--bg3);border-left:var(--bw) solid var(--bc);color:${conv.possible ? 'var(--muted)' : 'var(--orange)'};text-align:center;padding:0 4px;line-height:1.3;`, conv.note);
+    const icon = canDeduct ? '✓' : (!conv.possible ? '?' : '↓');
+    const iconBg = canDeduct ? 'var(--green)' : (!conv.possible ? 'var(--orange)' : 'var(--red)');
+    const okEl = div(`width:32px;min-width:32px;display:flex;align-items:center;justify-content:center;font-size:13px;border-left:var(--bw) solid var(--bc);background:${iconBg};`, icon);
+    row.append(nameEl, convEl, okEl);
+    body.appendChild(row);
+  });
+
+  // Cost summary
+  body.appendChild(secDiv('Cost Summary', 'var(--green)'));
+  const costCard = div('');
+  costCard.className = 'card';
+
+  [[`Total Cost`, `$${totalCost.toFixed(2)}`],
+   [`Cost Per Serving`, `$${(totalCost/cookServings).toFixed(2)}`],
+   [`Servings`, `${cookServings}`]
+  ].forEach(([lbl, val], i, arr) => {
+    const r = div(`height:var(--drop-height);display:flex;align-items:stretch;${i < arr.length-1 ? 'border-bottom:var(--bw) solid var(--bc);' : ''}`);
+    const l = div('flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);background:var(--bg3);border-right:var(--bw) solid var(--bc);', lbl);
+    const v = div('flex:1;display:flex;align-items:center;padding:0 12px;font-size:11px;font-weight:800;background:var(--bg2);', val);
+    r.append(l, v);
+    costCard.appendChild(r);
+  });
+  body.appendChild(costCard);
+
+  // Confirm button
+  body.appendChild(div('height:8px;'));
+  const confirmBtn = div(`height:var(--card-height);border:var(--bw) solid var(--bc);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;background:${allPossible ? '#1d3318' : '#2a1010'};color:${allPossible ? 'var(--green)' : 'var(--red)'};flex-shrink:0;`, allPossible ? '✓ Confirm & Deduct from Pantry' : '⚠ Some Ingredients Low — Cook Anyway');
+  confirmBtn.onclick = () => confirmCook(recipe, cookServings, deductions, totalCost);
+  body.appendChild(confirmBtn);
+}
+
+function confirmCook(recipe, servings, deductions, totalCost) {
+  // Deduct from pantry
+  deductions.forEach(({item, conv, canDeduct}) => {
+    if (item && conv.possible) {
+      item.stock = Math.max(0, parseFloat((item.stock - conv.convertedAmt).toFixed(2)));
+    }
+  });
+
+  // Log meal
+  const meal = {
+    id: 'm' + Date.now(),
+    recipeId: recipe.id,
+    recipeName: recipe.name,
+    recipeColor: recipe.color,
+    servings,
+    totalCost: parseFloat(totalCost.toFixed(2)),
+    costPerServing: parseFloat((totalCost / servings).toFixed(2)),
+    cookedAt: new Date(),
+    ingredients: deductions.map(d => ({
+      label: d.ing.label,
+      amount: d.scaledIng.amount,
+      unit: d.ing.unit,
+      cost: d.cost,
+      deducted: d.canDeduct
+    }))
+  };
+  meals.unshift(meal);
+
+  closeWin('winCook');
+  toast(`${recipe.name} cooked! $${totalCost.toFixed(2)} total`);
+  renderPantry();
+  renderRecipes();
+  renderMeals();
+  setPage('meals');
+}
+
+// ── PAGE: MEALS ───────────────────────────────────────────────────────
+
+function renderMeals() {
+  const page = document.getElementById('pageMeals');
+  page.innerHTML = '';
+
+  if (meals.length === 0) {
+    page.appendChild(div('display:flex;align-items:center;justify-content:center;padding:24px 16px;font-size:10px;font-weight:600;color:var(--muted);font-style:italic;text-align:center;border:var(--bw) solid var(--bc);border-radius:var(--radius);background:var(--bg2);', 'No meals cooked yet. Head to Recipes and cook something!'));
+    return;
+  }
+
+  // Summary stats
+  const totalSpend = meals.reduce((s, m) => s + m.totalCost, 0);
+  const avgCostPerServing = meals.reduce((s, m) => s + m.costPerServing, 0) / meals.length;
+  const totalServings = meals.reduce((s, m) => s + m.servings, 0);
+
+  const statsCard = div('');
+  statsCard.className = 'card';
+  [
+    ['Total Meals Cooked', meals.length.toString()],
+    ['Total Ingredient Cost', `$${totalSpend.toFixed(2)}`],
+    ['Total Servings Made', totalServings.toString()],
+    ['Avg Cost Per Serving', `$${avgCostPerServing.toFixed(2)}`],
+  ].forEach(([lbl, val], i, arr) => {
+    const r = div(`height:var(--drop-height);display:flex;align-items:stretch;${i < arr.length-1 ? 'border-bottom:var(--bw) solid var(--bc);' : ''}`);
+    const l = div('flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);background:var(--bg3);border-right:var(--bw) solid var(--bc);', lbl);
+    const v = div('flex:1;display:flex;align-items:center;padding:0 12px;font-size:11px;font-weight:800;color:var(--green);background:var(--bg2);', val);
+    r.append(l, v);
+    statsCard.appendChild(r);
+  });
+  page.appendChild(statsCard);
+
+  page.appendChild(secDiv('Meal History', 'var(--muted)'));
+
+  meals.forEach(meal => {
+    const card = div('');
+    card.className = 'meal-card';
+
+    const top = div('height:var(--card-height);display:flex;align-items:stretch;background:var(--bg2);');
+    const accent = div(`width:6px;min-width:6px;background:${meal.recipeColor};`);
+    const info = div('flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 12px;gap:3px;');
+    info.append(
+      div('font-size:11px;font-weight:800;color:#fff;', meal.recipeName),
+      div('font-size:9px;font-weight:600;color:var(--muted);', formatDate(meal.cookedAt) + ' · ' + meal.servings + ' servings')
+    );
+    const costBadge = div('padding:0 12px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:2px;');
+    costBadge.append(
+      div('font-size:12px;font-weight:900;color:var(--green);', `$${meal.totalCost.toFixed(2)}`),
+      div('font-size:8px;font-weight:700;color:var(--muted);', `$${meal.costPerServing.toFixed(2)}/srv`)
+    );
+    top.append(accent, info, costBadge);
+
+    const bottom = div('height:var(--drop-height);display:flex;align-items:stretch;border-top:var(--bw) solid var(--bc);background:var(--bg3);');
+    const detailBtn = div('flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);cursor:pointer;', 'View Details →');
+    detailBtn.onclick = (e) => { e.stopPropagation(); openMealDetail(meal); };
+    bottom.appendChild(detailBtn);
+
+    card.append(top, bottom);
+    page.appendChild(card);
+  });
+}
+
+function openMealDetail(meal) {
+  document.getElementById('winMealTitle').textContent = meal.recipeName;
+  const body = document.getElementById('winMealBody');
+  body.innerHTML = '';
+
+  // Stats
+  const statsCard = div('');
+  statsCard.className = 'card';
+  [
+    ['Cooked', formatDate(meal.cookedAt)],
+    ['Servings', meal.servings.toString()],
+    ['Total Cost', `$${meal.totalCost.toFixed(2)}`],
+    ['Cost Per Serving', `$${meal.costPerServing.toFixed(2)}`],
+  ].forEach(([lbl, val], i, arr) => {
+    const r = div(`height:var(--drop-height);display:flex;align-items:stretch;${i < arr.length-1 ? 'border-bottom:var(--bw) solid var(--bc);' : ''}`);
+    const l = div('flex:1;display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);background:var(--bg3);border-right:var(--bw) solid var(--bc);', lbl);
+    const v = div('flex:1;display:flex;align-items:center;padding:0 12px;font-size:11px;font-weight:800;background:var(--bg2);', val);
+    r.append(l, v);
+    statsCard.appendChild(r);
+  });
+  body.appendChild(statsCard);
+
+  body.appendChild(secDiv('Ingredient Breakdown', 'var(--muted)'));
+
+  meal.ingredients.forEach(ing => {
+    const row = div('');
+    row.className = 'ing-row';
+    const nameEl = div('flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 10px;background:var(--bg2);gap:1px;');
+    nameEl.append(
+      div('font-size:10px;font-weight:700;', ing.label),
+      div('font-size:8px;font-weight:600;color:var(--muted);', `${ing.amount} ${ing.unit}`)
+    );
+    const costEl = div('width:60px;min-width:60px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--green);background:var(--bg3);border-left:var(--bw) solid var(--bc);', ing.cost > 0 ? `$${ing.cost.toFixed(2)}` : '—');
+    row.append(nameEl, costEl);
+    body.appendChild(row);
+  });
+
+  openWin('winMeal');
+}
+
+// ── ADD RECIPE WINDOW ─────────────────────────────────────────────────
+
+let newRecipeIngs = [];
+let newRecipeName = '';
+let newRecipeServings = 4;
+
+function openAddRecipe() {
+  newRecipeIngs = [];
+  newRecipeName = '';
+  newRecipeServings = 4;
+  renderAddRecipeBody();
+  openWin('winAddRecipe');
+}
+
+function renderAddRecipeBody() {
+  const body = document.getElementById('winAddRecipeBody');
+  body.innerHTML = '';
+
+  // Name input
+  const nameCard = div('height:var(--drop-height);border:var(--bw) solid var(--bc);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;');
+  const nameLbl = div('width:40%;display:flex;align-items:center;justify-content:center;background:var(--bg3);border-right:var(--bw) solid var(--bc);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);', 'Recipe Name');
+  const nameInp = el('input', 'flex:1;background:var(--bg2);border:none;color:#fff;font-size:11px;font-weight:700;padding:0 12px;outline:none;font-family:inherit;');
+  nameInp.placeholder = 'e.g. Pasta Arrabbiata…';
+  nameInp.value = newRecipeName;
+  nameInp.oninput = e => { newRecipeName = e.target.value; };
+  nameCard.append(nameLbl, nameInp);
+  body.appendChild(nameCard);
+
+  // Servings
+  const servRow = div('height:var(--drop-height);border:var(--bw) solid var(--bc);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;');
+  const servLbl = div('width:40%;display:flex;align-items:center;justify-content:center;background:var(--bg3);border-right:var(--bw) solid var(--bc);font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);', 'Servings');
+  const servCtrl = div('flex:1;display:flex;align-items:stretch;');
+  const sMin = div('width:40px;display:flex;align-items:center;justify-content:center;background:var(--bg2);cursor:pointer;font-size:18px;font-weight:700;border-right:var(--bw) solid var(--bc);', '−');
+  const sVal = div('flex:1;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;background:var(--bg2);', newRecipeServings.toString());
+  const sPlus = div('width:40px;display:flex;align-items:center;justify-content:center;background:var(--bg2);cursor:pointer;font-size:18px;font-weight:700;border-left:var(--bw) solid var(--bc);', '+');
+  sMin.onclick = () => { if(newRecipeServings>1){newRecipeServings--;renderAddRecipeBody();} };
+  sPlus.onclick = () => { newRecipeServings++;renderAddRecipeBody(); };
+  servCtrl.append(sMin, sVal, sPlus);
+  servRow.append(servLbl, servCtrl);
+  body.appendChild(servRow);
+
+  // Ingredients
+  body.appendChild(secDiv('Ingredients', 'var(--muted)'));
+
+  newRecipeIngs.forEach((ing, idx) => {
+    const row = div('height:var(--drop-height);border:var(--bw) solid var(--bc);border-radius:var(--radius);overflow:hidden;display:flex;align-items:stretch;flex-shrink:0;');
+    const item = pantry.find(p => p.id === ing.pantryId);
+    const nameEl = div('flex:1;display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:700;background:var(--bg2);', item ? item.name : '?');
+    const amtEl = div('width:80px;min-width:80px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;background:var(--bg3);border-left:var(--bw) solid var(--bc);', `${ing.amount} ${ing.unit}`);
+    const delEl = div('width:36px;min-width:36px;display:flex;align-items:center;justify-content:center;font-size:16px;background:#502424;border-left:var(--bw) solid var(--bc);cursor:pointer;', '×');
+    delEl.onclick = () => { newRecipeIngs.splice(idx,1); renderAddRecipeBody(); };
+    row.append(nameEl, amtEl, delEl);
+    body.appendChild(row);
+  });
+
+  // Add ingredient form
+  const addIngCard = div('border:var(--bw) solid var(--bc);border-radius:var(--radius);overflow:hidden;flex-shrink:0;background:var(--bg3);');
+  const addLbl = div('height:var(--drop-height);display:flex;align-items:center;padding:0 12px;font-size:9px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);border-bottom:var(--bw) solid var(--bc);', '+ Add Ingredient');
+  addIngCard.appendChild(addLbl);
+
+  // Ingredient picker
+  const selRow = div('height:var(--drop-height);display:flex;align-items:stretch;border-bottom:var(--bw) solid var(--bc);');
+  const ingSelect = el('select', 'flex:1;background:var(--bg2);border:none;color:#fff;font-size:10px;font-weight:700;padding:0 10px;outline:none;font-family:inherit;cursor:pointer;');
+  ingSelect.innerHTML = '<option value="">Pick ingredient…</option>' + pantry.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  selRow.appendChild(ingSelect);
+  addIngCard.appendChild(selRow);
+
+  // Amount + unit
+  const amtRow = div('height:var(--drop-height);display:flex;align-items:stretch;');
+  const amtInp = el('input', 'flex:1;background:var(--bg2);border:none;border-right:var(--bw) solid var(--bc);color:#fff;font-size:11px;font-weight:700;padding:0 12px;outline:none;font-family:inherit;');
+  amtInp.type = 'number'; amtInp.min = '0'; amtInp.step = '0.25'; amtInp.placeholder = 'Amount…';
+  const unitSelect = el('select', 'width:80px;background:var(--bg3);border:none;border-right:var(--bw) solid var(--bc);color:var(--muted);font-size:10px;font-weight:700;padding:0 6px;outline:none;font-family:inherit;cursor:pointer;');
+  unitSelect.innerHTML = ['oz','lbs','g','cups','tbsp','tsp','fl oz','each','ml'].map(u => `<option>${u}</option>`).join('');
+  const addBtn2 = div('width:60px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.06em;text-transform:uppercase;background:var(--green);color:#000;cursor:pointer;', 'ADD');
+  addBtn2.onclick = () => {
+    const pid = ingSelect.value;
+    const amt = parseFloat(amtInp.value);
+    if (!pid || !amt) return;
+    const item = pantry.find(p => p.id === pid);
+    newRecipeIngs.push({pantryId: pid, amount: amt, unit: unitSelect.value, label: item.name});
+    renderAddRecipeBody();
+  };
+  amtRow.append(amtInp, unitSelect, addBtn2);
+  addIngCard.appendChild(amtRow);
+  body.appendChild(addIngCard);
+
+  // Save button
+  body.appendChild(div('height:8px;'));
+  const COLORS = ['#C85A5A','#C7824A','#48a971','#5A8DB8','#8a7ca8'];
+  const saveBtn = div(`height:var(--card-height);border:var(--bw) solid var(--bc);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;background:#1d2d3f;color:var(--blue);flex-shrink:0;`, '✓ Save Recipe');
+  saveBtn.onclick = () => {
+    if (!newRecipeName.trim() || newRecipeIngs.length === 0) { toast('Add a name and at least one ingredient'); return; }
+    const newR = {
+      id: 'r' + Date.now(),
+      name: newRecipeName.trim(),
+      servings: newRecipeServings,
+      color: COLORS[recipes.length % COLORS.length],
+      ingredients: newRecipeIngs
+    };
+    recipes.push(newR);
+    closeWin('winAddRecipe');
+    toast('Recipe saved!');
+    renderRecipes();
+    setPage('recipes');
+  };
+  body.appendChild(saveBtn);
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────
+
+function formatDate(d) {
+  const now = new Date();
+  const diff = Math.floor((now - d) / 60000);
+  if (diff < 1) return 'Just now';
+  if (diff < 60) return `${diff}m ago`;
+  if (diff < 1440) return `${Math.floor(diff/60)}h ago`;
+  return d.toLocaleDateString('en-US', {month:'short', day:'numeric'});
+}
+
+function setPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.hbtn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
+  document.querySelectorAll('.hbtn')[['pantry','recipes','meals'].indexOf(name)].classList.add('active');
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────
+
+renderPantry();
+renderRecipes();
+renderMeals();
+</script>
+</body>
+</html>

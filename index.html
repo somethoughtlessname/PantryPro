@@ -1,139 +1,229 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Shift Happens</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0f1520">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Shift Happens">
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <script src="styles.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Pantry Pro</title>
 
-<style id="jh-styles">
-#jhCoView{flex:1;min-height:0;overflow-y:auto;padding:var(--margin);display:none;}
-#jhCoView.on{display:block;}
-.jh-add-card{border:var(--border-width) solid var(--border-color);border-radius:var(--radius);height:var(--card-height);display:flex;align-items:center;justify-content:center;background:var(--primary);font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dark);cursor:pointer;margin-bottom:var(--margin);}
-.jh-card{border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;cursor:pointer;margin-bottom:var(--margin);}
-.jh-card-hdr{height:18px;display:flex;align-items:center;justify-content:center;border-bottom:var(--border-width) solid var(--border-color);padding:0 10px;}
-.jh-card-name{font-size:13px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--text-dark);}
-.jh-card-info{background:var(--bg-2);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 10px;gap:1px;}
-.jh-card-dur{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-light);}
-.jh-card-dates{font-size:10px;color:var(--text-mid);}
-.jh-card-roles{display:none;border-top:var(--border-width) solid var(--border-color);}
-.jh-card-roles.open{display:block;}
-.jh-role{padding:6px 14px;border-bottom:var(--border-width) solid var(--border-color);text-align:center;color:var(--text-dark);}
-.jh-role-title{font-size:12px;font-weight:800;}
-.jh-role-dur{font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text-light);margin-top:1px;}
-.jh-role-dates{font-size:10px;color:var(--text-dark);margin-top:1px;}
-.jh-actions{display:flex;}
-.jh-edit-btn{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:800;color:var(--primary);cursor:pointer;border-right:var(--border-width) solid var(--border-color);background:var(--bg-4);}
-.jh-del-btn{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:800;color:var(--color-1);cursor:pointer;background:var(--bg-4);}
-#jhTlView{flex:1;min-height:0;display:none;padding:var(--margin);}
-#jhTlView.on{display:flex;}
-.jh-tl-card{flex:1;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);position:relative;overflow:hidden;}
-#jhTlWrap{position:absolute;inset:0;overflow:hidden;}
-#jhDataView{flex:1;min-height:0;overflow-y:auto;padding:var(--margin);display:none;}
-#jhDataView.on{display:block;}
-.jh-data-ta{width:100%;height:110px;background:var(--bg-3);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);color:var(--text-mid);font-size:11px;padding:8px;resize:none;font-family:monospace;box-sizing:border-box;outline:none;margin-bottom:var(--margin);}
-.jh-data-ta.jh-import{color:var(--text-light);}
-.jh-data-msg{text-align:center;font-size:11px;font-weight:800;min-height:16px;margin-top:4px;}
-#jhFormWindow{position:fixed;inset:0;z-index:310;background:var(--bg-1);display:none;flex-direction:column;max-width:540px;margin:0 auto;}
-#jhFormWindow.open{display:flex;}
-.jh-form-hdr{height:var(--card-height);flex-shrink:0;display:flex;align-items:stretch;background:var(--bg-3);border-bottom:var(--border-width) solid var(--border-color);}
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#243342">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pantry Pro">
+<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 
-.jh-form-title{flex:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-mid);}
-.jh-form-body{flex:1;overflow-y:auto;padding:var(--margin);display:block;}
-.jh-form-foot{height:var(--card-height);flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--bg-3);border-top:var(--border-width) solid var(--border-color);font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-mid);cursor:default;}
-.jh-form-foot.ready{background:var(--primary);color:var(--text-dark);cursor:pointer;}
-.jh-form-inp{height:var(--card-height);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);background:var(--bg-2);overflow:hidden;margin-bottom:var(--margin);}
-.jh-form-inp input{width:100%;height:100%;background:transparent;border:none;color:var(--text-light);font-size:14px;font-weight:700;padding:0 12px;outline:none;font-family:inherit;}
-.jh-swatches{height:var(--card-height);display:flex;align-items:stretch;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;margin-bottom:var(--margin);}
-.jh-sw{flex:1;border:none;border-right:var(--border-width) solid var(--border-color);cursor:pointer;position:relative;}
-.jh-sw:last-child{border-right:none;}
-.jh-sw::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,0.9);transition:transform 0.12s;}
-.jh-sw.on::after{transform:translate(-50%,-50%) scale(1);}
-.jh-role-card{border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;background:var(--bg-2);margin-bottom:var(--margin);}
-.jh-role-card-hdr{height:26px;display:flex;align-items:center;justify-content:space-between;padding:0 10px;background:var(--bg-3);border-bottom:var(--border-width) solid var(--border-color);}
-.jh-role-card-hdr span{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-mid);}
-.jh-role-card-del{font-size:14px;font-weight:900;color:var(--color-1);cursor:pointer;}
-.jh-role-body{padding:var(--margin);display:flex;flex-direction:column;gap:var(--margin);}
-.jh-role-body input{width:100%;height:36px;background:var(--bg-3);border:var(--border-width) solid var(--border-color);border-radius:var(--radius);color:var(--text-light);font-size:13px;font-weight:700;padding:0 10px;outline:none;font-family:inherit;}
-.jh-role-row{display:flex;gap:var(--margin);}
-.jh-role-row input{flex:1;}
-.jh-day-row input{font-size:11px;}
-.jh-day-row input::placeholder{font-size:10px;}
-.jh-add-role-btn{height:var(--drop-height);width:100%;border:var(--border-width) dashed var(--text-mid);border-radius:var(--radius);background:transparent;color:var(--text-mid);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;margin-bottom:var(--margin);}
-.jh-data-btn-export{height:var(--card-height);width:100%;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);background:var(--primary);color:var(--text-dark);font-size:var(--text-sm);font-weight:var(--fw-bold);letter-spacing:var(--ls-wider);text-transform:uppercase;cursor:pointer;margin-bottom:var(--margin);display:flex;align-items:center;justify-content:center;}
-.jh-data-ta+.jh-data-btn-export,.jh-data-ta+.jh-data-btn-import{margin-top:0;}
-.jh-data-btn-import{height:var(--card-height);width:100%;border:var(--border-width) solid var(--border-color);border-radius:var(--radius);background:var(--bg-2);color:var(--text-light);font-size:var(--text-sm);font-weight:var(--fw-bold);letter-spacing:var(--ls-wider);text-transform:uppercase;cursor:pointer;margin-bottom:var(--margin);display:flex;align-items:center;justify-content:center;}
-#jhFormWindow .label-card{margin-bottom:var(--margin);}
-
-</style>
+<script src="styles.js"></script>
 </head>
 <body>
+<script src="splash.js"></script>
 
-  <div class="header-tab" id="headerTab">
-    <button class="header-action-btn" onclick="openWindow('newWindow')">New</button>
-    <button class="header-action-btn" onclick="openWindow('settingsWindow')">Settings</button>
-    <button class="header-action-btn" onclick="openDataWindow()">Data</button>
-    <button class="header-action-btn" onclick="openJobHistoryWindow()" id="headerHistoryBtn">History</button>
+<div class="header-tab">
+  <div class="header-tab-row">
+    <button class="header-tab-btn active" id="hGrocery" onclick="setPage('Grocery')">Grocery List</button>
+    <button class="header-tab-btn" id="hPantry" onclick="setPage('Pantry')">My Pantry</button>
+    <button class="header-tab-btn" id="hMyStore" onclick="setPage('MyStore')">My Store</button>
+    <button class="header-tab-btn" id="hStats" onclick="setPage('Stats')">Stats</button>
+  </div>
+  <div id="statsTabRow"></div>
+</div>
+
+<div class="app">
+
+  <!-- GROCERY LIST -->
+  <div class="page active" id="pageGrocery">
+    <div class="ms-search-wrap">
+      <input type="text" id="glSearch" class="ms-search" placeholder="Search... type to find or add a new list item" oninput="glSearchInput()">
+      <button class="ms-search-clear" onclick="document.getElementById('glSearch').value='';glThinkPhraseSet=false;glQuickAddState=null;glQuickAddName='';glThinkCardEl=null;glRender();">×</button>
+    </div>
+    <div id="glThinkSlot"></div>
+    <div class="view-toggle" id="glFilterBar">
+      <button class="view-btn active" id="glFAll" onclick="setGlFilter('all')">All</button>
+      <button class="view-btn" id="glFUnchecked" onclick="setGlFilter('unchecked')">Unchecked</button>
+      <button class="view-btn" id="glFChecked" onclick="setGlFilter('checked')">Checked</button>
+    </div>
+    <div class="list-wrap" id="glList"></div>
+    <div class="footer">
+      <button class="btn-ghost" id="glFooterBtn" onclick="glFooterAction()">Uncheck All</button>
+    </div>
   </div>
 
-  <div id="fx-back" style="position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden;"></div>
-  <div id="fx-fore" style="position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden;"></div>
-  <div class="app" id="mainApp"></div>
+  <!-- MY PANTRY -->
+  <div class="page" id="pagePantry">
+    <div class="ms-search-wrap">
+      <input type="text" id="ptSearch" class="ms-search" placeholder="Search... type to find or add an item" oninput="ptSearchInput()">
+      <button class="ms-search-clear" onclick="document.getElementById('ptSearch').value='';ptThinkPhraseSet=false;ptQuickAddState=null;ptQuickAddName='';ptThinkCardEl=null;ptRender();">×</button>
+    </div>
+    <div id="ptThinkSlot"></div>
+  </div>
 
-  <script src="app.js?v=1780079347"></script>
-  <script src="fx.js?v=1780079347"></script>
-  <script src="daycards.js?v=1780079347"></script>
-  <script src="quickschedule.js?v=1780079347"></script>
-  <script src="history.js?v=1780079347"></script>
-  <script src="borders.js?v=1780079347"></script>
-  <script src="data.js?v=1780079347"></script>
-  <script src="theme.js?v=1780079347"></script>
-<script src='rand.js?v=1780347899'></script>
-<script src='lcars.js?v=1781139882'></script>
-<script src='animations.js'></script>
-<script src='jobhistory.js'></script>
+  <!-- MY STORE (inline tab) -->
+  <div class="page" id="pageMyStore">
+    <div class="ms-search-wrap">
+      <input type="text" id="msSearchTab" class="ms-search" placeholder="Search... type to find or add a new item" oninput="msSearchInputTab()">
+      <button class="ms-search-clear" onclick="document.getElementById('msSearchTab').value='';msThinkPhraseSet=false;msQuickAddState=null;msQuickAddName='';msThinkCardEl=null;msRender();">×</button>
+    </div>
+    <div id="msThinkSlotTab"></div>
+    <div class="list-wrap" id="msListTab"></div>
+  </div>
 
-<!-- JOB HISTORY WINDOW -->
-<div class="data-window" id="jhWindow">
+  <!-- STATS -->
+  <div class="page" id="pageStats">
+    <div id="statsPageBody" style="flex:1;display:flex;flex-direction:column;gap:var(--margin);"></div>
+  </div>
+
+  <!-- COMP SHOP (overlay, opened from sidebar) -->
+  <div class="page" id="pageShop" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:250;background:var(--bg-1);flex-direction:column;overflow:hidden;">
+    <div style="height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-2);">
+      <div style="flex:1;display:flex;align-items:center;padding:0 14px;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;">Comp Shop</div>
+      <button onclick="document.getElementById('pageShop').style.display='none';" style="width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);font-size:22px;font-weight:900;color:#fff;cursor:pointer;">×</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:var(--margin);padding:var(--margin);flex-shrink:0;">
+      <div class="ms-search-wrap">
+        <input type="text" id="csSearch" class="ms-search" placeholder="Search... type to find or add a new list item" oninput="csSearchInput()">
+        <button class="ms-search-clear" onclick="document.getElementById('csSearch').value='';csThinkPhraseSet=false;csQuickAddState=null;csQuickAddName='';csRender();">×</button>
+      </div>
+      <div class="view-toggle">
+        <button class="view-btn active" id="csVSimple" onclick="setCsView('simple')">Simple</button>
+        <button class="view-btn" id="csVCat" onclick="setCsView('cat')">Category</button>
+      </div>
+      <div id="csThinkSlot"></div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:0 var(--margin) var(--margin);">
+      <div class="list-wrap" id="csList"></div>
+    </div>
+  </div>
+
+  <!-- STATS WINDOW is the existing #statsWindow overlay -->
+
+</div>
+
+<!-- SIDEBAR PAGE HEADER: floats over the normal tab when opened from sidebar -->
+<div id="sidebarPageHeader" style="display:none;position:fixed;top:0;left:0;right:0;z-index:300;height:var(--card-height);display:none;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);background:var(--bg-2);">
+  <div id="sidebarPageTitle" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;pointer-events:none;"></div>
+  <button onclick="closeSidebarPage()" style="margin-left:auto;width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);font-size:22px;font-weight:900;color:#fff;cursor:pointer;">×</button>
+</div>
+
+<!-- MODAL -->
+<div id="focusDim"></div>
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Category</div>
+      <div class="modal-close" onclick="closeModal()">×</div>
+    </div>
+    <div class="modal-grid" id="modalGrid"></div>
+  </div>
+</div>
+
+<!-- SETTINGS DRAWER -->
+<div class="settings-overlay" id="settingsOverlay" onclick="closeSettings()"></div>
+<div class="settings-drawer" id="settingsDrawer">
+  <div class="settings-body" id="settingsBody"></div>
+</div>
+
+<!-- STATS WINDOW -->
+<div id="statsWindow" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:300;background:var(--bg-1);flex-direction:column;overflow:hidden;">
+  <div style="height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-2);position:relative;">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;pointer-events:none;">Stats</div>
+    <button onclick="closeStatsWindow()" style="margin-left:auto;width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);font-size:22px;font-weight:900;color:#fff;cursor:pointer;">×</button>
+    </div>
+  <div id="statsWindowFrozenRow" style="flex-shrink:0;border-bottom:var(--border-width) solid var(--border-color);"></div>
+  <div id="statsWindowBody" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--margin);padding:var(--margin);"></div>
+</div>
+
+<!-- SETTINGS WINDOW -->
+<div id="settingsWindow" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:300;background:var(--bg-1);flex-direction:column;overflow:hidden;">
+  <div style="height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-2);position:relative;">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:#fff;pointer-events:none;">Settings</div>
+    <button onclick="closeSettingsWindow()" style="margin-left:auto;width:var(--card-height);min-width:var(--card-height);background:#502424;border:none;border-left:var(--border-width) solid var(--border-color);font-size:22px;font-weight:900;color:#fff;cursor:pointer;">×</button>
+    </div>
+  <div id="settingsWindowBody" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--margin);padding:var(--margin);"></div>
+</div>
+
+<!-- DATA WINDOW -->
+<div class="data-window" id="dataWindow">
   <div class="data-window-header">
-    <button class="data-window-back" onclick="closeWindow('jhWindow')" id="jhWindowBack"><svg width="22" height="22" viewBox="0 0 50 50" fill="none"><line x1="42" y1="10" x2="8" y2="25" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><line x1="42" y1="40" x2="8" y2="25" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></svg></button>
-    <div class="data-window-title">Work History</div>
+    <div class="data-window-title" id="dataWindowTitle">Data</div>
+    <button class="data-window-close" onclick="closeDataWindow()">×</button>
   </div>
-  <div class="filter-card" style="flex-shrink:0;border-radius:0;border-left:none;border-right:none;border-top:none;">
-    <button class="filter-btn active" data-jhview="companies">Companies</button>
-    <button class="filter-btn" data-jhview="timeline">Timeline</button>
-    <button class="filter-btn" data-jhview="data">Data</button>
+  <div class="data-tabs">
+    <button class="data-tab active" id="dtExport" onclick="setDataTab('export')">Export</button>
+    <button class="data-tab" id="dtImport" onclick="setDataTab('import')">Import</button>
   </div>
-  <div id="jhCoView" class="on"></div>
-  <div id="jhTlView"><div class="jh-tl-card"><div id="jhTlWrap"></div></div></div>
-  <div id="jhDataView"></div>
+  <div class="data-body" id="dataBody"></div>
 </div>
 
-<!-- JOB HISTORY FORM -->
-<div id="jhFormWindow">
-  <div class="jh-form-hdr">
-    <button class="data-window-back" id="jhFormBack"><svg width="22" height="22" viewBox="0 0 50 50" fill="none"><line x1="42" y1="10" x2="8" y2="25" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><line x1="42" y1="40" x2="8" y2="25" stroke="currentColor" stroke-width="5" stroke-linecap="round"/></svg></button>
-    <div class="jh-form-title" id="jhFormTitle">New Career Entry</div>
+<!-- CLEAR CONFIRM MODAL -->
+<div class="modal-overlay" id="clearConfirmOverlay" onclick="if(event.target===this)document.getElementById('clearConfirmOverlay').classList.remove('open')">
+  <div class="modal" style="bottom:auto;max-height:220px;">
+    <div class="modal-header">
+      <div class="modal-title">Clear All Data</div>
+      <div class="modal-close" onclick="document.getElementById('clearConfirmOverlay').classList.remove('open')">×</div>
+    </div>
+    <div style="padding:12px;display:flex;flex-direction:column;gap:var(--margin);">
+      <div style="font-size:11px;font-weight:600;letter-spacing:0.04em;color:var(--muted);line-height:1.5;">
+        This will permanently delete all grocery list items, My Store items, Comp Shop data, and all custom categories and settings. This cannot be undone.
+      </div>
+      <div style="display:flex;gap:var(--margin);">
+        <button class="data-btn" style="flex:1;" onclick="document.getElementById('clearConfirmOverlay').classList.remove('open')">Cancel</button>
+        <button class="data-btn" style="flex:1;background:var(--color-1);color:#fff;" onclick="clearAllData()">Clear Everything</button>
+      </div>
+    </div>
   </div>
-  <div class="jh-form-body">
-    <div class="label-card">Company Name</div>
-    <div class="jh-form-inp"><input id="jhCompanyInp" type="text" placeholder="e.g. Acme Corp"></div>
-    <div class="label-card">Color</div>
-    <div class="jh-swatches" id="jhSwatches"></div>
-    <div class="label-card">Roles</div>
-    <div id="jhRolesWrap"></div>
-    <button class="jh-add-role-btn">+ Add Role</button>
-  </div>
-  <div class="jh-form-foot" id="jhFormFoot">Save Career Entry</div>
 </div>
+
+<!-- SALES WINDOW -->
+<div class="data-window" id="salesWindow">
+  <div class="data-window-header">
+    <div class="data-window-title">My Sales</div>
+    <button class="data-window-close" onclick="closeSalesWindow()">×</button>
+  </div>
+  <div class="data-body" id="salesBody"></div>
+</div>
+
+<!-- RECIPES WINDOW -->
+<div class="data-window" id="recipesWindow">
+  <div class="data-window-header">
+    <div class="data-window-title">Recipes</div>
+    <button class="data-window-close" onclick="closeRecipesWindow()">×</button>
+  </div>
+  <div class="data-body" id="recipesBody" style="padding:4px;gap:4px;display:flex;flex-direction:column;overflow-y:auto;"></div>
+</div>
+
+<!-- MEALS WINDOW -->
+<div class="data-window" id="mealsWindow">
+  <div class="data-window-header">
+    <div class="data-window-title">Meals</div>
+    <button class="data-window-close" onclick="closeMealsWindow()">×</button>
+  </div>
+  <div class="data-body" id="mealsBody" style="padding:4px;gap:4px;display:flex;flex-direction:column;overflow-y:auto;"></div>
+</div>
+
+<script src="app.js"></script>
+<script src="tabs.js"></script>
+<script src="pantry.js"></script>
+<script src="recipes.js"></script>
+<script src="onboarding.js"></script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js')
+      .then(r=>console.log('[PantryPro] SW registered', r.scope))
+      .catch(e=>console.log('[PantryPro] SW failed', e));
+  });
+}
+
+/* ── CROSS-SCRIPT INIT (runs after all scripts loaded) ── */
+setGlFilter('all');
+const _csVS=document.getElementById('csVSimple'); if(_csVS) _csVS.classList.toggle('active',csViewMode==='simple');
+const _csVC=document.getElementById('csVCat'); if(_csVC) _csVC.classList.toggle('active',csViewMode==='cat');
+ptRender();
+msRender();
+applyTabOrder(true);
+</script>
 </body>
 </html>
