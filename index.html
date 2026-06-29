@@ -27,6 +27,7 @@
     <button class="header-tab-btn" id="hPantry" onclick="setPage('Pantry')">My Pantry</button>
     <button class="header-tab-btn" id="hMyStore" onclick="setPage('MyStore')">My Store</button>
     <button class="header-tab-btn" id="hStats" onclick="setPage('Stats')">Stats</button>
+    <button class="header-tab-btn" id="hShelf" onclick="setPage('Shelf')">Meals</button>
   </div>
   <div id="statsTabRow"></div>
 </div>
@@ -75,6 +76,9 @@
     <div id="statsPageBody" style="flex:1;display:flex;flex-direction:column;gap:var(--margin);"></div>
   </div>
 
+  <!-- MEALS -->
+  <div class="page" id="pageShelf"></div>
+
   <!-- COMP SHOP (overlay, opened from sidebar) -->
   <div class="page" id="pageShop" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:250;background:var(--bg-1);flex-direction:column;overflow:hidden;">
     <div style="height:var(--card-height);display:flex;align-items:stretch;border-bottom:var(--border-width) solid var(--border-color);flex-shrink:0;background:var(--bg-2);">
@@ -96,8 +100,6 @@
       <div class="list-wrap" id="csList"></div>
     </div>
   </div>
-
-  <!-- STATS WINDOW is the existing #statsWindow overlay -->
 
 </div>
 
@@ -194,7 +196,7 @@
   <div class="data-body" id="recipesBody" style="padding:4px;gap:4px;display:flex;flex-direction:column;overflow-y:auto;"></div>
 </div>
 
-<!-- MEALS WINDOW -->
+<!-- MEALS WINDOW (legacy, keep to avoid undefined errors) -->
 <div class="data-window" id="mealsWindow">
   <div class="data-window-header">
     <div class="data-window-title">Meals</div>
@@ -205,9 +207,11 @@
 
 <script src="app.js"></script>
 <script src="tabs.js"></script>
-<script src="pantry.js"></script>
+<script src="core.js"></script>
+<script src="render.js"></script>
 <script src="recipes.js"></script>
 <script src="onboarding.js"></script>
+<script src="meals.js"></script>
 <script>
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{

@@ -1313,46 +1313,14 @@ function renderDataBody(){
 
     // Scope selector card — All Data | Stats | My Store
     const scopeCard=document.createElement('div'); scopeCard.style.cssText='border:3px solid #000;border-radius:8px;overflow:hidden;display:flex;flex-shrink:0;height:var(--drop-height);';
-    [['all','All Data'],['stats','Stats'],['store','My Store'],['snapshot','On Hand']].forEach(([v,lbl],i)=>{
+    [['all','All Data'],['stats','Stats'],['store','My Store']].forEach(([v,lbl],i)=>{
       const isAct=exportScope===v; const btn=document.createElement('div');
-      btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-3)'};color:${isAct?'var(--color-10)':'var(--muted)'};${i<3?'border-right:3px solid #000;':''}`;
+      btn.style.cssText=`flex:1;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;background:${isAct?'var(--bg-4)':'var(--bg-3)'};color:${isAct?'var(--color-10)':'var(--muted)'};${i<2?'border-right:3px solid #000;':''}`;
       btn.textContent=lbl;
       btn.onclick=()=>{ exportScope=v; renderDataBody(); };
       scopeCard.appendChild(btn);
     });
     body.appendChild(scopeCard);
-
-    // Stats date filter — only shown when exportScope === 'stats'
-    if(exportScope==='snapshot'){
-      body.style.overflow='hidden';
-      function buildSnapshot(){
-        const pantryData=ls('pantry_data',{}); const msItems=ls('ms_items',[]);
-        const onHand=msItems.filter(i=>{ const pd=pantryData[i.id]; return pd&&ptGetStock(pd)>0; });
-        const rawCats=[...new Set(onHand.map(i=>i.category))];
-        const cats=ptSmartSortCats(rawCats,onHand);
-        const lines=[];
-        cats.forEach(catId=>{
-          const cat=getCat(catId);
-          const items=ptSmartSortItems(onHand.filter(i=>i.category===catId));
-          if(!items.length) return;
-          lines.push(`── ${cat.label.toUpperCase()} ──`);
-          items.forEach(item=>{
-            const pd=pantryData[item.id];
-            const qty=parseFloat(ptGetStock(pd).toFixed(2));
-            const unit=getUnitDisplay(pd.unit||item.unit,qty);
-            lines.push(`  ${item.name}: ${qty} ${unit}`.trimEnd());
-          });
-        });
-        return lines.join('\n');
-      }
-      const snapCard=document.createElement('div'); snapCard.style.cssText='border:var(--border-width) solid var(--border-color);border-radius:var(--radius);overflow:hidden;flex-shrink:0;display:flex;flex-direction:column;flex:1;min-height:0;';
-      const snapPre=document.createElement('pre'); snapPre.style.cssText='flex:1;min-height:0;padding:10px 12px;background:var(--bg-3);font-size:10px;font-weight:600;line-height:1.7;color:var(--muted);white-space:pre-wrap;word-break:break-word;font-family:monospace;overflow-y:auto;';
-      const snapTxt=buildSnapshot()||'No items currently on hand.'; snapPre.textContent=snapTxt;
-      const snapCopy=document.createElement('div'); snapCopy.style.cssText='height:var(--drop-height);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:0.1em;text-transform:uppercase;color:#48a971;background:var(--bg-2);border-top:var(--border-width) solid var(--border-color);cursor:pointer;'; snapCopy.textContent='Copy to Clipboard';
-      snapCopy.onclick=()=>{ if(!snapTxt) return; navigator.clipboard.writeText(snapTxt).then(()=>{ snapCopy.textContent='Copied!'; snapCopy.style.color='#fff'; snapCopy.style.background='#48a971'; setTimeout(()=>{ snapCopy.textContent='Copy to Clipboard'; snapCopy.style.color='#48a971'; snapCopy.style.background='var(--bg-2)'; },2000); }).catch(()=>{ const ta=document.createElement('textarea'); ta.value=snapTxt; ta.style.cssText='position:fixed;top:-9999px;'; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); snapCopy.textContent='Copied!'; snapCopy.style.color='#fff'; snapCopy.style.background='#48a971'; setTimeout(()=>{ snapCopy.textContent='Copy to Clipboard'; snapCopy.style.color='#48a971'; snapCopy.style.background='var(--bg-2)'; },2000); }); };
-      snapCard.append(snapPre,snapCopy); body.appendChild(snapCard);
-      return;
-    }
 
     // Stats date filter — only shown when exportScope === 'stats'
     if(exportScope==='stats'){
@@ -2288,7 +2256,7 @@ function renderSettingsWindowBody(){
     fdWrap.append(fdHdr,fdRow,fdDesc); body.appendChild(fdWrap);
 
   } else {
-    clearCard.style.cssText='cursor:pointer;border-radius:var(--radius);'; const clearNm=document.createElement('div'); clearNm.className='item-name'; clearNm.style.cssText='background:#502424;color:#fff;font-weight:800;justify-content:center;letter-spacing:0.06em;'; clearNm.textContent='Clear All Data'; clearCard.appendChild(clearNm); clearCard.onclick=()=>{ document.getElementById('clearConfirmOverlay').classList.add('open'); }; body.appendChild(clearCard);
+    const clearCard=document.createElement('div'); clearCard.className='item-row'; clearCard.style.cssText='cursor:pointer;border-radius:var(--radius);'; const clearNm=document.createElement('div'); clearNm.className='item-name'; clearNm.style.cssText='background:#502424;color:#fff;font-weight:800;justify-content:center;letter-spacing:0.06em;'; clearNm.textContent='Clear All Data'; clearCard.appendChild(clearNm); clearCard.onclick=()=>{ document.getElementById('clearConfirmOverlay').classList.add('open'); }; body.appendChild(clearCard);
     let rstPending=false, rstTimer=null; const rstCard=document.createElement('div'); rstCard.className='item-row'; rstCard.style.cssText='cursor:pointer;border-radius:var(--radius);'; const rstNm=document.createElement('div'); rstNm.className='item-name'; rstNm.style.cssText='background:#2a1010;color:#C85A5A;font-weight:800;justify-content:center;letter-spacing:0.06em;'; rstNm.textContent='Reset Stats Data'; rstCard.appendChild(rstNm);
     rstCard.onclick=()=>{ if(rstPending){ clearTimeout(rstTimer); rstPending=false; lsSet('pantry_delta_log',{}); lsSet('pantry_snapshots',{}); lsSet('pantry_usage_log',{}); lsSet('_log_v2',true); ptBackfillSnapshots(); rstNm.style.background='#502424'; rstNm.textContent='Stats Cleared'; setTimeout(()=>{ rstNm.style.background='#2a1010'; rstNm.textContent='Reset Stats Data'; },1500); } else { rstPending=true; rstNm.style.background='#fff'; rstNm.style.color='#C85A5A'; rstNm.textContent='Confirm? Tap again to reset'; rstTimer=setTimeout(()=>{ rstPending=false; rstNm.style.background='#2a1010'; rstNm.style.color='#C85A5A'; rstNm.textContent='Reset Stats Data'; },3000); } }; body.appendChild(rstCard);
     const obCard=document.createElement('div'); obCard.className='item-row'; obCard.style.cssText='cursor:pointer;border-radius:var(--radius);'; const obNm=document.createElement('div'); obNm.className='item-name'; obNm.style.cssText='background:#1d2d3f;color:#5A8DB8;font-weight:800;justify-content:center;letter-spacing:0.06em;'; obNm.textContent='Run Setup Guide'; obCard.appendChild(obNm); obCard.onclick=()=>{ lsSet('onboarding_mode',true); closeSettingsWindow(); setTimeout(()=>{ obInit&&obInit(); },100); }; body.appendChild(obCard);
